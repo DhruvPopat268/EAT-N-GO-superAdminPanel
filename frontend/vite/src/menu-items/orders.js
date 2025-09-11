@@ -4,6 +4,7 @@ const icons = { IconShoppingCartFilled };
 
 const orders = {
   id: 'orders',
+  title: 'Orders Management',
   type: 'group',
   children: [
     {

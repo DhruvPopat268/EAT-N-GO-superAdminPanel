@@ -23,7 +23,7 @@ import {
   Button
 } from '@mui/material';
 import { Visibility } from '@mui/icons-material';
-import { IconShoppingCartFilled, IconSearch, IconBuildingStore } from '@tabler/icons-react';
+import { IconShoppingCartFilled, IconSearch, IconBuildingStore, IconPrinter } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 
 const mockRestaurants = [
@@ -72,6 +72,9 @@ export default function OrdersManagement() {
     navigate(`/order-detail/${orderId}`);
   };
 
+  const handlePrintOrder = (orderId) => {
+  };
+
   const filteredOrders = selectedRestaurant 
     ? (mockOrders[selectedRestaurant.id] || []).filter(order =>
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -98,7 +101,7 @@ export default function OrdersManagement() {
       <Fade in timeout={1000}>
         <Card 
           sx={{ 
-            borderRadius: 4, 
+            borderRadius: 0, 
             boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
             overflow: 'hidden',
             background: 'white',
@@ -222,7 +225,7 @@ export default function OrdersManagement() {
                           <Chip 
                             label={order.status} 
                             color={getStatusColor(order.status)}
-                            variant="filled"
+                            variant="outlined"
                             size="small"
                           />
                         </TableCell>
@@ -237,28 +240,40 @@ export default function OrdersManagement() {
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Tooltip title="View Order Details" arrow>
-                            <Button
-                              variant="outlined"
-                              color="primary"
-                              size="small"
-                              onClick={() => handleViewOrder(order.id)}
-                              sx={{ 
-                                minWidth: 44,
-                                height: 44,
-                                borderRadius: 2.5,
-                                borderWidth: 2,
-                                '&:hover': {
-                                  transform: 'scale(1.08)',
-                                  backgroundColor: 'primary.main',
-                                  color: 'white',
-                                  borderWidth: 2,
-                                }
-                              }}
-                            >
-                              <Visibility sx={{ fontSize: 20 }} />
-                            </Button>
-                          </Tooltip>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Tooltip title="View Order Details" arrow>
+                              <IconButton
+                                onClick={() => handleViewOrder(order.id)}
+                                sx={{ 
+                                  color: 'primary.main',
+                                  borderRadius: 1,
+                                  '&:hover': {
+                                    backgroundColor: 'primary.main',
+                                    color: 'white',
+                                    transform: 'scale(1.08)'
+                                  }
+                                }}
+                              >
+                                <Visibility sx={{ fontSize: 20 }} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Print Invoice" arrow>
+                              <IconButton
+                                onClick={() => handlePrintOrder(order.id)}
+                                sx={{ 
+                                  color: 'secondary.main',
+                                  borderRadius: 1,
+                                  '&:hover': {
+                                    backgroundColor: 'secondary.main',
+                                    color: 'white',
+                                    transform: 'scale(1.08)'
+                                  }
+                                }}
+                              >
+                                <IconPrinter size={20} />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     </Fade>

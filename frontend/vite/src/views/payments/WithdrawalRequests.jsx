@@ -20,14 +20,14 @@ import {
   Grid,
   alpha,
   useTheme,
-  Fade,
-  Zoom,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  IconButton
 } from "@mui/material";
+import BlackSpinner from 'ui-component/BlackSpinner';
 import {
   CheckCircle,
   Cancel,
@@ -90,6 +90,16 @@ export default function WithdrawalRequests() {
   const [hoveredRow, setHoveredRow] = useState(null);
   const [rejectDialog, setRejectDialog] = useState({ open: false, requestId: null });
   const [rejectionReason, setRejectionReason] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <BlackSpinner />;
+  }
 
   const handleAction = (id, action) => {
     if (action === 'reject') {
@@ -179,8 +189,7 @@ export default function WithdrawalRequests() {
 
   return (
     <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      <Fade in timeout={800}>
-        <Box sx={{ mb: 5 }}>
+      <Box sx={{ mb: 5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
             <Avatar 
               sx={{ 
@@ -242,12 +251,10 @@ export default function WithdrawalRequests() {
             </Grid>
           </Grid>
         </Box>
-      </Fade>
 
-      <Zoom in timeout={1000}>
-        <Card 
+      <Card 
           sx={{ 
-            borderRadius: 4, 
+            borderRadius: 0, 
             boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
             overflow: 'hidden',
             background: 'white',
@@ -283,8 +290,7 @@ export default function WithdrawalRequests() {
               </TableHead>
               <TableBody>
                 {requests.map((row, index) => (
-                  <Fade in timeout={1200 + index * 200} key={row.id}>
-                    <TableRow
+                    <TableRow key={row.id}
                       onMouseEnter={() => setHoveredRow(row.id)}
                       onMouseLeave={() => setHoveredRow(null)}
                       sx={{
@@ -443,37 +449,29 @@ export default function WithdrawalRequests() {
                           </Tooltip>
                           
                           <Tooltip title="View Restaurant" arrow>
-                            <Button
-                              variant="outlined"
-                              color="primary"
-                              size="small"
+                            <IconButton
                               onClick={() => handleView(row.id)}
                               sx={{ 
-                                minWidth: 44,
-                                height: 44,
-                                borderRadius: 2.5,
-                                borderWidth: 2,
+                                color: 'primary.main',
+                                borderRadius: 1,
                                 '&:hover': {
-                                  transform: 'scale(1.08)',
                                   backgroundColor: 'primary.main',
                                   color: 'white',
-                                  borderWidth: 2,
+                                  transform: 'scale(1.08)'
                                 }
                               }}
                             >
                               <Visibility sx={{ fontSize: 20 }} />
-                            </Button>
+                            </IconButton>
                           </Tooltip>
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  </Fade>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
         </Card>
-      </Zoom>
 
       <Dialog open={rejectDialog.open} onClose={handleRejectCancel} maxWidth="sm" fullWidth>
         <DialogTitle>Reject Withdrawal Request</DialogTitle>

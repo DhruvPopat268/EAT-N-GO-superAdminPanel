@@ -17,6 +17,16 @@ const WithdrawalRequests = Loadable(lazy(() => import('views/payments/Withdrawal
 const ApprovedWithdrawals = Loadable(lazy(() => import('views/payments/ApprovedWithdrawals')));
 const RejectedWithdrawals = Loadable(lazy(() => import('views/payments/RejectedWithdrawals')));
 const WithdrawalDetail = Loadable(lazy(() => import('views/payments/WithdrawalDetail')));
+const Refunds = Loadable(lazy(() => import('views/payments/Refunds')));
+const OrderPaymentHistory = Loadable(lazy(() => import('views/payments/OrderPaymentHistory')));
+const TransactionHistory = Loadable(lazy(() => import('views/payments/TransactionHistory')));
+const UPIManagement = Loadable(lazy(() => import('views/payments/UPIManagement')));
+
+// support routing
+const CustomerChat = Loadable(lazy(() => import('views/support/CustomerChat')));
+
+// restaurant routing
+const AddRestaurant = Loadable(lazy(() => import('views/restaurent/AddRestaurant')));
 
 // rbac routing
 const RBACManagement = Loadable(lazy(() => import('views/rbac/RBACManagement')));
@@ -24,6 +34,13 @@ const RBACManagement = Loadable(lazy(() => import('views/rbac/RBACManagement')))
 // orders routing
 const OrdersManagement = Loadable(lazy(() => import('views/orders/OrdersManagement')));
 const OrderDetail = Loadable(lazy(() => import('views/orders/OrderDetail')));
+
+// subscription routing
+const SubscriptionManagement = Loadable(lazy(() => import('views/subscription/SubscriptionManagement')));
+
+// customers routing
+const CustomerManagement = Loadable(lazy(() => import('views/customers/CustomerManagement')));
+const CustomerDetail = Loadable(lazy(() => import('views/customers/CustomerDetail')));
 
 // sample page routing
 const SamplePage = Loadable(lazy(() => import('views/sample-page')));
@@ -76,6 +93,30 @@ const MainRoutes = {
       element: <WithdrawalDetail />
     },
     {
+      path: '/payments/refunds',
+      element: <Refunds />
+    },
+    {
+      path: '/payments/order-payment-history',
+      element: <OrderPaymentHistory />
+    },
+    {
+      path: '/payments/transaction-history',
+      element: <TransactionHistory />
+    },
+    {
+      path: '/payments/upi-management',
+      element: <UPIManagement />
+    },
+    {
+      path: '/support/customer-chat',
+      element: <CustomerChat />
+    },
+    {
+      path: '/restaurents/add-restaurant',
+      element: <AddRestaurant />
+    },
+    {
       path: '/rbac-management',
       element: <RBACManagement />
     },
@@ -86,6 +127,18 @@ const MainRoutes = {
     {
       path: '/order-detail/:id',
       element: <OrderDetail />
+    },
+    {
+      path: '/subscription',
+      element: <SubscriptionManagement />
+    },
+    {
+      path: '/customers',
+      element: <CustomerManagement />
+    },
+    {
+      path: '/customer-detail/:id',
+      element: <CustomerDetail />
     },
     {
       path: '/sample-page',

@@ -59,7 +59,7 @@ export default function RBACManagement() {
       <Fade in timeout={1000}>
         <Card 
           sx={{ 
-            borderRadius: 4, 
+            borderRadius: 0, 
             boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
             overflow: 'hidden',
             background: 'white',

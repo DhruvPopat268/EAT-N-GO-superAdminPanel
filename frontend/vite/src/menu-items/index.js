@@ -5,11 +5,14 @@ import restaurent from './restaurent';
 import payments from './payments';
 import orders from './orders';
 import rbac from './rbac';
+import subscription from './subscription';
+import customers from './customers';
+import support from './support';
 
 // ==============================|| MENU ITEMS ||============================== //
 
 const menuItems = {
-  items: [dashboard, restaurent, orders, payments, rbac, utilities]
+  items: [dashboard, restaurent, orders, payments, customers, rbac, subscription, utilities]
 };
 
 export default menuItems;

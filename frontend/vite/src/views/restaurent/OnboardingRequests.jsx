@@ -21,8 +21,6 @@ import {
   Grid,
   alpha,
   useTheme,
-  Fade,
-  Zoom,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -33,6 +31,7 @@ import {
   Select,
   MenuItem
 } from "@mui/material";
+import BlackSpinner from 'ui-component/BlackSpinner';
 import {
   CheckCircle,
   Cancel,
@@ -93,6 +92,16 @@ export default function OnboardingRequests() {
   const [rejectDialog, setRejectDialog] = useState({ open: false, restaurantId: null });
   const [rejectionReason, setRejectionReason] = useState('');
   const [customReason, setCustomReason] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <BlackSpinner />;
+  }
 
   const handleAction = (id, action) => {
     if (action === 'reject') {
@@ -195,8 +204,7 @@ export default function OnboardingRequests() {
   return (
     <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       {/* Header Section */}
-      <Fade in timeout={800}>
-        <Box sx={{ mb: 5 }}>
+      <Box sx={{ mb: 5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
             <Avatar 
               sx={{ 
@@ -259,13 +267,11 @@ export default function OnboardingRequests() {
             </Grid>
           </Grid>
         </Box>
-      </Fade>
 
       {/* Enhanced Main Table */}
-      <Zoom in timeout={1000}>
-        <Card 
+      <Card 
           sx={{ 
-            borderRadius: 4, 
+            borderRadius: 0, 
             boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
             overflow: 'hidden',
             background: 'white',
@@ -301,8 +307,7 @@ export default function OnboardingRequests() {
               </TableHead>
               <TableBody>
                 {restaurants.map((row, index) => (
-                  <Fade in timeout={1200 + index * 200} key={row.id}>
-                    <TableRow
+                    <TableRow key={row.id}
                       onMouseEnter={() => setHoveredRow(row.id)}
                       onMouseLeave={() => setHoveredRow(null)}
                       sx={{
@@ -504,7 +509,6 @@ export default function OnboardingRequests() {
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  </Fade>
                 ))}
               </TableBody>
             </Table>
@@ -522,11 +526,9 @@ export default function OnboardingRequests() {
             </Box>
           )}
         </Card>
-      </Zoom>
 
       {/* Quick Actions Footer */}
       {restaurants.length > 0 && (
-        <Fade in timeout={1500}>
           <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
             <Card sx={{ 
               borderRadius: 3, 
@@ -561,7 +563,6 @@ export default function OnboardingRequests() {
               </CardContent>
             </Card>
           </Box>
-        </Fade>
       )}
 
       {/* Rejection Reason Dialog */}

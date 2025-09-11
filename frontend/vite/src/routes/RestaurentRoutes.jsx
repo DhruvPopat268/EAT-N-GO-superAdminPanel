@@ -9,6 +9,8 @@ const OnboardingRequestsPage = Loadable(lazy(() => import('../views/restaurent/O
 const OnboardedPage = Loadable(lazy(() => import('../views/restaurent/Onboarded')));
 const RejectedPage = Loadable(lazy(() => import('../views/restaurent/Rejected')));
 const RestaurantDetailPage = Loadable(lazy(() => import('../views/restaurent/RestaurantDetail')));
+const CostBreakdown = Loadable(lazy(() => import('../views/restaurent/CostBreakdown')));
+
 
 // ==============================|| RESTAURANT ROUTING ||============================== //
 
@@ -31,7 +33,11 @@ const RestaurentRoutes = {
     {
       path: '/restaurant-detail/:id',
       element: <RestaurantDetailPage />
-    }
+    },
+    {
+      path: '/restaurents/cost-breakdown',
+      element: <CostBreakdown />
+    },
   ]
 };
 

@@ -11,6 +11,7 @@ const icons = {
 
 const payments = {
     id: 'payments',
+    title: 'Payments Management',
     icon: icons.IconCreditCard,
     type: 'group',
     children: [
@@ -37,6 +38,30 @@ const payments = {
                     title: 'Rejected Withdrawals',
                     type: 'item',
                     url: '/payments/rejected-withdrawals',
+                },
+                {
+                    id: 'refunds',
+                    title: 'Refunds',
+                    type: 'item',
+                    url: '/payments/refunds',
+                },
+                {
+                    id: 'order-payment-history',
+                    title: 'Order Payment History',
+                    type: 'item',
+                    url: '/payments/order-payment-history',
+                },
+                {
+                    id: 'transaction-history',
+                    title: 'Transaction History',
+                    type: 'item',
+                    url: '/payments/transaction-history',
+                },
+                {
+                    id: 'upi-management',
+                    title: 'UPI Management',
+                    type: 'item',
+                    url: '/payments/upi-management',
                 }
             ]
         }

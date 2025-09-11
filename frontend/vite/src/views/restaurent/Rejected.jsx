@@ -20,10 +20,9 @@ import {
   Stack,
   Grid,
   alpha,
-  useTheme,
-  Fade,
-  Zoom
+  useTheme
 } from "@mui/material";
+import BlackSpinner from 'ui-component/BlackSpinner';
 import {
   Visibility,
   Restaurant,
@@ -68,6 +67,16 @@ export default function RejectedRestaurants() {
   const navigate = useNavigate();
   const [restaurants] = useState(rejected);
   const [hoveredRow, setHoveredRow] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <BlackSpinner />;
+  }
 
   const handleView = (id) => {
     navigate(`/restaurant-detail/${id}`);
@@ -146,8 +155,7 @@ export default function RejectedRestaurants() {
   return (
     <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       {/* Header Section */}
-      <Fade in timeout={800}>
-        <Box sx={{ mb: 5 }}>
+      <Box sx={{ mb: 5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
             <Avatar 
               sx={{ 
@@ -210,13 +218,11 @@ export default function RejectedRestaurants() {
             </Grid>
           </Grid>
         </Box>
-      </Fade>
 
       {/* Enhanced Main Table */}
-      <Zoom in timeout={1000}>
-        <Card 
+      <Card 
           sx={{ 
-            borderRadius: 4, 
+            borderRadius: 0, 
             boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
             overflow: 'hidden',
             background: 'white',
@@ -252,8 +258,7 @@ export default function RejectedRestaurants() {
               </TableHead>
               <TableBody>
                 {restaurants.map((row, index) => (
-                  <Fade in timeout={1200 + index * 200} key={row.id}>
-                    <TableRow
+                    <TableRow key={row.id}
                       onMouseEnter={() => setHoveredRow(row.id)}
                       onMouseLeave={() => setHoveredRow(null)}
                       sx={{
@@ -407,7 +412,6 @@ export default function RejectedRestaurants() {
                         </Stack>
                       </TableCell>
                     </TableRow>
-                  </Fade>
                 ))}
               </TableBody>
             </Table>
@@ -425,7 +429,6 @@ export default function RejectedRestaurants() {
             </Box>
           )}
         </Card>
-      </Zoom>
     </Box>
   );
 }

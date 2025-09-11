@@ -9,7 +9,7 @@ const rbac = {
   children: [
     {
       id: 'rbac-management',
-      title: 'RBAC Management',
+      title: 'Role Management',
       type: 'item',
       url: '/rbac-management',
       icon: icons.IconUserShield,

@@ -13,11 +13,12 @@ const restaurent = {
     id: 'restaurent',
 
     icon: icons.IconKey,
+    title: 'Restaurent Management',
     type: 'group',
     children: [
         {
             id: 'restaurents',
-            title: 'Restaurents',
+            title: 'Restaurent Managemnt',
             type: 'collapse',
             icon: icons.IconToolsKitchen2,
             children: [
@@ -40,6 +41,20 @@ const restaurent = {
                     title: 'rejected',
                     type: 'item',
                     url: '/restaurents/Rejected',
+                    // target: true
+                },
+                {
+                    id: 'CostBreakdown',
+                    title: 'Cost Breakdown',
+                    type: 'item',
+                    url: '/restaurents/cost-breakdown',
+                    // target: true
+                },
+                {
+                    id: 'AddRestaurant',
+                    title: 'Add Restaurant',
+                    type: 'item',
+                    url: '/restaurents/add-restaurant',
                     // target: true
                 }
             ]
