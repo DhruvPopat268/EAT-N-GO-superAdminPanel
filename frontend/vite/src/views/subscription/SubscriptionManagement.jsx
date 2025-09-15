@@ -121,8 +121,6 @@ export default function SubscriptionManagement() {
               bgcolor: 'white', 
               width: 64, 
               height: 64,
-              
-              boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
             }}
           >
             <IconCreditCard size={32} />

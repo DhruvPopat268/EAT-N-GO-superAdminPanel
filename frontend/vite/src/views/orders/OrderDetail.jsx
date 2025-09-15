@@ -188,11 +188,7 @@ export default function OrderDetail() {
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5m6 5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
-                </svg>
-              </div>
+              
               <h3 className="font-semibold text-gray-900">Order Items</h3>
             </div>
           </div>
@@ -201,8 +197,8 @@ export default function OrderDetail() {
             {orderData.items.map((item, index) => (
               <div key={item.id} className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-6 h-6 bg-slate-600 rounded-md flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-medium text-xs">{index + 1}</span>
+                  <div className="w-6 h-6  rounded-md flex items-center justify-center flex-shrink-0">
+                    <span className="text-black font-medium text-xs">{index + 1}</span>
                   </div>
 
                   <img

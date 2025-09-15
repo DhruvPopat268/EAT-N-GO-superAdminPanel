@@ -211,8 +211,7 @@ export default function OnboardingRequests() {
                 bgcolor: 'primary.main', 
                 width: 64, 
                 height: 64,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
+                background: 'white',
               }}
             >
               <Restaurant sx={{ fontSize: 32 }} />
@@ -329,7 +328,6 @@ export default function OnboardingRequests() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                           <Badge
                             badgeContent={row.submittedDays}
-                            color="primary"
                             sx={{
                               '& .MuiBadge-badge': {
                                 fontSize: '0.75rem',
@@ -341,7 +339,7 @@ export default function OnboardingRequests() {
                           >
                             <Avatar 
                               sx={{ 
-                                bgcolor: `${getCategoryColor(row.foodCategory)}.main`,
+                                bgcolor: `white`,
                                 width: 52,
                                 height: 52,
                                 fontSize: '1.1rem',

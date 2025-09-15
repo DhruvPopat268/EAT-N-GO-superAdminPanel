@@ -154,11 +154,9 @@ export default function RejectedWithdrawals() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
             <Avatar 
               sx={{ 
-                bgcolor: 'error.main', 
+                bgcolor: 'white', 
                 width: 64, 
                 height: 64,
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                boxShadow: '0 8px 32px rgba(245, 87, 108, 0.3)'
               }}
             >
               <Cancel sx={{ fontSize: 32 }} />

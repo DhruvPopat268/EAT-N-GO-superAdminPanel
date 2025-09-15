@@ -114,11 +114,9 @@ export default function Refunds() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
           <Avatar 
             sx={{ 
-              bgcolor: 'warning.main', 
+              bgcolor: 'white', 
               width: 64, 
               height: 64,
-              background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
-              boxShadow: '0 8px 32px rgba(255, 154, 158, 0.3)'
             }}
           >
             <IconRefresh size={32} />

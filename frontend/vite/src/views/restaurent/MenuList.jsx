@@ -448,7 +448,7 @@ export default function MenuList() {
                             <Avatar 
                               src={item.image} 
                               sx={{ 
-                                bgcolor: 'primary.main', 
+                                bgcolor: 'white', 
                                 width: 50, 
                                 height: 50,
                                 borderRadius: 2

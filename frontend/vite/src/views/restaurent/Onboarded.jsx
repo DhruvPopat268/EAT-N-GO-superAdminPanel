@@ -159,11 +159,9 @@ export default function OnboardedRestaurants() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
             <Avatar 
               sx={{ 
-                bgcolor: 'success.main', 
+                bgcolor: 'white', 
                 width: 64, 
                 height: 64,
-                background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-                boxShadow: '0 8px 32px rgba(67, 233, 123, 0.3)'
               }}
             >
               <CheckCircle sx={{ fontSize: 32 }} />
@@ -280,7 +278,7 @@ export default function OnboardedRestaurants() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                           <Badge
                             badgeContent={row.daysSinceApproval}
-                            color="success"
+                           
                             sx={{
                               '& .MuiBadge-badge': {
                                 fontSize: '0.75rem',
@@ -292,7 +290,7 @@ export default function OnboardedRestaurants() {
                           >
                             <Avatar 
                               sx={{ 
-                                bgcolor: `${getCategoryColor(row.foodCategory)}.main`,
+                                bgcolor: `white`,
                                 width: 52,
                                 height: 52,
                                 fontSize: '1.1rem',

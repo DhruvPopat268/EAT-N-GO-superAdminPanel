@@ -230,11 +230,6 @@ export default function CustomerDetail() {
           <div className="border-b border-gray-200 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Order History</h3>
                   <p className="text-gray-500 text-sm">Track all customer orders</p>
@@ -261,7 +256,7 @@ export default function CustomerDetail() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Index</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
@@ -272,8 +267,8 @@ export default function CustomerDetail() {
                   {customerOrders.map((order, index) => (
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
-                        <div className="w-6 h-6 bg-slate-600 rounded-md flex items-center justify-center">
-                          <span className="text-white font-medium text-xs">{index + 1}</span>
+                        <div className="w-6 h-6  rounded-md flex items-center justify-center">
+                          <span className="text-black font-medium text-xs">{index + 1}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">

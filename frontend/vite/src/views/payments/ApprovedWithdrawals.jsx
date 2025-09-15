@@ -152,11 +152,9 @@ export default function ApprovedWithdrawals() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
             <Avatar 
               sx={{ 
-                bgcolor: 'success.main', 
+                bgcolor: 'white', 
                 width: 64, 
                 height: 64,
-                background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-                boxShadow: '0 8px 32px rgba(67, 233, 123, 0.3)'
               }}
             >
               <CheckCircle sx={{ fontSize: 32 }} />
