@@ -54,17 +54,15 @@ function Sidebar() {
 
     return (
       <>
-        {downMD ? (
-          <Box sx={drawerSX}>
-            <MenuList />
-            {drawerOpen && drawerContent}
-          </Box>
-        ) : (
-          <PerfectScrollbar style={{ height: 'calc(100vh - 88px)', ...drawerSX }}>
-            <MenuList />
-            {drawerOpen && drawerContent}
-          </PerfectScrollbar>
-        )}
+        <PerfectScrollbar 
+          style={{ 
+            height: downMD ? 'calc(100vh - 120px)' : 'calc(100vh - 88px)', 
+            ...drawerSX 
+          }}
+        >
+          <MenuList />
+          {drawerOpen && drawerContent}
+        </PerfectScrollbar>
       </>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
