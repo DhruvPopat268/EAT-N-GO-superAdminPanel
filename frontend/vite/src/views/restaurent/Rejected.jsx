@@ -79,7 +79,7 @@ export default function RejectedRestaurants() {
   }
 
   const handleView = (id) => {
-    navigate(`/restaurant-detail/${id}`);
+    navigate(`/restaurant/detail/${id}`);
   };
 
   const getCategoryColor = (category) => {
@@ -223,7 +223,7 @@ export default function RejectedRestaurants() {
       <Card 
           sx={{ 
             borderRadius: 0, 
-            boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
+            border: '1px solid #e0e0e0', 
             overflow: 'hidden',
             background: 'white',
             border: '1px solid rgba(0,0,0,0.06)'

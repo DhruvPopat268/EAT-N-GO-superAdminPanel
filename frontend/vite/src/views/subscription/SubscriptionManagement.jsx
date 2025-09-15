@@ -138,7 +138,7 @@ export default function SubscriptionManagement() {
         </Box>
       </Box>
 
-      <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', overflow: 'hidden', background: 'white', border: '1px solid rgba(0,0,0,0.06)' }}>
+      <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
         <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box>

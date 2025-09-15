@@ -243,26 +243,40 @@ export default function UsersTab() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={1}>
-                      <Tooltip title="Edit User">
-                        <IconButton 
-                          size="small" 
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="Edit User" arrow>
+                        <IconButton
                           onClick={() => handleOpen(user)}
-                          sx={{ color: 'primary.main' }}
+                          sx={{ 
+                            color: 'secondary.main',
+                            borderRadius: 1,
+                            '&:hover': {
+                              backgroundColor: 'secondary.main',
+                              color: 'white',
+                              transform: 'scale(1.08)'
+                            }
+                          }}
                         >
-                          <IconEdit size={18} />
+                          <IconEdit sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Delete User">
-                        <IconButton 
-                          size="small" 
+                      <Tooltip title="Delete User" arrow>
+                        <IconButton
                           onClick={() => handleDelete(user.id)}
-                          sx={{ color: 'error.main' }}
+                          sx={{ 
+                            color: 'error.main',
+                            borderRadius: 1,
+                            '&:hover': {
+                              backgroundColor: 'error.main',
+                              color: 'white',
+                              transform: 'scale(1.08)'
+                            }
+                          }}
                         >
-                          <IconTrash size={18} />
+                          <IconTrash sx={{ fontSize: 18 }} />
                         </IconButton>
                       </Tooltip>
-                    </Stack>
+                    </Box>
                   </TableCell>
                 </TableRow>
               </Fade>

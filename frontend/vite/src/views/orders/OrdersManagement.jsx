@@ -69,7 +69,7 @@ export default function OrdersManagement() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleViewOrder = (orderId) => {
-    navigate(`/order-detail/${orderId}`);
+    navigate(`/order/detail/${orderId}`);
   };
 
   const handlePrintOrder = (orderId) => {
@@ -102,7 +102,7 @@ export default function OrdersManagement() {
         <Card 
           sx={{ 
             borderRadius: 0, 
-            boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
+            border: '1px solid #e0e0e0', 
             overflow: 'hidden',
             background: 'white',
             border: '1px solid rgba(0,0,0,0.06)'

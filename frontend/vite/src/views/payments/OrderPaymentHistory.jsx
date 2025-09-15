@@ -119,7 +119,7 @@ export default function OrderPaymentHistory() {
   }
 
   const handleView = (orderId) => {
-    navigate(`/order-detail/${orderId}`);
+    navigate(`/order/detail/${orderId}`);
   };
 
   const handlePrint = (orderId) => {
@@ -170,7 +170,7 @@ export default function OrderPaymentHistory() {
         </Box>
       </Box>
 
-      <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', overflow: 'hidden', background: 'white', border: '1px solid rgba(0,0,0,0.06)' }}>
+      <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
         <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb', background: 'linear-gradient(135deg, rgba(79, 172, 254, 0.05) 0%, rgba(0, 242, 254, 0.05) 100%)' }}>
           <Typography variant="h5" fontWeight="bold" color="text.primary" gutterBottom>
             Payment Transactions

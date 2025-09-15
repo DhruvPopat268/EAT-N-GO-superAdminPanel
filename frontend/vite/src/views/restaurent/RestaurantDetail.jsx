@@ -341,37 +341,27 @@ export default function RestaurantDetail() {
     <div style={styles.container}>
       {/* Header Section */}
       <div style={styles.header}>
-        <div style={styles.headerTop}>
-          <div>
-            <button
-              style={styles.backButton}
-              onClick={() => window.history.back()}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#1976d2';
-                e.target.style.color = 'white';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = 'transparent';
-                e.target.style.color = '#1976d2';
-              }}
-            >
-              ← Back to List
-            </button>
-            <div>
-              <h1 style={styles.restaurantTitle}>{restaurant.name}</h1>
-              <div style={styles.rating}>
-                <span>★★★★★</span>
-                <span>{restaurant.rating} ({restaurant.totalReviews} reviews)</span>
-              </div>
-            </div>
-          </div>
-          <div
-            style={{
-              ...styles.statusChip,
-              backgroundColor: getStatusColor(restaurant.status)
+        <div>
+          <button
+            style={styles.backButton}
+            onClick={() => window.history.back()}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#1976d2';
+              e.target.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+              e.target.style.color = '#1976d2';
             }}
           >
-            {restaurant.status.toUpperCase()}
+            ← Back to List
+          </button>
+          <div style={{ marginTop: '24px' }}>
+            <h1 style={styles.restaurantTitle}>{restaurant.name}</h1>
+            <div style={styles.rating}>
+              <span>★★★★★</span>
+              <span>{restaurant.rating} ({restaurant.totalReviews} reviews)</span>
+            </div>
           </div>
         </div>
       </div>

@@ -6,7 +6,6 @@ import {
   Typography,
   TextField,
   Button,
-  Grid,
   FormControl,
   InputLabel,
   Select,
@@ -19,43 +18,65 @@ import {
   Chip,
   Stack,
   Alert,
+  IconButton,
+  Fade,
+  Slide,
   useTheme,
-  alpha
+  alpha,
+  Container,
+  LinearProgress,
+  Divider
 } from '@mui/material';
 import {
   Restaurant,
   Business,
   ContactPhone,
   Description,
-  CheckCircle
+  CheckCircle,
+  CloudUpload,
+  Delete,
+  AttachFile,
+  HourglassEmpty,
+  CheckCircleOutline,
+  ArrowBack,
+  ArrowForward,
+  Star,
+  LocationOn,
+  Email,
+  Phone,
+  AccountBalance,
+  VerifiedUser
 } from '@mui/icons-material';
 
-const steps = ['Basic Info', 'Contact Details', 'Business Details', 'Review'];
+const steps = ['Basic Info', 'Contact Details', 'Business Details', 'Upload Documents', 'Review'];
 
 export default function AddRestaurant() {
   const theme = useTheme();
   const [activeStep, setActiveStep] = useState(0);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [formData, setFormData] = useState({
-    // Basic Info
     restaurantName: '',
     ownerName: '',
-    foodCategory: '',
+    foodCategory: 'Veg',
     cuisineType: '',
-    
-    // Contact Details
     email: '',
     phone: '',
     address: '',
     city: '',
     state: '',
     pincode: '',
-    
-    // Business Details
     licenseNumber: '',
     gstNumber: '',
     bankAccount: '',
     ifscCode: '',
-    description: ''
+    description: '',
+    documents: {
+      businessLicense: null,
+      gstCertificate: null,
+      panCard: null,
+      bankStatement: null,
+      foodLicense: null
+    }
   });
 
   const [errors, setErrors] = useState({});
@@ -70,29 +91,61 @@ export default function AddRestaurant() {
     }
   };
 
+  const handleFileUpload = (documentType) => (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      setFormData(prev => ({
+        ...prev,
+        documents: {
+          ...prev.documents,
+          [documentType]: file
+        }
+      }));
+      if (errors[documentType]) {
+        setErrors(prev => ({ ...prev, [documentType]: '' }));
+      }
+    }
+  };
+
+  const handleFileRemove = (documentType) => {
+    setFormData(prev => ({
+      ...prev,
+      documents: {
+        ...prev.documents,
+        [documentType]: null
+      }
+    }));
+  };
+
   const validateStep = (step) => {
     const newErrors = {};
     
     switch (step) {
-      case 0: // Basic Info
+      case 0:
         if (!formData.restaurantName) newErrors.restaurantName = 'Restaurant name is required';
         if (!formData.ownerName) newErrors.ownerName = 'Owner name is required';
         if (!formData.foodCategory) newErrors.foodCategory = 'Food category is required';
         if (!formData.cuisineType) newErrors.cuisineType = 'Cuisine type is required';
         break;
-      case 1: // Contact Details
+      case 1:
         if (!formData.email) newErrors.email = 'Email is required';
-        if (!formData.phone) newErrors.phone = 'Phone is required';
+        if (!formData.phone) newErrors.phone = 'Phone number is required';
         if (!formData.address) newErrors.address = 'Address is required';
         if (!formData.city) newErrors.city = 'City is required';
         if (!formData.state) newErrors.state = 'State is required';
         if (!formData.pincode) newErrors.pincode = 'Pincode is required';
         break;
-      case 2: // Business Details
+      case 2:
         if (!formData.licenseNumber) newErrors.licenseNumber = 'License number is required';
         if (!formData.gstNumber) newErrors.gstNumber = 'GST number is required';
         if (!formData.bankAccount) newErrors.bankAccount = 'Bank account is required';
         if (!formData.ifscCode) newErrors.ifscCode = 'IFSC code is required';
+        break;
+      case 3:
+        if (!formData.documents.businessLicense) newErrors.businessLicense = 'Business license is required';
+        if (!formData.documents.gstCertificate) newErrors.gstCertificate = 'GST certificate is required';
+        if (!formData.documents.panCard) newErrors.panCard = 'PAN card is required';
+        if (!formData.documents.foodLicense) newErrors.foodLicense = 'Food license is required';
         break;
     }
     
@@ -112,396 +165,819 @@ export default function AddRestaurant() {
 
   const handleSubmit = () => {
     console.log('Restaurant Registration Data:', formData);
-    // Handle form submission here
-    alert('Restaurant registered successfully!');
+    setIsSubmitted(true);
   };
+
+  const progressPercentage = ((activeStep + 1) / steps.length) * 100;
 
   const renderStepContent = (step) => {
     switch (step) {
       case 0:
         return (
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Restaurant Name"
-                value={formData.restaurantName}
-                onChange={handleInputChange('restaurantName')}
-                error={!!errors.restaurantName}
-                helperText={errors.restaurantName}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Owner Name"
-                value={formData.ownerName}
-                onChange={handleInputChange('ownerName')}
-                error={!!errors.ownerName}
-                helperText={errors.ownerName}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth required error={!!errors.foodCategory}>
-                <InputLabel>Food Category</InputLabel>
-                <Select
-                  value={formData.foodCategory}
-                  onChange={handleInputChange('foodCategory')}
-                  label="Food Category"
-                  MenuProps={{
-                    PaperProps: {
-                      sx: {
-                        maxHeight: 200,
-                        '& .MuiMenuItem-root': {
-                          fontSize: '0.875rem',
-                          minHeight: 48
-                        }
-                      }
-                    }
+          <Fade in timeout={500}>
+            <Box>
+              <Card sx={{ 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                color: 'white', 
+                mb: 4, 
+                borderRadius: 4 
+              }}>
+              </Card>
+
+              <Stack spacing={4}>
+                <TextField
+                  fullWidth
+                  label="Restaurant Name"
+                  value={formData.restaurantName}
+                  onChange={handleInputChange('restaurantName')}
+                  error={!!errors.restaurantName}
+                  helperText={errors.restaurantName}
+                  required
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      '&:hover fieldset': { borderColor: 'primary.main' },
+                      '&.Mui-focused fieldset': { borderWidth: 2 }
+                    },
+                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
                   }}
-                >
-                  <MenuItem value="Veg">Vegetarian</MenuItem>
-                  <MenuItem value="Non-Veg">Non-Vegetarian</MenuItem>
-                  <MenuItem value="Mixed">Mixed</MenuItem>
-                  <MenuItem value="Vegan">Vegan</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Cuisine Type"
-                value={formData.cuisineType}
-                onChange={handleInputChange('cuisineType')}
-                error={!!errors.cuisineType}
-                helperText={errors.cuisineType}
-                placeholder="e.g., Indian, Chinese, Italian"
-                required
-              />
-            </Grid>
-          </Grid>
+                />
+
+                <TextField
+                  fullWidth
+                  label="Owner Name"
+                  value={formData.ownerName}
+                  onChange={handleInputChange('ownerName')}
+                  error={!!errors.ownerName}
+                  helperText={errors.ownerName}
+                  required
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      '&:hover fieldset': { borderColor: 'primary.main' },
+                      '&.Mui-focused fieldset': { borderWidth: 2 }
+                    },
+                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
+                  }}
+                />
+
+                <FormControl fullWidth required error={!!errors.foodCategory}>
+                  <InputLabel sx={{ fontSize: '1.1rem' }}>Food Category</InputLabel>
+                  <Select
+                    value={formData.foodCategory}
+                    onChange={handleInputChange('foodCategory')}
+                    label="Food Category"
+                    sx={{
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
+                    }}
+                  >
+                    <MenuItem value="Veg">Vegetarian</MenuItem>
+                    <MenuItem value="Non-Veg">Non-Vegetarian</MenuItem>
+                    <MenuItem value="Mixed">Mixed</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  fullWidth
+                  label="Cuisine Type"
+                  value={formData.cuisineType}
+                  onChange={handleInputChange('cuisineType')}
+                  error={!!errors.cuisineType}
+                  helperText={errors.cuisineType || "e.g., Indian, Chinese, Italian, Mexican"}
+                  required
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      '&:hover fieldset': { borderColor: 'primary.main' },
+                      '&.Mui-focused fieldset': { borderWidth: 2 }
+                    },
+                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
+                  }}
+                />
+              </Stack>
+            </Box>
+          </Fade>
         );
 
       case 1:
         return (
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Email Address"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange('email')}
-                error={!!errors.email}
-                helperText={errors.email}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Phone Number"
-                value={formData.phone}
-                onChange={handleInputChange('phone')}
-                error={!!errors.phone}
-                helperText={errors.phone}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Address"
-                multiline
-                rows={2}
-                value={formData.address}
-                onChange={handleInputChange('address')}
-                error={!!errors.address}
-                helperText={errors.address}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="City"
-                value={formData.city}
-                onChange={handleInputChange('city')}
-                error={!!errors.city}
-                helperText={errors.city}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="State"
-                value={formData.state}
-                onChange={handleInputChange('state')}
-                error={!!errors.state}
-                helperText={errors.state}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Pincode"
-                value={formData.pincode}
-                onChange={handleInputChange('pincode')}
-                error={!!errors.pincode}
-                helperText={errors.pincode}
-                required
-              />
-            </Grid>
-          </Grid>
+          <Fade in timeout={500}>
+            <Box>
+              <Card sx={{ 
+                background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', 
+                color: 'white', 
+                mb: 4, 
+                borderRadius: 4 
+              }}>
+              </Card>
+
+              <Stack spacing={4}>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {/* <Email sx={{ color: 'primary.main', mt: 2 }} /> */}
+                  <TextField
+                    fullWidth
+                    label="Email Address"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange('email')}
+                    error={!!errors.email}
+                    helperText={errors.email}
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem'
+                      }
+                    }}
+                  />
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  {/* <Phone sx={{ color: 'primary.main', mt: 2 }} /> */}
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    value={formData.phone}
+                    onChange={handleInputChange('phone')}
+                    error={!!errors.phone}
+                    helperText={errors.phone}
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem'
+                      }
+                    }}
+                  />
+                </Box>
+
+                <TextField
+                  fullWidth
+                  label="Complete Address"
+                  multiline
+                  rows={3}
+                  value={formData.address}
+                  onChange={handleInputChange('address')}
+                  error={!!errors.address}
+                  helperText={errors.address}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+                  <TextField
+                    fullWidth
+                    label="City"
+                    value={formData.city}
+                    onChange={handleInputChange('city')}
+                    error={!!errors.city}
+                    helperText={errors.city}
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem'
+                      }
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    label="State"
+                    value={formData.state}
+                    onChange={handleInputChange('state')}
+                    error={!!errors.state}
+                    helperText={errors.state}
+                    required
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem'
+                      }
+                    }}
+                  />
+                </Box>
+
+                <TextField
+                  fullWidth
+                  label="Pincode"
+                  value={formData.pincode}
+                  onChange={handleInputChange('pincode')}
+                  error={!!errors.pincode}
+                  helperText={errors.pincode}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+              </Stack>
+            </Box>
+          </Fade>
         );
 
       case 2:
         return (
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="License Number"
-                value={formData.licenseNumber}
-                onChange={handleInputChange('licenseNumber')}
-                error={!!errors.licenseNumber}
-                helperText={errors.licenseNumber}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="GST Number"
-                value={formData.gstNumber}
-                onChange={handleInputChange('gstNumber')}
-                error={!!errors.gstNumber}
-                helperText={errors.gstNumber}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Bank Account Number"
-                value={formData.bankAccount}
-                onChange={handleInputChange('bankAccount')}
-                error={!!errors.bankAccount}
-                helperText={errors.bankAccount}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="IFSC Code"
-                value={formData.ifscCode}
-                onChange={handleInputChange('ifscCode')}
-                error={!!errors.ifscCode}
-                helperText={errors.ifscCode}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Restaurant Description"
-                multiline
-                rows={3}
-                value={formData.description}
-                onChange={handleInputChange('description')}
-                placeholder="Brief description about your restaurant..."
-              />
-            </Grid>
-          </Grid>
+          <Fade in timeout={500}>
+            <Box>
+              <Card sx={{ 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                color: 'white', 
+                mb: 4, 
+                borderRadius: 4 
+              }}>
+              </Card>
+
+              <Stack spacing={4}>
+                <TextField
+                  fullWidth
+                  label="Business License Number"
+                  value={formData.licenseNumber}
+                  onChange={handleInputChange('licenseNumber')}
+                  error={!!errors.licenseNumber}
+                  helperText={errors.licenseNumber}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="GST Number"
+                  value={formData.gstNumber}
+                  onChange={handleInputChange('gstNumber')}
+                  error={!!errors.gstNumber}
+                  helperText={errors.gstNumber || "Format: 22AAAAA0000A1Z5"}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Bank Account Number"
+                  value={formData.bankAccount}
+                  onChange={handleInputChange('bankAccount')}
+                  error={!!errors.bankAccount}
+                  helperText={errors.bankAccount}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="IFSC Code"
+                  value={formData.ifscCode}
+                  onChange={handleInputChange('ifscCode')}
+                  error={!!errors.ifscCode}
+                  helperText={errors.ifscCode || "Format: ABCD0123456"}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Restaurant Description (Optional)"
+                  multiline
+                  rows={4}
+                  value={formData.description}
+                  onChange={handleInputChange('description')}
+                  helperText={`${formData.description.length}/500 characters`}
+                  inputProps={{ maxLength: 500 }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+              </Stack>
+            </Box>
+          </Fade>
         );
 
       case 3:
+        const documentTypes = [
+          { key: 'businessLicense', label: 'Business License', icon: <Business />, required: true },
+          { key: 'gstCertificate', label: 'GST Certificate', icon: <VerifiedUser />, required: true },
+          { key: 'panCard', label: 'PAN Card', icon: <AttachFile />, required: true },
+          { key: 'bankStatement', label: 'Bank Statement', icon: <AccountBalance />, required: false },
+          { key: 'foodLicense', label: 'Food License (FSSAI)', icon: <Restaurant />, required: true }
+        ];
+
         return (
-          <Box>
-            <Alert severity="info" sx={{ mb: 3 }}>
-              Please review all information before submitting the registration.
-            </Alert>
-            
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Paper sx={{ p: 3, borderRadius: 2 }}>
-                  <Typography variant="h6" gutterBottom color="primary">
-                    <Business sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Basic Information
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Box><strong>Restaurant:</strong> {formData.restaurantName}</Box>
-                    <Box><strong>Owner:</strong> {formData.ownerName}</Box>
-                    <Box><strong>Category:</strong> <Chip label={formData.foodCategory} size="small" /></Box>
-                    <Box><strong>Cuisine:</strong> {formData.cuisineType}</Box>
-                  </Stack>
-                </Paper>
-              </Grid>
-              
-              <Grid item xs={12} md={6}>
-                <Paper sx={{ p: 3, borderRadius: 2 }}>
-                  <Typography variant="h6" gutterBottom color="primary">
-                    <ContactPhone sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Contact Details
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Box><strong>Email:</strong> {formData.email}</Box>
-                    <Box><strong>Phone:</strong> {formData.phone}</Box>
-                    <Box><strong>Address:</strong> {formData.address}</Box>
-                    <Box><strong>Location:</strong> {formData.city}, {formData.state} - {formData.pincode}</Box>
-                  </Stack>
-                </Paper>
-              </Grid>
-              
-              <Grid item xs={12}>
-                <Paper sx={{ p: 3, borderRadius: 2 }}>
-                  <Typography variant="h6" gutterBottom color="primary">
-                    <Description sx={{ mr: 1, verticalAlign: 'middle' }} />
-                    Business Details
-                  </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <Box><strong>License Number:</strong> {formData.licenseNumber}</Box>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Box><strong>GST Number:</strong> {formData.gstNumber}</Box>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
+          <Fade in timeout={500}>
+            <Box>
+              <Card sx={{ 
+                background: 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)', 
+                color: 'white', 
+                mb: 4, 
+                borderRadius: 4 
+              }}>
+              </Card>
+
+              <Stack spacing={3}>
+                {documentTypes.map((doc) => (
+                  <Card 
+                    key={doc.key} 
+                    sx={{ 
+                      borderRadius: 4,
+                      border: errors[doc.key] ? '2px solid #f44336' : '1px solid #e0e0e0',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 8px 25px rgba(0,0,0,0.15)'
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                          {doc.icon}
+                        </Avatar>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography variant="h6" fontWeight="bold">
+                            {doc.label}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {doc.required ? 'Required Document' : 'Optional Document'}
+                          </Typography>
+                        </Box>
+                        {doc.required && <Chip label="Required" color="error" size="small" />}
+                      </Box>
+
+                      {!formData.documents[doc.key] ? (
+                        <Box>
+                          <input
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            style={{ display: 'none' }}
+                            id={`upload-${doc.key}`}
+                            type="file"
+                            onChange={handleFileUpload(doc.key)}
+                          />
+                          <label htmlFor={`upload-${doc.key}`}>
+                            <Button
+                              variant="outlined"
+                              component="span"
+                              startIcon={<CloudUpload />}
+                              fullWidth
+                              size="large"
+                              sx={{ 
+                                borderStyle: 'dashed',
+                                borderWidth: 2,
+                                borderRadius: 3,
+                                py: 2,
+                                '&:hover': {
+                                  borderStyle: 'dashed',
+                                  backgroundColor: alpha(theme.palette.primary.main, 0.04)
+                                }
+                              }}
+                            >
+                              Click to Upload {doc.label}
+                            </Button>
+                          </label>
+                          {errors[doc.key] && (
+                            <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                              {errors[doc.key]}
+                            </Typography>
+                          )}
+                        </Box>
+                      ) : (
+                        <Card sx={{ bgcolor: 'success.50', border: '1px solid', borderColor: 'success.main' }}>
+                          <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <CheckCircle sx={{ color: 'success.main' }} />
+                            <Box sx={{ flexGrow: 1 }}>
+                              <Typography variant="body1" fontWeight="medium">
+                                {formData.documents[doc.key].name}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {(formData.documents[doc.key].size / 1024 / 1024).toFixed(2)} MB
+                              </Typography>
+                            </Box>
+                            <IconButton 
+                              onClick={() => handleFileRemove(doc.key)}
+                              color="error"
+                              size="small"
+                            >
+                              <Delete />
+                            </IconButton>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
+          </Fade>
+        );
+
+      case 4:
+        return (
+          <Fade in timeout={500}>
+            <Box>
+              <Card sx={{ 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                color: 'white', 
+                mb: 4, 
+                borderRadius: 4 
+              }}>
+              </Card>
+
+              <Stack spacing={3}>
+                <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                  <Box sx={{ 
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)', 
+                    color: 'white', 
+                    p: 2 
+                  }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Restaurant /> Restaurant Information
+                    </Typography>
+                  </Box>
+                  <CardContent>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+                      <Box><strong>Name:</strong> {formData.restaurantName}</Box>
+                      <Box><strong>Owner:</strong> {formData.ownerName}</Box>
+                      <Box><strong>Category:</strong> <Chip label={formData.foodCategory} size="small" /></Box>
+                      <Box><strong>Cuisine:</strong> {formData.cuisineType}</Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                  <Box sx={{ 
+                    background: 'linear-gradient(90deg, #11998e 0%, #38ef7d 100%)', 
+                    color: 'white', 
+                    p: 2 
+                  }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LocationOn /> Contact Information
+                    </Typography>
+                  </Box>
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Box><strong>Email:</strong> {formData.email}</Box>
+                      <Box><strong>Phone:</strong> {formData.phone}</Box>
+                      <Box><strong>Address:</strong> {formData.address}</Box>
+                      <Box><strong>Location:</strong> {formData.city}, {formData.state} - {formData.pincode}</Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                  <Box sx={{ 
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)', 
+                    color: 'white', 
+                    p: 2 
+                  }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AccountBalance /> Business Details
+                    </Typography>
+                  </Box>
+                  <CardContent>
+                    <Stack spacing={1}>
+                      <Box><strong>License:</strong> {formData.licenseNumber}</Box>
+                      <Box><strong>GST:</strong> {formData.gstNumber}</Box>
                       <Box><strong>Bank Account:</strong> {formData.bankAccount}</Box>
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                      <Box><strong>IFSC Code:</strong> {formData.ifscCode}</Box>
-                    </Grid>
-                    {formData.description && (
-                      <Grid item xs={12}>
-                        <Box><strong>Description:</strong> {formData.description}</Box>
-                      </Grid>
-                    )}
-                  </Grid>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Box>
+                      <Box><strong>IFSC:</strong> {formData.ifscCode}</Box>
+                      {formData.description && <Box><strong>Description:</strong> {formData.description}</Box>}
+                    </Stack>
+                  </CardContent>
+                </Card>
+
+                <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
+                  <Box sx={{ 
+                    background: 'linear-gradient(90deg, #ff9a9e 0%, #fad0c4 100%)', 
+                    color: 'white', 
+                    p: 2 
+                  }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AttachFile /> Documents
+                    </Typography>
+                  </Box>
+                  <CardContent>
+                    <Stack spacing={1}>
+                      {Object.entries(formData.documents).map(([key, file]) => {
+                        const labels = {
+                          businessLicense: 'Business License',
+                          gstCertificate: 'GST Certificate',
+                          panCard: 'PAN Card',
+                          bankStatement: 'Bank Statement',
+                          foodLicense: 'Food License'
+                        };
+                        return file ? (
+                          <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <CheckCircle sx={{ color: 'success.main', fontSize: 16 }} />
+                            <Typography>{labels[key]}: {file.name}</Typography>
+                          </Box>
+                        ) : null;
+                      })}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Stack>
+            </Box>
+          </Fade>
         );
 
       default:
         return null;
     }
   };
+  if (isSubmitted) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Slide direction="up" in mountOnEnter>
+          <Card sx={{ 
+            borderRadius: 6, 
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            boxShadow: '0 20px 40px rgba(102, 126, 234, 0.3)'
+          }}>
+            <CardContent sx={{ p: 6 }}>
+              <Avatar sx={{ 
+                width: 100, 
+                height: 100, 
+                mx: 'auto', 
+                mb: 3,
+                bgcolor: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <HourglassEmpty sx={{ fontSize: 50 }} />
+              </Avatar>
+              
+              <Typography variant="h3" fontWeight="bold" gutterBottom>
+                Application Submitted!
+              </Typography>
+              
+              <Typography variant="h6" sx={{ opacity: 0.9, mb: 4 }}>
+                Your restaurant registration is under review
+              </Typography>
+
+              <Card sx={{ bgcolor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', mb: 4 }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ color: 'white' }}>
+                    Application ID: REST-{Date.now().toString().slice(-6)}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 1 }}>
+                    Review time: 2-3 business days
+                  </Typography>
+                </CardContent>
+              </Card>
+
+              <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 4 }}>
+                <Chip 
+                  icon={<CheckCircleOutline />} 
+                  label="Submitted" 
+                  sx={{ bgcolor: 'rgba(76,175,80,0.2)', color: 'white' }}
+                />
+                <Chip 
+                  icon={<HourglassEmpty />} 
+                  label="Under Review" 
+                  sx={{ bgcolor: 'rgba(255,193,7,0.2)', color: 'white' }}
+                />
+              </Stack>
+
+              <Button 
+                variant="contained" 
+                onClick={() => window.location.reload()}
+                sx={{ 
+                  bgcolor: 'rgba(255,255,255,0.2)', 
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                  borderRadius: 3,
+                  px: 4,
+                  py: 1.5
+                }}
+              >
+                Submit Another Application
+              </Button>
+            </CardContent>
+          </Card>
+        </Slide>
+      </Container>
+    );
+  }
 
   return (
-    <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
-          <Avatar 
-            sx={{ 
-              bgcolor: 'primary.main', 
-              width: 64, 
-              height: 64,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
-            }}
-          >
-            <Restaurant sx={{ fontSize: 32 }} />
+    <Box sx={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      py: 4
+    }}>
+      <Container maxWidth="md">
+        {/* Header Section */}
+        <Box sx={{ textAlign: 'center', mb: 6 }}>
+          <Avatar sx={{ 
+            width: 80, 
+            height: 80, 
+            mx: 'auto', 
+            mb: 3,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
+          }}>
+            <Restaurant sx={{ fontSize: 40 }} />
           </Avatar>
-          <Box>
-            <Typography variant="h3" fontWeight="bold" color="text.primary" gutterBottom>
-              Restaurant Registration
-            </Typography>
-            <Typography variant="h6" color="text.secondary">
-              Register a new restaurant partner
-            </Typography>
-          </Box>
+          
+          <Typography variant="h2" fontWeight="bold" color="text.primary" gutterBottom>
+            Restaurant Registration
+          </Typography>
+          
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
+            Join our platform and start serving customers today
+          </Typography>
+
+          {/* Progress Section */}
+          <Card sx={{ 
+            borderRadius: 4, 
+            mb: 4, 
+            background: 'rgba(255,255,255,0.9)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+          }}>
+            <CardContent sx={{ p: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" fontWeight="bold">
+                  Step {activeStep + 1} of {steps.length}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {Math.round(progressPercentage)}% Complete
+                </Typography>
+              </Box>
+              
+              <LinearProgress 
+                variant="determinate" 
+                value={progressPercentage} 
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 4,
+                  mb: 3,
+                  '& .MuiLinearProgress-bar': {
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
+                  }
+                }}
+              />
+
+              <Stepper activeStep={activeStep} alternativeLabel>
+                {steps.map((label, index) => (
+                  <Step key={label}>
+                    <StepLabel
+                      StepIconProps={{
+                        sx: {
+                          '&.Mui-completed': {
+                            color: 'success.main',
+                            '& .MuiStepIcon-text': { fill: 'white' }
+                          },
+                          '&.Mui-active': {
+                            color: 'primary.main',
+                            '& .MuiStepIcon-text': { fill: 'white' }
+                          }
+                        }
+                      }}
+                    >
+                      <Typography variant="caption" fontWeight={index === activeStep ? 'bold' : 'normal'}>
+                        {label}
+                      </Typography>
+                    </StepLabel>
+                  </Step>
+                ))}
+              </Stepper>
+            </CardContent>
+          </Card>
         </Box>
 
-        {/* Stepper */}
-        <Card sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-          <CardContent sx={{ p: 4 }}>
-            <Stepper activeStep={activeStep} alternativeLabel>
-              {steps.map((label, index) => (
-                <Step key={label}>
-                  <StepLabel
-                    StepIconProps={{
-                      sx: {
-                        '&.Mui-completed': {
-                          color: 'success.main',
-                        },
-                        '&.Mui-active': {
-                          color: 'primary.main',
-                        }
-                      }
-                    }}
-                  >
-                    {label}
-                  </StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-          </CardContent>
-        </Card>
-      </Box>
+        {/* Form Content */}
+        <Card sx={{ 
+          borderRadius: 4, 
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+          border: '1px solid rgba(255,255,255,0.2)'
+        }}>
+          <CardContent sx={{ p: { xs: 3, md: 6 } }}>
+            <Box sx={{ maxWidth: 600, mx: 'auto' }}>
+              {renderStepContent(activeStep)}
+            </Box>
 
-      {/* Form Content */}
-      <Card sx={{ borderRadius: 3, boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
-        <CardContent sx={{ p: 4 }}>
-          <Typography variant="h5" fontWeight="bold" gutterBottom>
-            {steps[activeStep]}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-            {activeStep === 0 && "Enter basic restaurant information"}
-            {activeStep === 1 && "Provide contact and location details"}
-            {activeStep === 2 && "Add business and legal information"}
-            {activeStep === 3 && "Review and confirm all details"}
-          </Typography>
+            <Divider sx={{ my: 6 }} />
 
-          {renderStepContent(activeStep)}
+            {/* Navigation Buttons */}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              maxWidth: 600,
+              mx: 'auto'
+            }}>
+              <Button
+                disabled={activeStep === 0}
+                onClick={handleBack}
+                variant="outlined"
+                size="large"
+                startIcon={<ArrowBack />}
+                sx={{ 
+                  borderRadius: 3,
+                  px: 4,
+                  py: 1.5,
+                  minWidth: 140,
+                  '&:disabled': {
+                    opacity: 0.3
+                  }
+                }}
+              >
+                Back
+              </Button>
 
-          {/* Navigation Buttons */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4, pt: 3, borderTop: '1px solid #e5e7eb' }}>
-            <Button
-              disabled={activeStep === 0}
-              onClick={handleBack}
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
-            >
-              Back
-            </Button>
-            
-            <Box sx={{ display: 'flex', gap: 2 }}>
               {activeStep === steps.length - 1 ? (
                 <Button
                   variant="contained"
                   onClick={handleSubmit}
+                  size="large"
                   startIcon={<CheckCircle />}
                   sx={{ 
-                    borderRadius: 2,
+                    borderRadius: 3,
+                    px: 4,
+                    py: 1.5,
+                    minWidth: 180,
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     '&:hover': {
                       background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
-                    }
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)'
+                    },
+                    transition: 'all 0.3s ease'
                   }}
                 >
-                  Register Restaurant
+                  Submit Application
                 </Button>
               ) : (
                 <Button
                   variant="contained"
                   onClick={handleNext}
-                  sx={{ borderRadius: 2 }}
+                  size="large"
+                  endIcon={<ArrowForward />}
+                  sx={{ 
+                    borderRadius: 3,
+                    px: 4,
+                    py: 1.5,
+                    minWidth: 140,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)'
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
                 >
                   Next
                 </Button>
               )}
             </Box>
-          </Box>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Typography variant="body2" color="text.secondary">
+            Need help? Contact our support team at support@restaurant.com
+          </Typography>
+        </Box>
+      </Container>
     </Box>
   );
 }

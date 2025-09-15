@@ -1,298 +1,331 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  Box,
-  Card,
-  Typography,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  TextField,
-  IconButton,
-  Paper,
-  Badge,
-  Divider,
-  useTheme,
-  Fade,
-  Grid
-} from '@mui/material';
-import { Send, Search } from '@mui/icons-material';
-import { IconMessageCircle, IconHeadphones } from '@tabler/icons-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Paperclip, Smile, Send, User } from 'lucide-react';
 
-// Mock chat data
-const mockChats = [
-  {
-    id: 1,
-    customerName: 'John Doe',
-    lastMessage: 'My order is delayed, can you help?',
-    timestamp: '2 min ago',
-    unreadCount: 2,
-    avatar: 'JD',
-    isOnline: true
-  },
-  {
-    id: 2,
-    customerName: 'Jane Smith',
-    lastMessage: 'Thank you for the quick response!',
-    timestamp: '5 min ago',
-    unreadCount: 0,
-    avatar: 'JS',
-    isOnline: false
-  },
-  {
-    id: 3,
-    customerName: 'Bob Wilson',
-    lastMessage: 'I need a refund for my order',
-    timestamp: '10 min ago',
-    unreadCount: 1,
-    avatar: 'BW',
-    isOnline: true
-  },
-  {
-    id: 4,
-    customerName: 'Alice Brown',
-    lastMessage: 'The food was amazing!',
-    timestamp: '1 hour ago',
-    unreadCount: 0,
-    avatar: 'AB',
-    isOnline: false
-  }
-];
-
-const mockMessages = {
-  1: [
-    { id: 1, text: 'Hello, I placed an order 2 hours ago', sender: 'customer', timestamp: '2:30 PM' },
-    { id: 2, text: 'My order number is #ORD001', sender: 'customer', timestamp: '2:31 PM' },
-    { id: 3, text: 'Hi John! Let me check your order status for you.', sender: 'admin', timestamp: '2:32 PM' },
-    { id: 4, text: 'Your order is being prepared and will be delivered in 15 minutes.', sender: 'admin', timestamp: '2:33 PM' },
-    { id: 5, text: 'My order is delayed, can you help?', sender: 'customer', timestamp: '2:35 PM' }
-  ],
-  2: [
-    { id: 1, text: 'Hi, I had an issue with my previous order', sender: 'customer', timestamp: '1:00 PM' },
-    { id: 2, text: 'Hello Jane! What was the issue?', sender: 'admin', timestamp: '1:01 PM' },
-    { id: 3, text: 'The delivery was late but the food was great', sender: 'customer', timestamp: '1:02 PM' },
-    { id: 4, text: 'I apologize for the delay. We\'ll ensure better service next time.', sender: 'admin', timestamp: '1:03 PM' },
-    { id: 5, text: 'Thank you for the quick response!', sender: 'customer', timestamp: '1:05 PM' }
-  ]
-};
-
-export default function CustomerChat() {
-  const theme = useTheme();
-  const [selectedChat, setSelectedChat] = useState(1);
+export default function ChatPage() {
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedConversation, setSelectedConversation] = useState(null);
   const [message, setMessage] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [messages, setMessages] = useState(mockMessages);
   const messagesEndRef = useRef(null);
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      text: "Hello!",
+      sender: "customer",
+      time: "09 Sep 2023 05:42 pm"
+    },
+    {
+      id: 2,
+      text: "I need your argent help..",
+      sender: "customer",
+      time: "09 Sep 2023 05:42 pm"
+    },
+    {
+      id: 3,
+      text: "Yes. How can I help you ?",
+      sender: "restaurant",
+      time: "09 Sep 2023 05:43 pm"
+    },
+    {
+      id: 4,
+      text: "I order small size pizza .but now I want medium size pizza. Can you change it?",
+      sender: "customer",
+      time: "09 Sep 2023 05:44 pm"
+    },
+    {
+      id: 5,
+      text: "Yes. please send your order id.",
+      sender: "restaurant",
+      time: "09 Sep 2023 05:45 pm",
+      isButton: true
+    },
+    {
+      id: 6,
+      text: "Order Id: 100030",
+      sender: "customer",
+      time: "12 Sep 2025 02:15 am"
+    },
+    {
+      id: 7,
+      text: "Sorry order id :100050",
+      sender: "customer",
+      time: "12 Sep 2025 02:16 am"
+    },
+    {
+      id: 8,
+      text: "I changed your order.",
+      sender: "restaurant",
+      time: "12 Sep 2025 02:16 am",
+      isButton: true
+    }
+  ]);
 
+  const customerConversations = [
+    {
+      id: 1,
+      name: "John Doe",
+      phone: "+91 98765 43210",
+      lastMessage: "I need help with my order",
+      time: "2 min ago",
+      avatar: "JD"
+    },
+    {
+      id: 2,
+      name: "Sarah Wilson",
+      phone: "+91 87654 32109",
+      lastMessage: "When will my refund be processed?",
+      time: "5 min ago",
+      avatar: "SW"
+    },
+    {
+      id: 3,
+      name: "Mike Johnson",
+      phone: "+91 76543 21098",
+      lastMessage: "Food was cold",
+      time: "10 min ago",
+      avatar: "MJ"
+    }
+  ];
+
+  const restaurantConversations = [
+    {
+      id: 4,
+      name: "Pizza Palace",
+      phone: "+91 99887 76655",
+      lastMessage: "Need help with delivery issue",
+      time: "1 min ago",
+      avatar: "PP"
+    },
+    {
+      id: 5,
+      name: "Burger King",
+      phone: "+91 88776 65544",
+      lastMessage: "Payment not received",
+      time: "8 min ago",
+      avatar: "BK"
+    },
+    {
+      id: 6,
+      name: "Spice Garden",
+      phone: "+91 77665 54433",
+      lastMessage: "Customer complaint about order",
+      time: "15 min ago",
+      avatar: "SG"
+    }
+  ];
+
+  const conversations = selectedTab === 0 ? customerConversations : restaurantConversations;
+
+  // Auto scroll to bottom when messages change
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, selectedChat]);
-
-  const filteredChats = mockChats.filter(chat =>
-    chat.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (message.trim()) {
       const newMessage = {
-        id: Date.now(),
+        id: messages.length + 1,
         text: message,
-        sender: 'admin',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        sender: "restaurant",
+        time: new Date().toLocaleString(),
+        isButton: false
       };
-      
-      setMessages(prev => ({
-        ...prev,
-        [selectedChat]: [...(prev[selectedChat] || []), newMessage]
-      }));
-      
+      setMessages([...messages, newMessage]);
       setMessage('');
     }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
       handleSendMessage();
     }
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Fade in timeout={800}>
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <IconHeadphones size={32} color={theme.palette.primary.main} />
-            <Typography variant="h4" fontWeight="bold" color="text.primary">
-              Customer Chat Support
-            </Typography>
-          </Box>
-          <Typography variant="body1" color="text.secondary">
-            Chat with customers and provide real-time support
-          </Typography>
-        </Box>
-      </Fade>
+    <div className="flex h-screen bg-gray-100">
+      {/* Left Sidebar - Conversation List */}
+      <div className="w-80 bg-white shadow-lg flex flex-col">
+        {/* Header */}
+        <div className="p-3 border-b border-gray-200 flex-shrink-0">
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">
+            Conversations
+          </h2>
+          
+          {/* Search Bar */}
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setSelectedTab(0)}
+              className={`flex-1 py-2 px-4 text-sm font-medium border-b-2 ${
+                selectedTab === 0
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Customer
+            </button>
+            <button
+              onClick={() => setSelectedTab(1)}
+              className={`flex-1 py-2 px-4 text-sm font-medium border-b-2 ${
+                selectedTab === 1
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Restaurant
+            </button>
+          </div>
+        </div>
 
-      <Fade in timeout={1000}>
-        <Grid container spacing={3} sx={{ height: '70vh' }}>
-          {/* Chat List */}
-          <Grid item xs={12} md={4}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ p: 2, borderBottom: '1px solid #e5e7eb' }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Search customers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  InputProps={{
-                    startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
-                  }}
-                />
-              </Box>
-              <List sx={{ flex: 1, overflow: 'auto', p: 0 }}>
-                {filteredChats.map((chat) => (
-                  <ListItem
-                    key={chat.id}
-                    button
-                    selected={selectedChat === chat.id}
-                    onClick={() => setSelectedChat(chat.id)}
-                    sx={{
-                      borderBottom: '1px solid #f0f0f0',
-                      '&.Mui-selected': {
-                        backgroundColor: theme.palette.primary.light + '20'
-                      }
-                    }}
+        {/* Conversation List - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          {conversations.map((conversation) => (
+            <div
+              key={conversation.id}
+              onClick={() => setSelectedConversation(conversation)}
+              className={`p-3 cursor-pointer transition-colors ${
+                selectedConversation?.id === conversation.id
+                  ? 'bg-blue-100 border-l-4 border-blue-600'
+                  : 'bg-white border-l-4 border-transparent hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-start space-x-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+                  {conversation.avatar}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">
+                      {conversation.name}
+                    </h3>
+                    <span className="text-xs text-gray-500">
+                      {conversation.time}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-600 mb-1">
+                    {conversation.phone}
+                  </p>
+                  <p className="text-xs text-gray-600 truncate">
+                    {conversation.lastMessage}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right Side - Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Chat Header - Fixed */}
+        <div className="bg-white p-4 border-b border-gray-200 shadow-sm flex-shrink-0">
+          {selectedConversation ? (
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                {selectedConversation.avatar}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-semibold text-gray-900 truncate">{selectedConversation.name}</h3>
+                <p className="text-sm text-blue-600">{selectedConversation.phone}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500">
+              <p>Select a conversation to start chatting</p>
+            </div>
+          )}
+        </div>
+
+        {/* Chat Messages - Scrollable Area */}
+        <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+          {selectedConversation ? (
+            <div className="space-y-4">
+              {messages.map((msg) => (
+              <div key={msg.id} className="space-y-2">
+                <div
+                  className={`flex ${
+                    msg.sender === 'customer' ? 'justify-start' : 'justify-end'
+                  }`}
+                >
+                  <div
+                    className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl ${
+                      msg.sender === 'customer'
+                        ? 'bg-white text-gray-800 rounded-bl-sm'
+                        : 'bg-blue-600 text-white rounded-br-sm'
+                    } shadow-sm`}
                   >
-                    <ListItemAvatar>
-                      <Badge
-                        color="success"
-                        variant="dot"
-                        invisible={!chat.isOnline}
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                      >
-                        <Avatar sx={{ bgcolor: 'primary.main' }}>
-                          {chat.avatar}
-                        </Avatar>
-                      </Badge>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="subtitle1" fontWeight="500">
-                            {chat.customerName}
-                          </Typography>
-                          {chat.unreadCount > 0 && (
-                            <Badge badgeContent={chat.unreadCount} color="error" />
-                          )}
-                        </Box>
-                      }
-                      secondary={
-                        <Box>
-                          <Typography variant="body2" color="text.secondary" noWrap>
-                            {chat.lastMessage}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {chat.timestamp}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Card>
-          </Grid>
+                    <p className="text-sm">{msg.text}</p>
+                  </div>
+                </div>
+                
+                {msg.isButton && (
+                  <div className="flex justify-end">
+                    <div className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm max-w-xs lg:max-w-md">
+                      {msg.text}
+                    </div>
+                  </div>
+                )}
+                
+                <p
+                  className={`text-xs text-gray-500 px-1 ${
+                    msg.sender === 'customer' ? 'text-left' : 'text-right'
+                  }`}
+                >
+                  {msg.time}
+                </p>
+              </div>
+            ))}
+              <div ref={messagesEndRef} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500 text-lg">Select a conversation to view messages</p>
+            </div>
+          )}
+        </div>
 
-          {/* Chat Messages */}
-          <Grid item xs={12} md={8}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              {/* Chat Header */}
-              <Box sx={{ p: 2, borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar sx={{ bgcolor: 'primary.main' }}>
-                  {mockChats.find(c => c.id === selectedChat)?.avatar}
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" fontWeight="500">
-                    {mockChats.find(c => c.id === selectedChat)?.customerName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {mockChats.find(c => c.id === selectedChat)?.isOnline ? 'Online' : 'Offline'}
-                  </Typography>
-                </Box>
-              </Box>
-
-              {/* Messages */}
-              <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                {messages[selectedChat]?.map((msg) => (
-                  <Box
-                    key={msg.id}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: msg.sender === 'admin' ? 'flex-end' : 'flex-start',
-                      mb: 2
-                    }}
-                  >
-                    <Paper
-                      sx={{
-                        p: 2,
-                        maxWidth: '70%',
-                        bgcolor: msg.sender === 'admin' ? 'primary.main' : 'grey.100',
-                        color: msg.sender === 'admin' ? 'white' : 'text.primary'
-                      }}
-                    >
-                      <Typography variant="body2">{msg.text}</Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          display: 'block',
-                          mt: 0.5,
-                          opacity: 0.7
-                        }}
-                      >
-                        {msg.timestamp}
-                      </Typography>
-                    </Paper>
-                  </Box>
-                ))}
-                <div ref={messagesEndRef} />
-              </Box>
-
-              {/* Message Input */}
-              <Box sx={{ p: 2, borderTop: '1px solid #e5e7eb' }}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Type your message..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                  />
-                  <IconButton
-                    color="primary"
-                    onClick={handleSendMessage}
-                    disabled={!message.trim()}
-                    sx={{
-                      borderRadius: 1,
-                      '&:hover': {
-                        backgroundColor: 'primary.main',
-                        color: 'white'
-                      }
-                    }}
-                  >
-                    <Send />
-                  </IconButton>
-                </Box>
-              </Box>
-            </Card>
-          </Grid>
-        </Grid>
-      </Fade>
-    </Box>
+        {/* Message Input - Fixed at Bottom */}
+        <div className="bg-white p-4 border-t border-gray-200 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            <button className="p-2 text-gray-500 hover:text-blue-600 transition-colors flex-shrink-0">
+              <Paperclip className="w-5 h-5" />
+            </button>
+            <div className="flex-1">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type a message..."
+                className="w-full px-4 py-3 text-sm border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <button className="p-2 text-gray-500 hover:text-blue-600 transition-colors flex-shrink-0">
+              <Smile className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleSendMessage}
+              disabled={!message.trim()}
+              className="p-2 text-blue-600 hover:text-blue-700 disabled:text-gray-400 transition-colors flex-shrink-0"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

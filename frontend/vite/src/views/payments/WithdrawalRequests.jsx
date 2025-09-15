@@ -123,7 +123,7 @@ export default function WithdrawalRequests() {
   };
 
   const handleView = (id) => {
-    navigate(`/withdrawal-detail/${id}`);
+    navigate(`/payment/withdrawal-detail/${id}`);
   };
 
   const getInitials = (name) => {
@@ -255,7 +255,7 @@ export default function WithdrawalRequests() {
       <Card 
           sx={{ 
             borderRadius: 0, 
-            boxShadow: '0 20px 60px rgba(0,0,0,0.08)', 
+            border: '1px solid #e0e0e0', 
             overflow: 'hidden',
             background: 'white',
             border: '1px solid rgba(0,0,0,0.06)'

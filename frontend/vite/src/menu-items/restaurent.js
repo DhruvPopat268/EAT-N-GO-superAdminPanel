@@ -1,10 +1,12 @@
 // assets
-import { IconKey, IconToolsKitchen2 } from '@tabler/icons-react';
+import { IconKey, IconToolsKitchen2, IconChefHat, IconPlus } from '@tabler/icons-react';
 
 // constant
 const icons = {
     IconKey,
-    IconToolsKitchen2
+    IconToolsKitchen2,
+    IconChefHat,
+    IconPlus
 };
 
 // ==============================|| EXTRA PAGES MENU ITEMS ||============================== //
@@ -26,36 +28,58 @@ const restaurent = {
                     id: 'OnboardingRequests',
                     title: 'onboarding Requests',
                     type: 'item',
-                    url: '/restaurents/OnboardingRequests',
+                    url: '/restaurant/onboarding-requests',
                     // target: true
                 },
                 {
                     id: 'Onboarded',
                     title: 'Onboarded',
                     type: 'item',
-                    url: '/restaurents/Onboarded',
+                    url: '/restaurant/onboarded',
                     // target: true
                 },
                 {
                     id: 'Rejected',
                     title: 'rejected',
                     type: 'item',
-                    url: '/restaurents/Rejected',
+                    url: '/restaurant/rejected',
                     // target: true
                 },
                 {
                     id: 'CostBreakdown',
                     title: 'Cost Breakdown',
                     type: 'item',
-                    url: '/restaurents/cost-breakdown',
+                    url: '/restaurant/cost-breakdown',
                     // target: true
                 },
                 {
                     id: 'AddRestaurant',
                     title: 'Add Restaurant',
                     type: 'item',
-                    url: '/restaurents/add-restaurant',
+                    url: '/restaurant/add-restaurant',
                     // target: true
+                }
+            ]
+        },
+        {
+            id: 'menu-management',
+            title: 'Menu Management',
+            type: 'collapse',
+            icon: icons.IconChefHat,
+            children: [
+                {
+                    id: 'add-menu-item',
+                    title: 'Add Menu Item',
+                    type: 'item',
+                    url: '/restaurant/add-menu-item',
+                   
+                },
+                {
+                    id: 'menu-list',
+                    title: 'Menu List',
+                    type: 'item',
+                    url: '/restaurant/menu-list',
+                  
                 }
             ]
         }

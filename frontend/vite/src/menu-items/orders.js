@@ -11,7 +11,7 @@ const orders = {
       id: 'orders-management',
       title: 'Orders Management',
       type: 'item',
-      url: '/orders-management',
+      url: '/order/management',
       icon: icons.IconShoppingCartFilled,
       breadcrumbs: false
     }

@@ -162,7 +162,7 @@ export default function CostBreakdown() {
         </Box>
       </Box>
 
-      <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', mb: 3 }}>
+      <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0', mb: 3 }}>
         <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)' }}>
           <Typography variant="h5" fontWeight="bold" color="text.primary" gutterBottom>
             Select Breakdown Type
@@ -197,7 +197,7 @@ export default function CostBreakdown() {
       </Card>
 
       {breakdownType === 'individual' && (
-        <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', mb: 3 }}>
+        <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0', mb: 3 }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
             <Typography variant="h6" fontWeight="bold" color="text.primary">
               Select Restaurant
@@ -228,7 +228,7 @@ export default function CostBreakdown() {
       )}
 
       {((breakdownType === 'individual' && selectedRestaurant) || breakdownType === 'all') && (
-        <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)' }}>
+        <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0' }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Box>
@@ -313,7 +313,7 @@ export default function CostBreakdown() {
       )}
 
       {savedBreakdowns.length > 0 && (
-        <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', mt: 3 }}>
+        <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0', mt: 3 }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
             <Typography variant="h6" fontWeight="bold" color="text.primary">
               Saved Cost Breakdowns

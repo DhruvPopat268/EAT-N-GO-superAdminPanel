@@ -24,7 +24,7 @@ import {
   TextField,
   Grid
 } from '@mui/material';
-import { IconUsers, IconEye, IconPhone, IconMail } from '@tabler/icons-react';
+import { IconUsers, IconEye, IconPhone, IconMail, IconPrinter } from '@tabler/icons-react';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -137,7 +137,11 @@ export default function CustomerManagement() {
   };
 
   const handleView = (customerId) => {
-    navigate(`/customer-detail/${customerId}`);
+    navigate(`/customer/detail/${customerId}`);
+  };
+
+  const handlePrint = (customerId) => {
+    // Print customer details functionality
   };
 
   const getInitials = (name) => {
@@ -172,7 +176,7 @@ export default function CustomerManagement() {
         </Box>
       </Box>
 
-      <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', overflow: 'hidden', background: 'white', border: '1px solid rgba(0,0,0,0.06)' }}>
+      <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
         <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb', background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)' }}>
           <Typography variant="h5" fontWeight="bold" color="text.primary" gutterBottom>
             Customer Database
@@ -315,22 +319,40 @@ export default function CustomerManagement() {
                   </TableCell>
 
                   <TableCell>
-                    <Tooltip title="View Customer Details" arrow>
-                      <IconButton
-                        onClick={() => handleView(customer.id)}
-                        sx={{
-                          color: 'primary.main',
-                          borderRadius: 1,
-                          '&:hover': {
-                            backgroundColor: 'primary.main',
-                            color: 'white',
-                            transform: 'scale(1.08)'
-                          }
-                        }}
-                      >
-                        <IconEye size={20} />
-                      </IconButton>
-                    </Tooltip>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="View Customer Details" arrow>
+                        <IconButton
+                          onClick={() => handleView(customer.id)}
+                          sx={{
+                            color: 'primary.main',
+                            borderRadius: 1,
+                            '&:hover': {
+                              backgroundColor: 'primary.main',
+                              color: 'white',
+                              transform: 'scale(1.08)'
+                            }
+                          }}
+                        >
+                          <IconEye size={20} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Print Customer Report" arrow>
+                        <IconButton
+                          onClick={() => handlePrint(customer.id)}
+                          sx={{
+                            color: 'secondary.main',
+                            borderRadius: 1,
+                            '&:hover': {
+                              backgroundColor: 'secondary.main',
+                              color: 'white',
+                              transform: 'scale(1.08)'
+                            }
+                          }}
+                        >
+                          <IconPrinter size={20} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}

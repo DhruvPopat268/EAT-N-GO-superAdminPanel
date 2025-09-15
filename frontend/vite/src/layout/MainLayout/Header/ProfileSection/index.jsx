@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -21,9 +22,6 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-
-// project imports
-import UpgradePlanCard from './UpgradePlanCard';
 import MainCard from 'ui-component/cards/MainCard';
 import Transitions from 'ui-component/extended/Transitions';
 import useConfig from 'hooks/useConfig';
@@ -36,6 +34,7 @@ import { IconLogout, IconSearch, IconSettings, IconUser } from '@tabler/icons-re
 
 export default function ProfileSection() {
   const theme = useTheme();
+  const navigate = useNavigate();
   const { borderRadius } = useConfig();
   const [sdm, setSdm] = useState(true);
   const [value, setValue] = useState('');
@@ -58,6 +57,11 @@ export default function ProfileSection() {
     }
 
     setOpen(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    navigate('/auth/login');
   };
 
   const prevOpen = useRef(open);
@@ -162,7 +166,7 @@ export default function ProfileSection() {
                         '&::-webkit-scrollbar': { width: 5 }
                       }}
                     >
-                      <UpgradePlanCard />
+            
                       <Divider />
                       <Card sx={{ bgcolor: 'primary.light', my: 2 }}>
                         <CardContent>
@@ -218,30 +222,8 @@ export default function ProfileSection() {
                           </ListItemIcon>
                           <ListItemText primary={<Typography variant="body2">Account Settings</Typography>} />
                         </ListItemButton>
-                        <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} selected={selectedIndex === 1}>
-                          <ListItemIcon>
-                            <IconUser stroke={1.5} size="20px" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={
-                              <Grid container spacing={1} sx={{ justifyContent: 'space-between' }}>
-                                <Grid>
-                                  <Typography variant="body2">Social Profile</Typography>
-                                </Grid>
-                                <Grid>
-                                  <Chip
-                                    label="02"
-                                    variant="filled"
-                                    size="small"
-                                    color="warning"
-                                    sx={{ '& .MuiChip-label': { mt: 0.25 } }}
-                                  />
-                                </Grid>
-                              </Grid>
-                            }
-                          />
-                        </ListItemButton>
-                        <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} selected={selectedIndex === 4}>
+
+                        <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} selected={selectedIndex === 4} onClick={handleLogout}>
                           <ListItemIcon>
                             <IconLogout stroke={1.5} size="20px" />
                           </ListItemIcon>

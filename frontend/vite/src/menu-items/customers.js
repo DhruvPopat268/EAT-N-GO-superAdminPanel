@@ -11,7 +11,7 @@ const customers = {
       id: 'customers-management',
       title: 'Customer Management',
       type: 'item',
-      url: '/customers',
+      url: '/customer/management',
       icon: icons.IconUsers,
       breadcrumbs: false
     }

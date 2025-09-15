@@ -12,7 +12,7 @@ import support from './support';
 // ==============================|| MENU ITEMS ||============================== //
 
 const menuItems = {
-  items: [dashboard, restaurent, orders, payments, customers, rbac, subscription, utilities]
+  items: [dashboard, restaurent, orders, payments, customers, rbac, subscription,support, utilities]
 };
 
 export default menuItems;

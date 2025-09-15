@@ -135,7 +135,7 @@ export default function UPIManagement() {
       </Fade>
 
       <Fade in timeout={1000}>
-        <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+        <Card sx={{ borderRadius: 0, border: '1px solid #e0e0e0', overflow: 'hidden' }}>
           <Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb' }}>
             <Typography variant="h6" fontWeight="bold">
               UPI Payment Methods

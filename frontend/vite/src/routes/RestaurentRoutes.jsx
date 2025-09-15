@@ -1,43 +1,50 @@
 import { lazy } from 'react';
-
-// project imports
 import Loadable from 'ui-component/Loadable';
-import MainLayout from 'layout/MainLayout';
 
-// restaurant routing
 const OnboardingRequestsPage = Loadable(lazy(() => import('../views/restaurent/OnboardingRequests')));
 const OnboardedPage = Loadable(lazy(() => import('../views/restaurent/Onboarded')));
 const RejectedPage = Loadable(lazy(() => import('../views/restaurent/Rejected')));
 const RestaurantDetailPage = Loadable(lazy(() => import('../views/restaurent/RestaurantDetail')));
 const CostBreakdown = Loadable(lazy(() => import('../views/restaurent/CostBreakdown')));
-
-
-// ==============================|| RESTAURANT ROUTING ||============================== //
+const AddMenuItem = Loadable(lazy(() => import('../views/restaurent/AddMenuItem')));
+const MenuList = Loadable(lazy(() => import('../views/restaurent/MenuList')));
+const AddRestaurant = Loadable(lazy(() => import('../views/restaurent/AddRestaurant')));
 
 const RestaurentRoutes = {
-  path: '/',
-  element: <MainLayout />,
+  path: 'restaurant',
   children: [
     {
-      path: '/restaurents/OnboardingRequests',
+      path: 'onboarding-requests',
       element: <OnboardingRequestsPage />
     },
     {
-      path: '/restaurents/Onboarded',
+      path: 'onboarded',
       element: <OnboardedPage />
     },
     {
-      path: '/restaurents/Rejected',
+      path: 'rejected',
       element: <RejectedPage />
     },
     {
-      path: '/restaurant-detail/:id',
+      path: 'detail/:id',
       element: <RestaurantDetailPage />
     },
     {
-      path: '/restaurents/cost-breakdown',
+      path: 'cost-breakdown',
       element: <CostBreakdown />
     },
+    {
+      path: 'add-menu-item',
+      element: <AddMenuItem />
+    },
+    {
+      path: 'menu-list',
+      element: <MenuList />
+    },
+    {
+      path: 'add-restaurant',
+      element: <AddRestaurant />
+    }
   ]
 };
 

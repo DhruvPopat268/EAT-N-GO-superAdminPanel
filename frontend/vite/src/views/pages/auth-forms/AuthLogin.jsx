@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -26,9 +26,11 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 export default function AuthLogin() {
   const theme = useTheme();
+  const navigate = useNavigate();
 
   const [checked, setChecked] = useState(true);
-
+  const [email, setEmail] = useState('admin@gmail.com');
+  const [password, setPassword] = useState('123');
   const [showPassword, setShowPassword] = useState(false);
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -38,11 +40,27 @@ export default function AuthLogin() {
     event.preventDefault();
   };
 
+  const handleLogin = (event) => {
+    event.preventDefault();
+    if (email === 'admin@gmail.com' && password === '123') {
+      localStorage.setItem('isAuthenticated', 'true');
+      navigate('/dashboard/default');
+    } else {
+      alert('Invalid credentials! Use admin@gmail.com and 123');
+    }
+  };
+
   return (
     <>
       <FormControl fullWidth sx={{ ...theme.typography.customInput }}>
         <InputLabel htmlFor="outlined-adornment-email-login">Email Address / Username</InputLabel>
-        <OutlinedInput id="outlined-adornment-email-login" type="email" value="info@codedthemes.com" name="email" />
+        <OutlinedInput 
+          id="outlined-adornment-email-login" 
+          type="email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)}
+          name="email" 
+        />
       </FormControl>
 
       <FormControl fullWidth sx={{ ...theme.typography.customInput }}>
@@ -50,7 +68,8 @@ export default function AuthLogin() {
         <OutlinedInput
           id="outlined-adornment-password-login"
           type={showPassword ? 'text' : 'password'}
-          value="123456"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           name="password"
           endAdornment={
             <InputAdornment position="end">
@@ -84,7 +103,14 @@ export default function AuthLogin() {
       </Grid>
       <Box sx={{ mt: 2 }}>
         <AnimateButton>
-          <Button color="secondary" fullWidth size="large" type="submit" variant="contained">
+          <Button 
+            color="secondary" 
+            fullWidth 
+            size="large" 
+            type="submit" 
+            variant="contained"
+            onClick={handleLogin}
+          >
             Sign In
           </Button>
         </AnimateButton>

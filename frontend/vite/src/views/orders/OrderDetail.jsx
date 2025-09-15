@@ -1,119 +1,8 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  Box,
-  Card,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Avatar,
-  Chip,
-  Divider,
-  useTheme,
-  Fade,
-  Grid , 
-  IconButton,
-} from '@mui/material';
-import { IconShoppingCartFilled, IconArrowLeft, IconUser, IconBuildingStore, IconPhone, IconMail, IconMapPin, IconPrinter  } from '@tabler/icons-react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Mock data for order details
 const mockOrderDetails = {
-  1: {
-    orderNumber: '#ORD001',
-    customerName: 'John Doe',
-    customerPhone: '+91 9876543210',
-    customerEmail: 'john.doe@email.com',
-    customerLocation: '123 Main St, Mumbai, Maharashtra',
-    restaurant: 'Pizza Palace',
-    restaurantLocation: '456 Food Street, Mumbai, Maharashtra',
-    status: 'Delivered',
-    date: '2024-01-20',
-    time: '14:30',
-    items: [
-      {
-        id: 1,
-        name: 'Margherita Pizza',
-        image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=100&h=100&fit=crop',
-        quantity: 2,
-        price: 180
-      },
-      {
-        id: 2,
-        name: 'Garlic Bread',
-        image: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 90
-      }
-    ]
-  },
-  2: {
-    orderNumber: '#ORD002',
-    customerName: 'Jane Smith',
-    customerPhone: '+91 9876543211',
-    customerEmail: 'jane.smith@email.com',
-    customerLocation: '789 Park Avenue, Delhi, Delhi',
-    restaurant: 'Pizza Palace',
-    restaurantLocation: '456 Food Street, Mumbai, Maharashtra',
-    status: 'Pending',
-    date: '2024-01-20',
-    time: '15:45',
-    items: [
-      {
-        id: 3,
-        name: 'Pepperoni Pizza',
-        image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 220
-      },
-      {
-        id: 4,
-        name: 'Caesar Salad',
-        image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 100
-      }
-    ]
-  },
-  3: {
-    orderNumber: '#ORD003',
-    customerName: 'Bob Wilson',
-    customerPhone: '+91 9876543212',
-    customerEmail: 'bob.wilson@email.com',
-    customerLocation: '321 Oak Street, Bangalore, Karnataka',
-    restaurant: 'Burger House',
-    restaurantLocation: '789 Burger Lane, Bangalore, Karnataka',
-    status: 'Preparing',
-    date: '2024-01-20',
-    time: '16:20',
-    items: [
-      {
-        id: 5,
-        name: 'Classic Burger',
-        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100&h=100&fit=crop',
-        quantity: 2,
-        price: 150
-      },
-      {
-        id: 6,
-        name: 'French Fries',
-        image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?w=100&h=100&fit=crop',
-        quantity: 2,
-        price: 80
-      },
-      {
-        id: 7,
-        name: 'Coke',
-        image: 'https://images.unsplash.com/photo-1581636625402-29b2a704ef13?w=100&h=100&fit=crop',
-        quantity: 2,
-        price: 50
-      }
-    ]
-  },
   4: {
     orderNumber: '#ORD004',
     customerName: 'Alice Brown',
@@ -141,328 +30,218 @@ const mockOrderDetails = {
         price: 100
       }
     ]
-  },
-  5: {
-    orderNumber: '#ORD005',
-    customerName: 'Charlie Davis',
-    customerPhone: '+91 9876543214',
-    customerEmail: 'charlie.davis@email.com',
-    customerLocation: '987 Elm Street, Pune, Maharashtra',
-    restaurant: 'Taco Bell',
-    restaurantLocation: '555 Taco Avenue, Pune, Maharashtra',
-    status: 'Cancelled',
-    date: '2024-01-20',
-    time: '13:30',
-    items: [
-      {
-        id: 10,
-        name: 'Chicken Tacos',
-        image: 'https://images.unsplash.com/photo-1565299585323-38174c4a6c84?w=100&h=100&fit=crop',
-        quantity: 3,
-        price: 120
-      },
-      {
-        id: 11,
-        name: 'Nachos',
-        image: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 160
-      }
-    ]
-  },
-  6: {
-    orderNumber: '#ORD006',
-    customerName: 'Eva Green',
-    customerPhone: '+91 9876543215',
-    customerEmail: 'eva.green@email.com',
-    customerLocation: '147 Maple Drive, Hyderabad, Telangana',
-    restaurant: 'Pizza Palace',
-    restaurantLocation: '456 Food Street, Mumbai, Maharashtra',
-    status: 'Delivered',
-    date: '2024-01-20',
-    time: '11:45',
-    items: [
-      {
-        id: 12,
-        name: 'Veggie Pizza',
-        image: 'https://images.unsplash.com/photo-1571407970349-bc81e7e96d47?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 200
-      },
-      {
-        id: 13,
-        name: 'Chicken Wings',
-        image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 190
-      }
-    ]
-  },
-  7: {
-    orderNumber: '#ORD007',
-    customerName: 'Frank Miller',
-    customerPhone: '+91 9876543216',
-    customerEmail: 'frank.miller@email.com',
-    customerLocation: '258 Cedar Lane, Kolkata, West Bengal',
-    restaurant: 'Burger House',
-    restaurantLocation: '789 Burger Lane, Bangalore, Karnataka',
-    status: 'Preparing',
-    date: '2024-01-20',
-    time: '17:10',
-    items: [
-      {
-        id: 14,
-        name: 'Double Cheeseburger',
-        image: 'https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 150
-      }
-    ]
-  },
-  8: {
-    orderNumber: '#ORD008',
-    customerName: 'Grace Lee',
-    customerPhone: '+91 9876543217',
-    customerEmail: 'grace.lee@email.com',
-    customerLocation: '369 Birch Street, Ahmedabad, Gujarat',
-    restaurant: 'Sushi World',
-    restaurantLocation: '123 Sushi Plaza, Chennai, Tamil Nadu',
-    status: 'Pending',
-    date: '2024-01-20',
-    time: '18:00',
-    items: [
-      {
-        id: 15,
-        name: 'Dragon Roll',
-        image: 'https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?w=100&h=100&fit=crop',
-        quantity: 2,
-        price: 250
-      },
-      {
-        id: 16,
-        name: 'California Roll',
-        image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 180
-      },
-      {
-        id: 17,
-        name: 'Edamame',
-        image: 'https://images.unsplash.com/photo-1583623025817-d180a2221d0a?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 40
-      }
-    ]
   }
 };
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'Delivered': return 'success';
-    case 'Preparing': return 'warning';
-    case 'Pending': return 'info';
-    case 'Cancelled': return 'error';
-    default: return 'default';
-  }
-};
-
-export default function OrderDetail() {
-  const theme = useTheme();
-  const navigate = useNavigate();
-  const { id } = useParams();
-  
-  const orderData = mockOrderDetails[id];
-
-  const handlePrint = () => {
-    window.print();
+const StatusBadge = ({ status }) => {
+  const getStatusStyle = (status) => {
+    const styles = {
+      'Delivered': 'bg-green-50 text-green-700 border-green-200',
+      'Preparing': 'bg-amber-50 text-amber-700 border-amber-200',
+      'Pending': 'bg-blue-50 text-blue-700 border-blue-200',
+      'Cancelled': 'bg-red-50 text-red-700 border-red-200',
+    };
+    return styles[status] || styles.Pending;
   };
 
-  if (!orderData) {
-    return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" color="text.secondary">
-          Order not found
-        </Typography>
-      </Box>
-    );
-  }
+  return (
+    <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusStyle(status)}`}>
+      {status}
+    </span>
+  );
+};
 
+const InfoCard = ({ icon, title, children, bgColor = "bg-gray-50" }) => (
+  <div className={`${bgColor} rounded-lg p-4 h-full border border-gray-200`}>
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
+        {icon}
+      </div>
+      <h3 className="font-medium text-gray-900">{title}</h3>
+    </div>
+    {children}
+  </div>
+);
+
+export default function OrderDetail() {
+  const [currentOrderId] = useState('4');
+  const navigate = useNavigate();
+
+  const orderData = mockOrderDetails[currentOrderId];
   const totalAmount = orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Fade in timeout={800}>
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconShoppingCartFilled size={32} color={theme.palette.primary.main} />
-              <Typography variant="h4" fontWeight="bold" color="text.primary">
-                Order Details
-              </Typography>
-            </Box>
-            <IconButton
-              onClick={handlePrint}
-              sx={{ 
-                color: 'primary.main',
-                borderRadius: 1,
-                '&:hover': {
-                  backgroundColor: 'primary.main',
-                  color: 'white'
-                }
-              }}
-            >
-              <IconPrinter size={24} />
-            </IconButton>
-          </Box>
-          <Typography variant="body1" color="text.secondary">
-            View detailed information about the order
-          </Typography>
-        </Box>
-      </Fade>
+  const handleBack = () => {
+    navigate(-1);
+  };
 
-      <Fade in timeout={1000}>
-        <Card sx={{ borderRadius: 0, boxShadow: '0 20px 60px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+  const handlePrint = () => {
+    // window.print();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-5xl mx-auto px-4 py-6">
+
+        {/* Header */}
+        <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleBack}
+                className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+              >                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">Order Details</h1>
+                <p className="text-gray-500 text-sm">View comprehensive order information</p>
+              </div>
+            </div>
+            <button
+              onClick={handlePrint}
+              className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Order Summary Card */}
+        <div className="bg-white rounded-lg border border-gray-200 mb-6">
           {/* Order Header */}
-          <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-              <Box>
-                <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
-                  {orderData.orderNumber}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {orderData.date} at {orderData.time}
-                </Typography>
-              </Box>
-              <Chip 
-                label={orderData.status} 
-                color={getStatusColor(orderData.status)}
-                variant="outlined"
-                size="medium"
-              />
-            </Box>
-          </Box>
+          <div className="bg-slate-600 text-white p-4 rounded-t-lg">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold">{orderData.orderNumber}</h2>
+                <p className="text-white/80 text-sm">{orderData.date} at {orderData.time}</p>
+              </div>
+              <StatusBadge status={orderData.status} />
+            </div>
+          </div>
 
           {/* Customer and Restaurant Info */}
-          <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
-            <Grid container spacing={4}>
+          <div className="p-4">
+            <div className="grid md:grid-cols-2 gap-4">
               {/* Customer Info */}
-              <Grid item xs={12} md={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <IconUser size={24} color={theme.palette.primary.main} />
-                  <Typography variant="h6" fontWeight="bold">
-                    Customer Information
-                  </Typography>
-                </Box>
-                <Box sx={{ pl: 4 }}>
-                  <Typography variant="body1" fontWeight="500" sx={{ mb: 1 }}>
-                    {orderData.customerName}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <IconPhone size={16} color={theme.palette.text.secondary} />
-                    <Typography variant="body2" color="text.secondary">
-                      {orderData.customerPhone}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <IconMail size={16} color={theme.palette.text.secondary} />
-                    <Typography variant="body2" color="text.secondary">
-                      {orderData.customerEmail}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <IconMapPin size={16} color={theme.palette.text.secondary} />
-                    <Typography variant="body2" color="text.secondary">
-                      {orderData.customerLocation}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
+              <InfoCard
+                icon={
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                }
+                title="Customer Information"
+                bgColor="bg-blue-50"
+              >
+                <div className="space-y-2">
+                  <h4 className="font-medium text-gray-900">{orderData.customerName}</h4>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span className="text-sm">{orderData.customerPhone}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm truncate">{orderData.customerEmail}</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-gray-600">
+                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm">{orderData.customerLocation}</span>
+                  </div>
+                </div>
+              </InfoCard>
 
               {/* Restaurant Info */}
-              <Grid item xs={12} md={6}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                  <IconBuildingStore size={24} color={theme.palette.primary.main} />
-                  <Typography variant="h6" fontWeight="bold">
-                    Restaurant Information
-                  </Typography>
-                </Box>
-                <Box sx={{ pl: 4 }}>
-                  <Typography variant="body1" fontWeight="500" sx={{ mb: 1 }}>
-                    {orderData.restaurant}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <IconMapPin size={16} color={theme.palette.text.secondary} />
-                    <Typography variant="body2" color="text.secondary">
-                      {orderData.restaurantLocation}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
+              <InfoCard
+                icon={
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                }
+                title="Restaurant Information"
+                bgColor="bg-green-50"
+              >
+                <div className="space-y-2">
+                  <h4 className="font-medium text-gray-900">{orderData.restaurant}</h4>
+                  <div className="flex items-start gap-2 text-gray-600">
+                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm">{orderData.restaurantLocation}</span>
+                  </div>
+                </div>
+              </InfoCard>
+            </div>
+          </div>
+        </div>
 
-          {/* Order Items Table */}
-          <TableContainer>
-            <Table sx={{ minWidth: 650 }}>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: theme.palette.grey[50] }}>
-                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Index</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Image</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Item Name</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Quantity</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {orderData.items.map((item, index) => (
-                  <TableRow key={item.id} sx={{ '&:hover': { backgroundColor: theme.palette.grey[25] } }}>
-                    <TableCell>
-                      <Typography variant="body1" fontWeight="500">
-                        {index + 1}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Avatar
-                        src={item.image}
-                        alt={item.name}
-                        sx={{ width: 60, height: 60, borderRadius: 2 }}
-                        variant="rounded"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body1" fontWeight="500">
-                        {item.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                   {item.quantity} 
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body1" fontWeight="600">
-                        ₹{item.price * item.quantity}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+        {/* Order Items */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5-5m6 5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900">Order Items</h3>
+            </div>
+          </div>
 
-          {/* Total Amount */}
-          <Box sx={{ p: 4, borderTop: '1px solid #e5e7eb' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
-                  Total Amount
-                </Typography>
-                <Typography variant="h4" fontWeight="bold" color="primary.main">
-                  ₹{totalAmount}
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Card>
-      </Fade>
-    </Box>
+          <div className="divide-y divide-gray-100">
+            {orderData.items.map((item, index) => (
+              <div key={item.id} className="p-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-6 h-6 bg-slate-600 rounded-md flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-medium text-xs">{index + 1}</span>
+                  </div>
+
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-16 h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
+                    <p className="text-sm text-gray-500">Premium quality item</p>
+                  </div>
+
+                  <div className="flex-shrink-0">
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      Qty: {item.quantity}
+                    </span>
+                  </div>
+
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-semibold text-gray-900">₹{item.price * item.quantity}</div>
+                    {item.quantity > 1 && (
+                      <div className="text-xs text-gray-500">₹{item.price} each</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Total */}
+          <div className="bg-gray-50 p-4 border-t border-gray-200 rounded-b-lg">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-medium text-gray-700">Total Amount</span>
+              <span className="text-xl font-bold text-slate-700">₹{totalAmount}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
