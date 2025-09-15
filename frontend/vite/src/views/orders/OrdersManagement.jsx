@@ -169,7 +169,7 @@ export default function OrdersManagement() {
                   <TableRow>
                     <TableCell colSpan={7} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <IconBuildingStore size={48} color={theme.palette.text.secondary} />
+                        <IconBuildingStore size={48}  />
                         <Typography variant="h6" color="text.secondary">
                           Please select a restaurant first
                         </Typography>
@@ -193,7 +193,7 @@ export default function OrdersManagement() {
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+                            <Avatar sx={{ bgcolor: 'white', width: 40, height: 40 }}>
                               <IconShoppingCartFilled size={20} />
                             </Avatar>
                             <Box>

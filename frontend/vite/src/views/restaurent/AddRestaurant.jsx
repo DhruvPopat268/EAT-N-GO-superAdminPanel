@@ -64,6 +64,7 @@ export default function AddRestaurant() {
     address: '',
     city: '',
     state: '',
+    country: '',
     pincode: '',
     licenseNumber: '',
     gstNumber: '',
@@ -133,6 +134,7 @@ export default function AddRestaurant() {
         if (!formData.address) newErrors.address = 'Address is required';
         if (!formData.city) newErrors.city = 'City is required';
         if (!formData.state) newErrors.state = 'State is required';
+        if (!formData.country) newErrors.country = 'Country is required';
         if (!formData.pincode) newErrors.pincode = 'Pincode is required';
         break;
       case 2:
@@ -338,37 +340,87 @@ export default function AddRestaurant() {
                   }}
                 />
 
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
-                  <TextField
-                    fullWidth
-                    label="City"
-                    value={formData.city}
-                    onChange={handleInputChange('city')}
-                    error={!!errors.city}
-                    helperText={errors.city}
-                    required
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+                  <FormControl fullWidth required error={!!errors.city}>
+                    <InputLabel sx={{ fontSize: '1.1rem' }}>City</InputLabel>
+                    <Select
+                      value={formData.city}
+                      onChange={handleInputChange('city')}
+                      label="City"
+                      sx={{
                         borderRadius: 3,
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
-                  <TextField
-                    fullWidth
-                    label="State"
-                    value={formData.state}
-                    onChange={handleInputChange('state')}
-                    error={!!errors.state}
-                    helperText={errors.state}
-                    required
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
+                        fontSize: '1.1rem',
+                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
+                      }}
+                    >
+                      <MenuItem value="Mumbai">Mumbai</MenuItem>
+                      <MenuItem value="Delhi">Delhi</MenuItem>
+                      <MenuItem value="Bangalore">Bangalore</MenuItem>
+                      <MenuItem value="Chennai">Chennai</MenuItem>
+                      <MenuItem value="Kolkata">Kolkata</MenuItem>
+                      <MenuItem value="Hyderabad">Hyderabad</MenuItem>
+                      <MenuItem value="Pune">Pune</MenuItem>
+                      <MenuItem value="Ahmedabad">Ahmedabad</MenuItem>
+                      <MenuItem value="Jaipur">Jaipur</MenuItem>
+                      <MenuItem value="Surat">Surat</MenuItem>
+                    </Select>
+                    {errors.city && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.city}</Typography>}
+                  </FormControl>
+                  
+                  <FormControl fullWidth required error={!!errors.state}>
+                    <InputLabel sx={{ fontSize: '1.1rem' }}>State</InputLabel>
+                    <Select
+                      value={formData.state}
+                      onChange={handleInputChange('state')}
+                      label="State"
+                      sx={{
                         borderRadius: 3,
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
+                        fontSize: '1.1rem',
+                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
+                      }}
+                    >
+                      <MenuItem value="Maharashtra">Maharashtra</MenuItem>
+                      <MenuItem value="Delhi">Delhi</MenuItem>
+                      <MenuItem value="Karnataka">Karnataka</MenuItem>
+                      <MenuItem value="Tamil Nadu">Tamil Nadu</MenuItem>
+                      <MenuItem value="West Bengal">West Bengal</MenuItem>
+                      <MenuItem value="Telangana">Telangana</MenuItem>
+                      <MenuItem value="Gujarat">Gujarat</MenuItem>
+                      <MenuItem value="Rajasthan">Rajasthan</MenuItem>
+                      <MenuItem value="Uttar Pradesh">Uttar Pradesh</MenuItem>
+                      <MenuItem value="Madhya Pradesh">Madhya Pradesh</MenuItem>
+                    </Select>
+                    {errors.state && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.state}</Typography>}
+                  </FormControl>
+                  
+                  <FormControl fullWidth required error={!!errors.country}>
+                    <InputLabel sx={{ fontSize: '1.1rem' }}>Country</InputLabel>
+                    <Select
+                      value={formData.country}
+                      onChange={handleInputChange('country')}
+                      label="Country"
+                      sx={{
+                        borderRadius: 3,
+                        fontSize: '1.1rem',
+                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
+                      }}
+                    >
+                      <MenuItem value="India">India</MenuItem>
+                      <MenuItem value="United States">United States</MenuItem>
+                      <MenuItem value="United Kingdom">United Kingdom</MenuItem>
+                      <MenuItem value="Canada">Canada</MenuItem>
+                      <MenuItem value="Australia">Australia</MenuItem>
+                      <MenuItem value="Germany">Germany</MenuItem>
+                      <MenuItem value="France">France</MenuItem>
+                      <MenuItem value="Japan">Japan</MenuItem>
+                      <MenuItem value="Singapore">Singapore</MenuItem>
+                      <MenuItem value="UAE">UAE</MenuItem>
+                    </Select>
+                    {errors.country && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.country}</Typography>}
+                  </FormControl>
                 </Box>
 
                 <TextField
@@ -525,7 +577,7 @@ export default function AddRestaurant() {
                   >
                     <CardContent sx={{ p: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <Avatar sx={{ bgcolor: 'primary.main' }}>
+                        <Avatar sx={{ bgcolor: 'white' }}>
                           {doc.icon}
                         </Avatar>
                         <Box sx={{ flexGrow: 1 }}>
@@ -624,8 +676,8 @@ export default function AddRestaurant() {
                     color: 'white', 
                     p: 2 
                   }}>
-                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Restaurant /> Restaurant Information
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'white' }}>
+                      <Restaurant sx={{ color: 'white' }} /> Restaurant Information
                     </Typography>
                   </Box>
                   <CardContent>
@@ -644,8 +696,8 @@ export default function AddRestaurant() {
                     color: 'white', 
                     p: 2 
                   }}>
-                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <LocationOn /> Contact Information
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'white' }}>
+                      <LocationOn sx={{ color: 'white' }} /> Contact Information
                     </Typography>
                   </Box>
                   <CardContent>
@@ -653,7 +705,7 @@ export default function AddRestaurant() {
                       <Box><strong>Email:</strong> {formData.email}</Box>
                       <Box><strong>Phone:</strong> {formData.phone}</Box>
                       <Box><strong>Address:</strong> {formData.address}</Box>
-                      <Box><strong>Location:</strong> {formData.city}, {formData.state} - {formData.pincode}</Box>
+                      <Box><strong>Location:</strong> {formData.city}, {formData.state}, {formData.country} - {formData.pincode}</Box>
                     </Stack>
                   </CardContent>
                 </Card>

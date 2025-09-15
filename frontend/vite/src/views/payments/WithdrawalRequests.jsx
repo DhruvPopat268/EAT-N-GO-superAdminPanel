@@ -312,7 +312,7 @@ export default function WithdrawalRequests() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                           <Badge
                             badgeContent={row.daysAgo}
-                            color="primary"
+                            
                             sx={{
                               '& .MuiBadge-badge': {
                                 fontSize: '0.75rem',
@@ -324,7 +324,7 @@ export default function WithdrawalRequests() {
                           >
                             <Avatar 
                               sx={{ 
-                                bgcolor: 'primary.main',
+                                bgcolor: 'white',
                                 width: 52,
                                 height: 52,
                                 fontSize: '1.1rem',

@@ -273,7 +273,7 @@ export default function RejectedWithdrawals() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                           <Badge
                             badgeContent={row.daysAgo}
-                            color="error"
+                           
                             sx={{
                               '& .MuiBadge-badge': {
                                 fontSize: '0.75rem',
@@ -285,7 +285,7 @@ export default function RejectedWithdrawals() {
                           >
                             <Avatar 
                               sx={{ 
-                                bgcolor: 'error.main',
+                                bgcolor: 'white',
                                 width: 52,
                                 height: 52,
                                 fontSize: '1.1rem',
