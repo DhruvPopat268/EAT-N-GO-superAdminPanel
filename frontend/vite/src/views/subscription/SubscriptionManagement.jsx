@@ -118,10 +118,10 @@ export default function SubscriptionManagement() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
           <Avatar 
             sx={{ 
-              bgcolor: 'primary.main', 
+              bgcolor: 'white', 
               width: 64, 
               height: 64,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              
               boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
             }}
           >

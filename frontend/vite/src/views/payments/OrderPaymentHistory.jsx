@@ -274,7 +274,7 @@ export default function OrderPaymentHistory() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                       <Avatar 
                         sx={{ 
-                          bgcolor: 'primary.main',
+                          bgcolor: 'white',
                           width: 40,
                           height: 40,
                           fontSize: '0.9rem',

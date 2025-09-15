@@ -254,7 +254,7 @@ export default function CustomerManagement() {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                       <Avatar
                         sx={{
-                          bgcolor: 'primary.main',
+                          bgcolor: 'white',
                           width: 52,
                           height: 52,
                           fontSize: '1.1rem',
