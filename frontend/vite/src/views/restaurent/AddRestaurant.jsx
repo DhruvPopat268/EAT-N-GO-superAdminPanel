@@ -25,7 +25,10 @@ import {
   alpha,
   Container,
   LinearProgress,
-  Divider
+  Divider,
+  FormGroup,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import {
   Restaurant,
@@ -50,6 +53,11 @@ import {
 
 const steps = ['Basic Info', 'Contact Details', 'Business Details', 'Upload Documents', 'Review'];
 
+const cuisineTypes = [
+  'Indian', 'Chinese', 'Italian', 'Mexican', 'Thai', 'Japanese', 'American', 'Mediterranean',
+  'French', 'Korean', 'Vietnamese', 'Lebanese', 'Greek', 'Spanish', 'Turkish', 'Continental', 'Other'
+];
+
 export default function AddRestaurant() {
   const theme = useTheme();
   const [activeStep, setActiveStep] = useState(0);
@@ -58,7 +66,8 @@ export default function AddRestaurant() {
     restaurantName: '',
     ownerName: '',
     foodCategory: 'Veg',
-    cuisineType: '',
+    cuisineTypes: [],
+    otherCuisine: '',
     email: '',
     phone: '',
     address: '',
@@ -89,6 +98,20 @@ export default function AddRestaurant() {
     }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleCuisineChange = (cuisine) => (event) => {
+    const isChecked = event.target.checked;
+    setFormData(prev => ({
+      ...prev,
+      cuisineTypes: isChecked 
+        ? [...prev.cuisineTypes, cuisine]
+        : prev.cuisineTypes.filter(c => c !== cuisine),
+      otherCuisine: cuisine === 'Other' && !isChecked ? '' : prev.otherCuisine
+    }));
+    if (errors.cuisineTypes) {
+      setErrors(prev => ({ ...prev, cuisineTypes: '' }));
     }
   };
 
@@ -126,7 +149,7 @@ export default function AddRestaurant() {
         if (!formData.restaurantName) newErrors.restaurantName = 'Restaurant name is required';
         if (!formData.ownerName) newErrors.ownerName = 'Owner name is required';
         if (!formData.foodCategory) newErrors.foodCategory = 'Food category is required';
-        if (!formData.cuisineType) newErrors.cuisineType = 'Cuisine type is required';
+        if (formData.cuisineTypes.length === 0) newErrors.cuisineTypes = 'At least one cuisine type is required';
         break;
       case 1:
         if (!formData.email) newErrors.email = 'Email is required';
@@ -246,25 +269,81 @@ export default function AddRestaurant() {
                   </Select>
                 </FormControl>
 
-                <TextField
-                  fullWidth
-                  label="Cuisine Type"
-                  value={formData.cuisineType}
-                  onChange={handleInputChange('cuisineType')}
-                  error={!!errors.cuisineType}
-                  helperText={errors.cuisineType || "e.g., Indian, Chinese, Italian, Mexican"}
-                  required
-                  variant="outlined"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': { borderColor: 'primary.main' },
-                      '&.Mui-focused fieldset': { borderWidth: 2 }
-                    },
-                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
-                  }}
-                />
+                <FormControl component="fieldset" error={!!errors.cuisineTypes}>
+                  <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
+                    Cuisine Types *
+                  </Typography>
+                  <FormGroup sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(3, 1fr)', 
+                    gap: 1,
+                    border: errors.cuisineTypes ? '2px solid #f44336' : '1px solid #e0e0e0',
+                    borderRadius: 3,
+                    p: 2
+                  }}>
+                    {cuisineTypes.map((cuisine) => (
+                      <FormControlLabel
+                        key={cuisine}
+                        control={
+                          <Checkbox
+                            checked={formData.cuisineTypes.includes(cuisine)}
+                            onChange={handleCuisineChange(cuisine)}
+                            sx={{
+                              '&.Mui-checked': {
+                                color: 'primary.main'
+                              }
+                            }}
+                          />
+                        }
+                        label={cuisine}
+                        sx={{ 
+                          '& .MuiFormControlLabel-label': { 
+                            fontSize: '0.95rem' 
+                          }
+                        }}
+                      />
+                    ))}
+                  </FormGroup>
+                  {formData.cuisineTypes.includes('Other') && (
+                    <TextField
+                      fullWidth
+                      label="Specify Other Cuisine"
+                      value={formData.otherCuisine}
+                      onChange={handleInputChange('otherCuisine')}
+                      placeholder="Enter cuisine type"
+                      sx={{
+                        mt: 2,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 3,
+                          fontSize: '1rem'
+                        }
+                      }}
+                    />
+                  )}
+                  {errors.cuisineTypes && (
+                    <Typography variant="caption" color="error" sx={{ mt: 1, ml: 1.5 }}>
+                      {errors.cuisineTypes}
+                    </Typography>
+                  )}
+                  {formData.cuisineTypes.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Selected Cuisines:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {formData.cuisineTypes.map((cuisine) => (
+                          <Chip 
+                            key={cuisine} 
+                            label={cuisine} 
+                            size="small" 
+                            color="primary" 
+                            variant="outlined"
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </FormControl>
               </Stack>
             </Box>
           </Fade>
@@ -685,7 +764,7 @@ export default function AddRestaurant() {
                       <Box><strong>Name:</strong> {formData.restaurantName}</Box>
                       <Box><strong>Owner:</strong> {formData.ownerName}</Box>
                       <Box><strong>Category:</strong> <Chip label={formData.foodCategory} size="small" /></Box>
-                      <Box><strong>Cuisine:</strong> {formData.cuisineType}</Box>
+                      <Box><strong>Cuisines:</strong> {formData.cuisineTypes.map(c => c === 'Other' ? formData.otherCuisine : c).filter(Boolean).join(', ')}</Box>
                     </Box>
                   </CardContent>
                 </Card>

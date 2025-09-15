@@ -194,16 +194,16 @@ export default function UPIManagement() {
                           <IconButton
                             onClick={() => handleEdit(upi)}
                             sx={{ 
-                              color: 'warning.main',
+                              color: 'secondary.main',
                               borderRadius: 1,
                               '&:hover': {
-                                backgroundColor: 'warning.main',
+                                backgroundColor: 'secondary.main',
                                 color: 'white',
                                 transform: 'scale(1.08)'
                               }
                             }}
                           >
-                            <Edit sx={{ fontSize: 20 }} />
+                            <Edit sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Delete UPI" arrow>
