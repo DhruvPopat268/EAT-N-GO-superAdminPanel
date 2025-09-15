@@ -120,7 +120,7 @@ export default function AddRestaurant() {
 
   const validateStep = (step) => {
     const newErrors = {};
-    
+
     switch (step) {
       case 0:
         if (!formData.restaurantName) newErrors.restaurantName = 'Restaurant name is required';
@@ -150,7 +150,7 @@ export default function AddRestaurant() {
         if (!formData.documents.foodLicense) newErrors.foodLicense = 'Food license is required';
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -178,11 +178,11 @@ export default function AddRestaurant() {
         return (
           <Fade in timeout={500}>
             <Box>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                color: 'white', 
-                mb: 4, 
-                borderRadius: 4 
+              <Card sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                mb: 4,
+                borderRadius: 4
               }}>
               </Card>
 
@@ -274,11 +274,11 @@ export default function AddRestaurant() {
         return (
           <Fade in timeout={500}>
             <Box>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', 
-                color: 'white', 
-                mb: 4, 
-                borderRadius: 4 
+              <Card sx={{
+                background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                color: 'white',
+                mb: 4,
+                borderRadius: 4
               }}>
               </Card>
 
@@ -367,7 +367,7 @@ export default function AddRestaurant() {
                     </Select>
                     {errors.city && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.city}</Typography>}
                   </FormControl>
-                  
+
                   <FormControl fullWidth required error={!!errors.state}>
                     <InputLabel sx={{ fontSize: '1.1rem' }}>State</InputLabel>
                     <Select
@@ -394,7 +394,7 @@ export default function AddRestaurant() {
                     </Select>
                     {errors.state && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.state}</Typography>}
                   </FormControl>
-                  
+
                   <FormControl fullWidth required error={!!errors.country}>
                     <InputLabel sx={{ fontSize: '1.1rem' }}>Country</InputLabel>
                     <Select
@@ -447,11 +447,11 @@ export default function AddRestaurant() {
         return (
           <Fade in timeout={500}>
             <Box>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                color: 'white', 
-                mb: 4, 
-                borderRadius: 4 
+              <Card sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                mb: 4,
+                borderRadius: 4
               }}>
               </Card>
 
@@ -553,19 +553,19 @@ export default function AddRestaurant() {
         return (
           <Fade in timeout={500}>
             <Box>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)', 
-                color: 'white', 
-                mb: 4, 
-                borderRadius: 4 
+              <Card sx={{
+                background: 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)',
+                color: 'white',
+                mb: 4,
+                borderRadius: 4
               }}>
               </Card>
 
               <Stack spacing={3}>
                 {documentTypes.map((doc) => (
-                  <Card 
-                    key={doc.key} 
-                    sx={{ 
+                  <Card
+                    key={doc.key}
+                    sx={{
                       borderRadius: 4,
                       border: errors[doc.key] ? '2px solid #f44336' : '1px solid #e0e0e0',
                       transition: 'all 0.3s ease',
@@ -607,7 +607,7 @@ export default function AddRestaurant() {
                               startIcon={<CloudUpload />}
                               fullWidth
                               size="large"
-                              sx={{ 
+                              sx={{
                                 borderStyle: 'dashed',
                                 borderWidth: 2,
                                 borderRadius: 3,
@@ -639,7 +639,7 @@ export default function AddRestaurant() {
                                 {(formData.documents[doc.key].size / 1024 / 1024).toFixed(2)} MB
                               </Typography>
                             </Box>
-                            <IconButton 
+                            <IconButton
                               onClick={() => handleFileRemove(doc.key)}
                               color="error"
                               size="small"
@@ -661,20 +661,20 @@ export default function AddRestaurant() {
         return (
           <Fade in timeout={500}>
             <Box>
-              <Card sx={{ 
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                color: 'white', 
-                mb: 4, 
-                borderRadius: 4 
+              <Card sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                mb: 4,
+                borderRadius: 4
               }}>
               </Card>
 
               <Stack spacing={3}>
                 <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
-                  <Box sx={{ 
-                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)', 
-                    color: 'white', 
-                    p: 2 
+                  <Box sx={{
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    p: 2
                   }}>
                     <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'white' }}>
                       <Restaurant sx={{ color: 'white' }} /> Restaurant Information
@@ -691,10 +691,10 @@ export default function AddRestaurant() {
                 </Card>
 
                 <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
-                  <Box sx={{ 
-                    background: 'linear-gradient(90deg, #11998e 0%, #38ef7d 100%)', 
-                    color: 'white', 
-                    p: 2 
+                  <Box sx={{
+                    background: 'linear-gradient(90deg, #11998e 0%, #38ef7d 100%)',
+                    color: 'white',
+                    p: 2
                   }}>
                     <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'white' }}>
                       <LocationOn sx={{ color: 'white' }} /> Contact Information
@@ -711,12 +711,12 @@ export default function AddRestaurant() {
                 </Card>
 
                 <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
-                  <Box sx={{ 
-                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)', 
-                    color: 'white', 
-                    p: 2 
+                  <Box sx={{
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    p: 2
                   }}>
-                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'white' }}>
                       <AccountBalance /> Business Details
                     </Typography>
                   </Box>
@@ -732,12 +732,12 @@ export default function AddRestaurant() {
                 </Card>
 
                 <Card sx={{ borderRadius: 4, overflow: 'hidden' }}>
-                  <Box sx={{ 
-                    background: 'linear-gradient(90deg, #ff9a9e 0%, #fad0c4 100%)', 
-                    color: 'white', 
-                    p: 2 
+                  <Box sx={{
+                    background: 'linear-gradient(90deg, #ff9a9e 0%, #fad0c4 100%)',
+                    color: 'white',
+                    p: 2
                   }}>
-                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'white' }}>
                       <AttachFile /> Documents
                     </Typography>
                   </Box>
@@ -774,66 +774,85 @@ export default function AddRestaurant() {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
         <Slide direction="up" in mountOnEnter>
-          <Card sx={{ 
-            borderRadius: 6, 
-            textAlign: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            boxShadow: '0 20px 40px rgba(102, 126, 234, 0.3)'
-          }}>
+          <Card
+            sx={{
+              borderRadius: 6,
+              textAlign: "center",
+              background: "white", // White background
+              color: "black", // Black text
+              boxShadow: "0 20px 40px rgba(0,0,0,0.1)", // Subtle shadow
+            }}
+          >
             <CardContent sx={{ p: 6 }}>
-              <Avatar sx={{ 
-                width: 100, 
-                height: 100, 
-                mx: 'auto', 
-                mb: 3,
-                bgcolor: 'rgba(255,255,255,0.2)',
-                backdropFilter: 'blur(10px)'
-              }}>
+              <Avatar
+                sx={{
+                  width: 100,
+                  height: 100,
+                  mx: "auto",
+                  mb: 3,
+                  bgcolor: "white", // Black circle
+                  color: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", // White icon
+                }}
+              >
                 <HourglassEmpty sx={{ fontSize: 50 }} />
               </Avatar>
-              
+
               <Typography variant="h3" fontWeight="bold" gutterBottom>
                 Application Submitted!
               </Typography>
-              
-              <Typography variant="h6" sx={{ opacity: 0.9, mb: 4 }}>
+
+              <Typography variant="h6" sx={{ opacity: 0.8, mb: 4 }}>
                 Your restaurant registration is under review
               </Typography>
 
-              <Card sx={{ bgcolor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', mb: 4 }}>
+              <Card
+                sx={{
+                  bgcolor: "#f9f9f9", // Light gray to stand out from white bg
+                  mb: 4,
+                  borderRadius: 3,
+                }}
+              >
                 <CardContent>
-                  <Typography variant="h6" sx={{ color: 'white' }}>
+                  <Typography variant="h5" sx={{ color: "black" }}>
                     Application ID: REST-{Date.now().toString().slice(-6)}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 1 }}>
+                  <Typography variant="body1" sx={{ color: "gray", mt: 1 }}>
                     Review time: 2-3 business days
                   </Typography>
                 </CardContent>
               </Card>
 
               <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 4 }}>
-                <Chip 
-                  icon={<CheckCircleOutline />} 
-                  label="Submitted" 
-                  sx={{ bgcolor: 'rgba(76,175,80,0.2)', color: 'white' }}
+                <Chip
+                  icon={<CheckCircleOutline />}
+                  label="Submitted"
+                  sx={{
+                    bgcolor: "rgba(0,0,0,0.05)",
+                    color: "black",
+                    border: "1px solid black",
+                  }}
                 />
-                <Chip 
-                  icon={<HourglassEmpty />} 
-                  label="Under Review" 
-                  sx={{ bgcolor: 'rgba(255,193,7,0.2)', color: 'white' }}
+                <Chip
+                  icon={<HourglassEmpty />}
+                  label="Under Review"
+                  sx={{
+                    bgcolor: "rgba(0,0,0,0.05)",
+                    color: "black",
+                    border: "1px solid black",
+                  }}
                 />
               </Stack>
 
-              <Button 
-                variant="contained" 
+              <Button
+                variant="contained"
                 onClick={() => window.location.reload()}
-                sx={{ 
-                  bgcolor: 'rgba(255,255,255,0.2)', 
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+                sx={{
+                  bgcolor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  color: "white",
+                  "&:hover": { bgcolor: "#333" },
                   borderRadius: 3,
                   px: 4,
-                  py: 1.5
+                  py: 1.5,
                 }}
               >
                 Submit Another Application
@@ -842,11 +861,12 @@ export default function AddRestaurant() {
           </Card>
         </Slide>
       </Container>
+
     );
   }
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
       py: 4
@@ -854,29 +874,29 @@ export default function AddRestaurant() {
       <Container maxWidth="md">
         {/* Header Section */}
         <Box sx={{ textAlign: 'center', mb: 6 }}>
-          <Avatar sx={{ 
-            width: 80, 
-            height: 80, 
-            mx: 'auto', 
+          <Avatar sx={{
+            width: 80,
+            height: 80,
+            mx: 'auto',
             mb: 3,
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
           }}>
             <Restaurant sx={{ fontSize: 40 }} />
           </Avatar>
-          
+
           <Typography variant="h2" fontWeight="bold" color="text.primary" gutterBottom>
             Restaurant Registration
           </Typography>
-          
+
           <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
             Join our platform and start serving customers today
           </Typography>
 
           {/* Progress Section */}
-          <Card sx={{ 
-            borderRadius: 4, 
-            mb: 4, 
+          <Card sx={{
+            borderRadius: 4,
+            mb: 4,
             background: 'rgba(255,255,255,0.9)',
             backdropFilter: 'blur(10px)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
@@ -890,12 +910,12 @@ export default function AddRestaurant() {
                   {Math.round(progressPercentage)}% Complete
                 </Typography>
               </Box>
-              
-              <LinearProgress 
-                variant="determinate" 
-                value={progressPercentage} 
-                sx={{ 
-                  height: 8, 
+
+              <LinearProgress
+                variant="determinate"
+                value={progressPercentage}
+                sx={{
+                  height: 8,
                   borderRadius: 4,
                   mb: 3,
                   '& .MuiLinearProgress-bar': {
@@ -933,8 +953,8 @@ export default function AddRestaurant() {
         </Box>
 
         {/* Form Content */}
-        <Card sx={{ 
-          borderRadius: 4, 
+        <Card sx={{
+          borderRadius: 4,
           background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(20px)',
           boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
@@ -948,9 +968,9 @@ export default function AddRestaurant() {
             <Divider sx={{ my: 6 }} />
 
             {/* Navigation Buttons */}
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
               alignItems: 'center',
               maxWidth: 600,
               mx: 'auto'
@@ -961,7 +981,7 @@ export default function AddRestaurant() {
                 variant="outlined"
                 size="large"
                 startIcon={<ArrowBack />}
-                sx={{ 
+                sx={{
                   borderRadius: 3,
                   px: 4,
                   py: 1.5,
@@ -980,7 +1000,7 @@ export default function AddRestaurant() {
                   onClick={handleSubmit}
                   size="large"
                   startIcon={<CheckCircle />}
-                  sx={{ 
+                  sx={{
                     borderRadius: 3,
                     px: 4,
                     py: 1.5,
@@ -1002,7 +1022,7 @@ export default function AddRestaurant() {
                   onClick={handleNext}
                   size="large"
                   endIcon={<ArrowForward />}
-                  sx={{ 
+                  sx={{
                     borderRadius: 3,
                     px: 4,
                     py: 1.5,

@@ -55,12 +55,15 @@ export default function AddMenuItem() {
     itemName: '',
     description: '',
     image: null,
-    attributeValue: '',
-    attributeUnit: null,
+    attributes: [],
     price: '',
     currency: currencyOptions[0],
     category: null,
     subcategory: null
+  });
+  const [currentAttribute, setCurrentAttribute] = useState({
+    value: '',
+    unit: null
   });
   const [uploadFile, setUploadFile] = useState(null);
 
@@ -90,19 +93,36 @@ export default function AddMenuItem() {
     }
   };
 
+  const addAttribute = () => {
+    if (currentAttribute.value && currentAttribute.unit) {
+      setFormData(prev => ({
+        ...prev,
+        attributes: [...prev.attributes, { ...currentAttribute, id: Date.now() }]
+      }));
+      setCurrentAttribute({ value: '', unit: null });
+    }
+  };
+
+  const removeAttribute = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      attributes: prev.attributes.filter(attr => attr.id !== id)
+    }));
+  };
+
   const handleSubmitIndividual = () => {
     console.log('Individual item submitted:', formData);
     setFormData({
       itemName: '',
       description: '',
       image: null,
-      attributeValue: '',
-      attributeUnit: null,
+      attributes: [],
       price: '',
       currency: currencyOptions[0],
       category: null,
       subcategory: null
     });
+    setCurrentAttribute({ value: '', unit: null });
   };
 
   const handleSubmitBulk = () => {
@@ -303,44 +323,82 @@ export default function AddMenuItem() {
               )}
             </div>
 
-            {/* Attribute Section */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Attribute Value
-                </label>
-                <input
-                  type="text"
-                  placeholder="Value"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
-                  value={formData.attributeValue}
-                  onChange={(e) => handleInputChange('attributeValue', e.target.value)}
+            {/* Attributes Section */}
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-gray-900 mb-4">Attributes</h4>
+
+              {/* Add New Attribute */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <CustomDropdown
+                  label="Unit"
+                  value={currentAttribute.unit}
+                  options={attributeUnits.map(unit => ({ id: unit, name: unit }))}
+                  onChange={(option) => setCurrentAttribute(prev => ({ ...prev, unit: option }))}
+                  placeholder="Select unit"
+                  isOpen={showUnitDropdown}
+                  setIsOpen={setShowUnitDropdown}
                 />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Attribute Value
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Value"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
+                    value={currentAttribute.value}
+                    onChange={(e) => setCurrentAttribute(prev => ({ ...prev, value: e.target.value }))}
+                  />
+                </div>
               </div>
-              <CustomDropdown
-                label="Unit"
-                value={formData.attributeUnit}
-                options={attributeUnits.map(unit => ({ id: unit, name: unit }))}
-                onChange={(option) => handleInputChange('attributeUnit', option)}
-                placeholder="Select unit"
-                isOpen={showUnitDropdown}
-                setIsOpen={setShowUnitDropdown}
-              />
+
+              {/* Add Attribute Button */}
+              <button
+                type="button"
+                onClick={addAttribute}
+                disabled={!currentAttribute.value || !currentAttribute.unit}
+                className={`w-full py-2 px-4 rounded-lg font-medium transition-colors mb-4 ${currentAttribute.value && currentAttribute.unit
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
+              >
+                Add Attribute
+              </button>
+
+              {/* Display Added Attributes */}
+              {formData.attributes.length > 0 && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Added Attributes
+                  </label>
+                  {formData.attributes.map((attr) => (
+                    <div key={attr.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                      <span className="text-sm text-gray-700">
+                        {attr.unit.name}
+                      </span>
+                      <span>
+                        {attr.value} {formData.currency.symbol}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttribute(attr.id)}
+                        className="text-red-500 hover:text-red-700 font-medium text-sm cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Pricing */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pricing
+                Currency
               </label>
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="number"
-                  placeholder="0"
-                  className="w-full h-12 px-4 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
-                  value={formData.price}
-                  onChange={(e) => handleInputChange('price', e.target.value)}
-                />
+
 
                 <div className="relative bottom-1.5">
                   <CustomDropdown
@@ -372,13 +430,13 @@ export default function AddMenuItem() {
                 itemName: '',
                 description: '',
                 image: null,
-                attributeValue: '',
-                attributeUnit: null,
+                attributes: [],
                 price: '',
                 currency: currencyOptions[0],
                 category: null,
                 subcategory: null
               });
+              setCurrentAttribute({ value: '', unit: null });
             }}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
           >
@@ -495,7 +553,7 @@ export default function AddMenuItem() {
             </div>
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="6,9 12,15 18,9"/>
+                <polyline points="6,9 12,15 18,9" />
               </svg>
             </div>
           </div>
