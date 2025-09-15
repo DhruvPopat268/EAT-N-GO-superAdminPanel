@@ -1,5 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/superAdmin/(.*)", "destination": "/$1" }
-  ]
-}
