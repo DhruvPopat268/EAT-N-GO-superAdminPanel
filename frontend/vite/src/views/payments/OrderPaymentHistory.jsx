@@ -21,7 +21,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Grid
+  Grid,
+  Autocomplete,
+  InputAdornment
 } from '@mui/material';
 import {
   IconHistory,
@@ -190,36 +192,57 @@ export default function OrderPaymentHistory() {
                 />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Restaurant</InputLabel>
-                  <Select
-                    value={filters.restaurant}
-                    onChange={(e) => setFilters({ ...filters, restaurant: e.target.value })}
-                    label="Restaurant"
-                  >
-                    <MenuItem value="">All Restaurants</MenuItem>
-                    {mockRestaurants.map((restaurant) => (
-                      <MenuItem key={restaurant.id} value={restaurant.name}>
-                        {restaurant.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  size="small"
+                  options={[{ id: 0, name: 'All Restaurants' }, ...mockRestaurants]}
+                  getOptionLabel={(option) => option.name}
+                  value={filters.restaurant ? mockRestaurants.find(r => r.name === filters.restaurant) || { id: 0, name: 'All Restaurants' } : { id: 0, name: 'All Restaurants' }}
+                  onChange={(event, newValue) => setFilters({ ...filters, restaurant: newValue?.id === 0 ? '' : newValue?.name || '' })}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Restaurant"
+                      placeholder="Search restaurants..."
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <IconBuildingStore size={20} />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Payment Type</InputLabel>
-                  <Select
-                    value={filters.paymentType}
-                    onChange={(e) => setFilters({ ...filters, paymentType: e.target.value })}
-                    label="Payment Type"
-                  >
-                    <MenuItem value="">All Types</MenuItem>
-                    <MenuItem value="Cash">Cash</MenuItem>
-                    <MenuItem value="UPI">UPI</MenuItem>
-                    <MenuItem value="Card">Card</MenuItem>
-                  </Select>
-                </FormControl>
+                <Autocomplete
+                  size="small"
+                  disablePortal
+                  options={[
+                    { id: 0, name: 'All Types' },
+                    { id: 1, name: 'Cash' },
+                    { id: 2, name: 'UPI' },
+                    { id: 3, name: 'Card' }
+                  ]}
+                  getOptionLabel={(option) => option.name}
+                  value={filters.paymentType ? { id: filters.paymentType === 'Cash' ? 1 : filters.paymentType === 'UPI' ? 2 : 3, name: filters.paymentType } : { id: 0, name: 'All Types' }}
+                  onChange={(event, newValue) => setFilters({ ...filters, paymentType: newValue?.id === 0 ? '' : newValue?.name || '' })}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Payment Type"
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <IconCreditCard size={20} />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
+                />
               </Grid>
             </Grid>
           </LocalizationProvider>
