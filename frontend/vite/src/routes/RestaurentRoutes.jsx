@@ -9,6 +9,9 @@ const CostBreakdown = Loadable(lazy(() => import('../views/restaurent/CostBreakd
 const AddMenuItem = Loadable(lazy(() => import('../views/restaurent/AddMenuItem')));
 const MenuList = Loadable(lazy(() => import('../views/restaurent/MenuList')));
 const AddRestaurant = Loadable(lazy(() => import('../views/restaurent/AddRestaurant')));
+const SubcategoryManagement = Loadable(lazy(() => import('../views/restaurent/SubcategoryManagement')));
+const AttributesManagement = Loadable(lazy(() => import('../views/restaurent/AttributesManagement')));
+const AddonManagement = Loadable(lazy(() => import('../views/restaurent/AddonManagement')));
 
 const RestaurentRoutes = {
   path: 'restaurant',
@@ -44,6 +47,18 @@ const RestaurentRoutes = {
     {
       path: 'add-restaurant',
       element: <AddRestaurant />
+    },
+    {
+      path: 'subcategory-management',
+      element: <SubcategoryManagement />
+    },
+    {
+      path: 'attributes-management',
+      element: <AttributesManagement />
+    },
+    {
+      path: 'addon-management',
+      element: <AddonManagement />
     }
   ]
 };
