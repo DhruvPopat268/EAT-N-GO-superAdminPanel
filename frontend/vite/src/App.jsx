@@ -8,6 +8,9 @@ import NavigationScroll from 'layout/NavigationScroll';
 
 import ThemeCustomization from 'themes';
 
+// API interceptor for 401 handling
+import 'utils/apiInterceptor';
+
 // auth provider
 
 // ==============================|| APP ||============================== //

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Alert } from '@mui/material';
 
 // material-ui
 import { useTheme } from '@mui/material/styles';
@@ -29,9 +30,11 @@ export default function AuthLogin() {
   const navigate = useNavigate();
 
   const [checked, setChecked] = useState(true);
-  const [email, setEmail] = useState('admin@gmail.com');
-  const [password, setPassword] = useState('123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -40,18 +43,37 @@ export default function AuthLogin() {
     event.preventDefault();
   };
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
-    if (email === 'admin@gmail.com' && password === '123') {
-      localStorage.setItem('isAuthenticated', 'true');
-      navigate('/dashboard/default');
-    } else {
-      alert('Invalid credentials! Use admin@gmail.com and 123');
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        localStorage.setItem('isAuthenticated', 'true');
+        navigate('/dashboard/default');
+      } else {
+        setError(result.message);
+      }
+    } catch (error) {
+      setError('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <FormControl fullWidth sx={{ ...theme.typography.customInput }}>
         <InputLabel htmlFor="outlined-adornment-email-login">Email Address / Username</InputLabel>
         <OutlinedInput 
@@ -110,8 +132,30 @@ export default function AuthLogin() {
             type="submit" 
             variant="contained"
             onClick={handleLogin}
+            disabled={loading}
           >
-            Sign In
+            {loading ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    border: '2px solid',
+                    borderColor: 'white',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    '@keyframes spin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' }
+                    }
+                  }}
+                />
+                Signing in...
+              </Box>
+            ) : (
+              'Sign In'
+            )}
           </Button>
         </AnimateButton>
       </Box>

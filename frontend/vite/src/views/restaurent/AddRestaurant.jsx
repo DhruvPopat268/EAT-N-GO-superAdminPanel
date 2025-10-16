@@ -28,7 +28,8 @@ import {
   Divider,
   FormGroup,
   FormControlLabel,
-  Checkbox
+  Checkbox,
+  CircularProgress
 } from '@mui/material';
 import {
   Restaurant,
@@ -62,6 +63,10 @@ export default function AddRestaurant() {
   const theme = useTheme();
   const [activeStep, setActiveStep] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionData, setSubmissionData] = useState(null);
+
+  console.log("submissionData:", submissionData);
+
   const [formData, setFormData] = useState({
     restaurantName: '',
     ownerName: '',
@@ -86,10 +91,12 @@ export default function AddRestaurant() {
       panCard: null,
       bankStatement: null,
       foodLicense: null
-    }
+    },
+    restaurantImages: []
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = (field) => (event) => {
     setFormData(prev => ({
@@ -105,7 +112,7 @@ export default function AddRestaurant() {
     const isChecked = event.target.checked;
     setFormData(prev => ({
       ...prev,
-      cuisineTypes: isChecked 
+      cuisineTypes: isChecked
         ? [...prev.cuisineTypes, cuisine]
         : prev.cuisineTypes.filter(c => c !== cuisine),
       otherCuisine: cuisine === 'Other' && !isChecked ? '' : prev.otherCuisine
@@ -116,29 +123,47 @@ export default function AddRestaurant() {
   };
 
   const handleFileUpload = (documentType) => (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setFormData(prev => ({
-        ...prev,
-        documents: {
-          ...prev.documents,
-          [documentType]: file
-        }
-      }));
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      if (documentType === 'restaurantImages') {
+        setFormData(prev => ({
+          ...prev,
+          restaurantImages: Array.from(files)
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          documents: {
+            ...prev.documents,
+            [documentType]: files[0]
+          }
+        }));
+      }
       if (errors[documentType]) {
         setErrors(prev => ({ ...prev, [documentType]: '' }));
       }
     }
   };
 
-  const handleFileRemove = (documentType) => {
-    setFormData(prev => ({
-      ...prev,
-      documents: {
-        ...prev.documents,
-        [documentType]: null
+  const handleFileRemove = (documentType, index = null) => {
+    if (documentType === 'restaurantImages') {
+      if (index !== null) {
+        setFormData(prev => ({
+          ...prev,
+          restaurantImages: prev.restaurantImages.filter((_, i) => i !== index)
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, restaurantImages: [] }));
       }
-    }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        documents: {
+          ...prev.documents,
+          [documentType]: null
+        }
+      }));
+    }
   };
 
   const validateStep = (step) => {
@@ -188,9 +213,47 @@ export default function AddRestaurant() {
     setActiveStep(prev => prev - 1);
   };
 
-  const handleSubmit = () => {
-    console.log('Restaurant Registration Data:', formData);
-    setIsSubmitted(true);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const formDataToSend = new FormData();
+
+      // Add form data as JSON string
+      const { documents, restaurantImages, ...otherData } = formData;
+      formDataToSend.append('data', JSON.stringify(otherData));
+
+      // Add document files
+      Object.entries(documents).forEach(([key, file]) => {
+        if (file) {
+          formDataToSend.append(key, file);
+        }
+      });
+
+      // Add restaurant images
+      restaurantImages.forEach((file, index) => {
+        formDataToSend.append('restaurantImages', file);
+      });
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants`, {
+        method: 'POST',
+        body: formDataToSend
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log("result.data:", result.data);
+        setSubmissionData(result.data);
+        setIsSubmitted(true);
+      } else {
+        alert(result.message || 'Error submitting form');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error submitting form');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const progressPercentage = ((activeStep + 1) / steps.length) * 100;
@@ -273,9 +336,9 @@ export default function AddRestaurant() {
                   <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
                     Cuisine Types *
                   </Typography>
-                  <FormGroup sx={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(3, 1fr)', 
+                  <FormGroup sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: 1,
                     border: errors.cuisineTypes ? '2px solid #f44336' : '1px solid #e0e0e0',
                     borderRadius: 3,
@@ -296,9 +359,9 @@ export default function AddRestaurant() {
                           />
                         }
                         label={cuisine}
-                        sx={{ 
-                          '& .MuiFormControlLabel-label': { 
-                            fontSize: '0.95rem' 
+                        sx={{
+                          '& .MuiFormControlLabel-label': {
+                            fontSize: '0.95rem'
                           }
                         }}
                       />
@@ -332,11 +395,11 @@ export default function AddRestaurant() {
                       </Typography>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                         {formData.cuisineTypes.map((cuisine) => (
-                          <Chip 
-                            key={cuisine} 
-                            label={cuisine} 
-                            size="small" 
-                            color="primary" 
+                          <Chip
+                            key={cuisine}
+                            label={cuisine}
+                            size="small"
+                            color="primary"
                             variant="outlined"
                           />
                         ))}
@@ -626,7 +689,8 @@ export default function AddRestaurant() {
           { key: 'gstCertificate', label: 'GST Certificate', icon: <VerifiedUser />, required: true },
           { key: 'panCard', label: 'PAN Card', icon: <AttachFile />, required: true },
           { key: 'bankStatement', label: 'Bank Statement', icon: <AccountBalance />, required: false },
-          { key: 'foodLicense', label: 'Food License (FSSAI)', icon: <Restaurant />, required: true }
+          { key: 'foodLicense', label: 'Food License (FSSAI)', icon: <Restaurant />, required: true },
+          { key: 'restaurantImages', label: 'Restaurant Images', icon: <Restaurant />, required: false, multiple: true }
         ];
 
         return (
@@ -670,13 +734,14 @@ export default function AddRestaurant() {
                         {doc.required && <Chip label="Required" color="error" size="small" />}
                       </Box>
 
-                      {!formData.documents[doc.key] ? (
+                      {(doc.key === 'restaurantImages' ? formData.restaurantImages.length === 0 : !formData.documents[doc.key]) ? (
                         <Box>
                           <input
-                            accept=".pdf,.jpg,.jpeg,.png"
+                            accept={doc.key === 'restaurantImages' ? '.jpg,.jpeg,.png' : '.pdf,.jpg,.jpeg,.png'}
                             style={{ display: 'none' }}
                             id={`upload-${doc.key}`}
                             type="file"
+                            multiple={doc.multiple}
                             onChange={handleFileUpload(doc.key)}
                           />
                           <label htmlFor={`upload-${doc.key}`}>
@@ -707,26 +772,55 @@ export default function AddRestaurant() {
                           )}
                         </Box>
                       ) : (
-                        <Card sx={{ bgcolor: 'success.50', border: '1px solid', borderColor: 'success.main' }}>
-                          <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <CheckCircle sx={{ color: 'success.main' }} />
-                            <Box sx={{ flexGrow: 1 }}>
-                              <Typography variant="body1" fontWeight="medium">
-                                {formData.documents[doc.key].name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {(formData.documents[doc.key].size / 1024 / 1024).toFixed(2)} MB
-                              </Typography>
-                            </Box>
-                            <IconButton
-                              onClick={() => handleFileRemove(doc.key)}
-                              color="error"
-                              size="small"
-                            >
-                              <Delete />
-                            </IconButton>
-                          </CardContent>
-                        </Card>
+                        <Box>
+                          {doc.key === 'restaurantImages' ? (
+                            <Stack spacing={2}>
+                              {formData.restaurantImages.map((file, index) => (
+                                <Card key={index} sx={{ bgcolor: 'success.50', border: '1px solid', borderColor: 'success.main' }}>
+                                  <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <CheckCircle sx={{ color: 'success.main' }} />
+                                    <Box sx={{ flexGrow: 1 }}>
+                                      <Typography variant="body1" fontWeight="medium">
+                                        {file.name}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                                      </Typography>
+                                    </Box>
+                                    <IconButton
+                                      onClick={() => handleFileRemove(doc.key, index)}
+                                      color="error"
+                                      size="small"
+                                    >
+                                      <Delete />
+                                    </IconButton>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </Stack>
+                          ) : (
+                            <Card sx={{ bgcolor: 'success.50', border: '1px solid', borderColor: 'success.main' }}>
+                              <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <CheckCircle sx={{ color: 'success.main' }} />
+                                <Box sx={{ flexGrow: 1 }}>
+                                  <Typography variant="body1" fontWeight="medium">
+                                    {formData.documents[doc.key].name}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {(formData.documents[doc.key].size / 1024 / 1024).toFixed(2)} MB
+                                  </Typography>
+                                </Box>
+                                <IconButton
+                                  onClick={() => handleFileRemove(doc.key)}
+                                  color="error"
+                                  size="small"
+                                >
+                                  <Delete />
+                                </IconButton>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </Box>
                       )}
                     </CardContent>
                   </Card>
@@ -851,7 +945,7 @@ export default function AddRestaurant() {
   };
   if (isSubmitted) {
     return (
-      <Container maxWidth="sm" sx={{ py: 8 }}>
+      <Container maxWidth="sm" sx={{ py: 3 }}>
         <Slide direction="up" in mountOnEnter>
           <Card
             sx={{
@@ -862,7 +956,7 @@ export default function AddRestaurant() {
               boxShadow: "0 20px 40px rgba(0,0,0,0.1)", // Subtle shadow
             }}
           >
-            <CardContent sx={{ p: 6 }}>
+            <CardContent sx={{ p: 4 }}>
               <Avatar
                 sx={{
                   width: 100,
@@ -886,20 +980,58 @@ export default function AddRestaurant() {
 
               <Card
                 sx={{
-                  bgcolor: "#f9f9f9", // Light gray to stand out from white bg
+                  bgcolor: "#f9f9f9",
                   mb: 4,
                   borderRadius: 3,
                 }}
               >
                 <CardContent>
                   <Typography variant="h5" sx={{ color: "black" }}>
-                    Application ID: REST-{Date.now().toString().slice(-6)}
+                    Application ID: REST-{submissionData?._id?.slice(-8) || Date.now().toString().slice(-6)}
                   </Typography>
                   <Typography variant="body1" sx={{ color: "gray", mt: 1 }}>
                     Review time: 2-3 business days
                   </Typography>
                 </CardContent>
               </Card>
+
+              {submissionData?.credentials && (
+                <Card
+                  sx={{
+                    bgcolor: "#e8f5e8",
+                    mb: 4,
+                    borderRadius: 3,
+                    border: "2px solid #4caf50"
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="h6" sx={{ color: "#2e7d32", mb: 2, fontWeight: "bold" }}>
+                      🔐 Restaurant Panel Access Credentials
+                    </Typography>
+                    <Box sx={{ bgcolor: "white", p: 2, borderRadius: 2, mb: 2 }}>
+                      <Typography variant="body1" sx={{ color: "black", mb: 1 }}>
+                        <strong>Email:</strong> {submissionData.credentials.email}
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: "black" }}>
+                        <strong>Password:</strong> {submissionData.credentials.password}
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      variant="contained"
+                      href="https://eat-n-go-restaurent.vercel.app/"
+                      target="_blank"
+                      sx={{
+                        bgcolor: "#4caf50",
+                        "&:hover": { bgcolor: "#45a049" },
+                        borderRadius: 2
+                      }}
+                    >
+                      Access Restaurant Panel
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
 
               <Stack direction="row" spacing={2} justifyContent="center" sx={{ mb: 4 }}>
                 <Chip
@@ -948,7 +1080,7 @@ export default function AddRestaurant() {
     <Box sx={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-      py: 4
+      py: 2
     }}>
       <Container maxWidth="md">
         {/* Header Section */}
@@ -957,7 +1089,7 @@ export default function AddRestaurant() {
             width: 80,
             height: 80,
             mx: 'auto',
-            mb: 3,
+
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
           }}>
@@ -1077,23 +1209,51 @@ export default function AddRestaurant() {
                 <Button
                   variant="contained"
                   onClick={handleSubmit}
+                  disabled={isSubmitting}
                   size="large"
-                  startIcon={<CheckCircle />}
+                  startIcon={isSubmitting ? null : <CheckCircle />}
                   sx={{
                     borderRadius: 3,
                     px: 4,
                     py: 1.5,
                     minWidth: 180,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: isSubmitting
+                      ? 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)'
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 25px rgba(102, 126, 234, 0.4)'
+                      background: isSubmitting
+                        ? 'linear-gradient(135deg, #9e9e9e 0%, #757575 100%)'
+                        : 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)',
+                      transform: isSubmitting ? 'none' : 'translateY(-2px)',
+                      boxShadow: isSubmitting ? 'none' : '0 8px 25px rgba(102, 126, 234, 0.4)'
                     },
-                    transition: 'all 0.3s ease'
+                    transition: 'all 0.3s ease',
+                    position: 'relative'
                   }}
                 >
-                  Submit Application
+                  {isSubmitting ? (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          border: '2px solid rgba(255,255,255,0.3)',
+                          borderTop: '2px solid white',
+                          borderRadius: '50%',
+                          animation: 'spin 1s linear infinite',
+                          '@keyframes spin': {
+                            '0%': { transform: 'rotate(0deg)' },
+                            '100%': { transform: 'rotate(360deg)' }
+                          }
+                        }}
+                      />
+                      <Typography variant="button" sx={{ color: 'white' }}>
+                        Submitting...
+                      </Typography>
+                    </Box>
+                  ) : (
+                    'Submit Application'
+                  )}
                 </Button>
               ) : (
                 <Button

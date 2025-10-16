@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -26,61 +26,64 @@ import {
   useTheme,
   Fade,
   Avatar,
-  Badge
+  Badge,
+  Switch
 } from '@mui/material';
-import { IconPlus, IconEdit, IconTrash, IconUser, IconMail, IconPhone } from '@tabler/icons-react';
-
-const mockRoles = [
-  { id: 1, name: 'Admin', color: 'error' },
-  { id: 2, name: 'Manager', color: 'warning' },
-  { id: 3, name: 'Viewer', color: 'info' }
-];
-
-const mockUsers = [
-  { 
-    id: 1, 
-    name: 'John Doe', 
-    email: 'john@example.com',
-    phone: '+1234567890',
-    roleId: 1,
-    status: 'Active',
-    createdAt: '2024-01-15',
-    lastLogin: '2024-01-20'
-  },
-  { 
-    id: 2, 
-    name: 'Jane Smith', 
-    email: 'jane@example.com',
-    phone: '+1234567891',
-    roleId: 2,
-    status: 'Active',
-    createdAt: '2024-01-16',
-    lastLogin: '2024-01-19'
-  },
-  { 
-    id: 3, 
-    name: 'Bob Wilson', 
-    email: 'bob@example.com',
-    phone: '+1234567892',
-    roleId: 3,
-    status: 'Inactive',
-    createdAt: '2024-01-17',
-    lastLogin: '2024-01-18'
-  }
-];
+import { IconPlus, IconEdit, IconTrash, IconUser, IconMail, IconPhone, IconEye, IconEyeOff } from '@tabler/icons-react';
+import BlackSpinner from 'ui-component/BlackSpinner';
 
 export default function UsersTab() {
   const theme = useTheme();
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [formData, setFormData] = useState({ 
     name: '', 
     email: '', 
-    phone: '', 
-    roleId: '',
-    status: 'Active'
+    mobile: '',
+    password: '',
+    role: '',
+    isActive: true
   });
+  const [loading, setLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchRoles();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setUsers(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/roles`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRoles(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+    }
+  };
 
   const handleOpen = (user = null) => {
     setEditingUser(user);
@@ -88,11 +91,12 @@ export default function UsersTab() {
       { 
         name: user.name, 
         email: user.email, 
-        phone: user.phone, 
-        roleId: user.roleId,
-        status: user.status
+        mobile: user.mobile || '',
+        password: '',
+        role: user.role?._id || '',
+        isActive: user.isActive
       } : 
-      { name: '', email: '', phone: '', roleId: '', status: 'Active' }
+      { name: '', email: '', mobile: '', password: '', role: '', isActive: true }
     );
     setOpen(true);
   };
@@ -100,41 +104,64 @@ export default function UsersTab() {
   const handleClose = () => {
     setOpen(false);
     setEditingUser(null);
-    setFormData({ name: '', email: '', phone: '', roleId: '', status: 'Active' });
+    setFormData({ name: '', email: '', mobile: '', password: '', role: '', isActive: true });
+    setSaving(false);
   };
 
-  const handleSave = () => {
-    if (editingUser) {
-      setUsers(users.map(u => 
-        u.id === editingUser.id 
-          ? { ...u, ...formData }
-          : u
-      ));
-    } else {
-      const newUser = {
-        id: Date.now(),
-        ...formData,
-        createdAt: new Date().toISOString().split('T')[0],
-        lastLogin: 'Never'
-      };
-      setUsers([...users, newUser]);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (editingUser) {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${editingUser._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        if (result.success) {
+          setUsers(users.map(u => 
+            u._id === editingUser._id ? result.data : u
+          ));
+        }
+      } else {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        if (result.success) {
+          setUsers([result.data, ...users]);
+        }
+      }
+      handleClose();
+    } catch (error) {
+      console.error('Error saving user:', error);
+    } finally {
+      setSaving(false);
     }
-    handleClose();
   };
 
-  const handleDelete = (id) => {
-    setUsers(users.filter(u => u.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setUsers(users.filter(u => u._id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error);
+    }
   };
 
-  const getRoleName = (roleId) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.name : 'Unknown';
-  };
-
-  const getRoleColor = (roleId) => {
-    const role = mockRoles.find(r => r.id === roleId);
-    return role ? role.color : 'default';
-  };
+  if (loading) {
+    return <BlackSpinner />;
+  }
 
   const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -175,33 +202,21 @@ export default function UsersTab() {
           </TableHead>
           <TableBody>
             {users.map((user, index) => (
-              <Fade in timeout={800 + index * 100} key={user.id}>
+              <Fade in timeout={800 + index * 100} key={user._id}>
                 <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Badge
-                        badgeContent={user.status === 'Active' ? '●' : '○'}
-                        color={user.status === 'Active' ? 'success' : 'error'}
-                        sx={{
-                          '& .MuiBadge-badge': {
-                            fontSize: '0.6rem',
-                            minWidth: '8px',
-                            height: '8px',
-                            right: 2,
-                            top: 2
-                          }
-                        }}
-                      >
-                        <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+          
+                        <Avatar sx={{ bgcolor: 'white', width: 40, height: 40 }}>
                           {getInitials(user.name)}
                         </Avatar>
-                      </Badge>
+                      
                       <Box>
                         <Typography variant="subtitle1" fontWeight="bold">
                           {user.name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Created: {user.createdAt}
+                          Created: {new Date(user.createdAt).toLocaleDateString()}
                         </Typography>
                       </Box>
                     </Box>
@@ -214,32 +229,46 @@ export default function UsersTab() {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <IconPhone size={14} color={theme.palette.text.secondary} />
-                        <Typography variant="body2" color="text.secondary">
-                          {user.phone}
-                        </Typography>
+                        <Typography variant="body2">{user.mobile || 'N/A'}</Typography>
                       </Box>
                     </Stack>
                   </TableCell>
                   <TableCell>
                     <Chip 
-                      label={getRoleName(user.roleId)} 
-                      color={getRoleColor(user.roleId)}
+                      label={user.role?.name || 'No Role'} 
+                      color="primary"
                       variant="outlined"
                       size="small"
                       sx={{ fontWeight: 600 }}
                     />
                   </TableCell>
                   <TableCell>
-                    <Chip 
-                      label={user.status} 
-                      color={user.status === 'Active' ? 'success' : 'error'}
-                      variant="filled"
-                      size="small"
+                    <Switch
+                      checked={user.isActive}
+                      onChange={async (e) => {
+                        try {
+                          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${user._id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ ...user, isActive: e.target.checked })
+                          });
+                          const result = await response.json();
+                          if (result.success) {
+                            setUsers(users.map(u => 
+                              u._id === user._id ? result.data : u
+                            ));
+                          }
+                        } catch (error) {
+                          console.error('Error updating user status:', error);
+                        }
+                      }}
+                      color="success"
                     />
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
-                      {user.lastLogin}
+                      {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -262,7 +291,7 @@ export default function UsersTab() {
                       </Tooltip>
                       <Tooltip title="Delete User" arrow>
                         <IconButton
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => handleDelete(user._id)}
                           sx={{ 
                             color: 'error.main',
                             borderRadius: 1,
@@ -285,6 +314,18 @@ export default function UsersTab() {
         </Table>
       </TableContainer>
 
+      {users.length === 0 && (
+        <Box sx={{ p: 8, textAlign: 'center' }}>
+          <IconUser size={80} color={theme.palette.text.disabled} style={{ opacity: 0.5, marginBottom: 24 }} />
+          <Typography variant="h5" color="text.secondary" gutterBottom fontWeight="600">
+            No users found
+          </Typography>
+          <Typography variant="body1" color="text.disabled">
+            Add your first user to start managing access
+          </Typography>
+        </Box>
+      )}
+
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
           {editingUser ? 'Edit User' : 'Add New User'}
@@ -305,34 +346,61 @@ export default function UsersTab() {
               fullWidth
             />
             <TextField
-              label="Phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              label="Mobile Number"
+              value={formData.mobile}
+              onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
               fullWidth
             />
+            {!editingUser && (
+              <TextField
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                fullWidth
+                required
+                InputProps={{
+                  endAdornment: (
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      sx={{ mr: 1 }}
+                    >
+                      {showPassword ? <IconEyeOff size={20} /> : <IconEye size={20} />}
+                    </IconButton>
+                  )
+                }}
+              />
+            )}
             <FormControl fullWidth>
               <InputLabel>Role</InputLabel>
               <Select
-                value={formData.roleId}
-                onChange={(e) => setFormData({ ...formData, roleId: e.target.value })}
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 label="Role"
               >
-                {mockRoles.map((role) => (
-                  <MenuItem key={role.id} value={role.id}>
-                    {role.name}
+                {roles.length > 0 ? (
+                  roles.map((role) => (
+                    <MenuItem key={role._id} value={role._id}>
+                      {role.name}
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem disabled>
+                    No roles found. Add first!
                   </MenuItem>
-                ))}
+                )}
               </Select>
             </FormControl>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                value={formData.isActive}
+                onChange={(e) => setFormData({ ...formData, isActive: e.target.value })}
                 label="Status"
               >
-                <MenuItem value="Active">Active</MenuItem>
-                <MenuItem value="Inactive">Inactive</MenuItem>
+                <MenuItem value={true}>Active</MenuItem>
+                <MenuItem value={false}>Inactive</MenuItem>
               </Select>
             </FormControl>
           </Stack>
@@ -342,9 +410,30 @@ export default function UsersTab() {
           <Button 
             variant="contained" 
             onClick={handleSave}
-            disabled={!formData.name || !formData.email || !formData.roleId}
+            disabled={saving || !formData.name || !formData.email || !formData.mobile || !formData.role || (!editingUser && !formData.password)}
           >
-            {editingUser ? 'Update' : 'Create'}
+            {saving ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    border: '2px solid',
+                    borderColor: 'white',
+                    borderTopColor: 'transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    '@keyframes spin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' }
+                    }
+                  }}
+                />
+                {editingUser ? 'Updating...' : 'Creating...'}
+              </Box>
+            ) : (
+              editingUser ? 'Update' : 'Create'
+            )}
           </Button>
         </DialogActions>
       </Dialog>

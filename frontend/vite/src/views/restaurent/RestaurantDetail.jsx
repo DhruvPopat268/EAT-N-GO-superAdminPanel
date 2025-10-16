@@ -1,52 +1,46 @@
-import React, { useState } from "react";
-
-// Mock data with real restaurant images
-const restaurantData = {
-  1: {
-    id: 1,
-    name: "Food Fiesta",
-    location: "Ahmedabad, Gujarat",
-    address: "123 Food Street, Satellite, Ahmedabad - 380015",
-    phone: "+91 9876543210",
-    email: "foodfiesta@email.com",
-    country: "India",
-    currency: "INR (₹)",
-    foodCategory: "Veg",
-    rating: 4.5,
-    totalReviews: 238,
-    description: "A premium vegetarian restaurant serving authentic Gujarati and North Indian cuisine with traditional flavors and modern presentation. Our chefs use only the finest ingredients to create memorable dining experiences.",
-    images: [
-      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop&ixlib=rb-4.0.3",
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop&ixlib=rb-4.0.3",
-      "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&h=300&fit=crop&ixlib=rb-4.0.3",
-      "https://images.unsplash.com/photo-1590846406792-0adc7f938f1d?w=400&h=300&fit=crop&ixlib=rb-4.0.3",
-      "https://images.unsplash.com/photo-1571997478779-2adcbbe9ab2f?w=400&h=300&fit=crop&ixlib=rb-4.0.3",
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop&ixlib=rb-4.0.3"
-    ],
-    certification: "FSSAI License: 12345678901234",
-    documents: [
-      { name: "FSSAI License", status: "verified", uploadDate: "2023-01-15" },
-      { name: "Trade License", status: "verified", uploadDate: "2023-01-20" },
-      { name: "Fire Safety Certificate", status: "pending", uploadDate: "2023-12-01" },
-      { name: "GST Registration", status: "verified", uploadDate: "2023-01-18" },
-      { name: "Health Permit", status: "verified", uploadDate: "2023-02-01" }
-    ],
-    ownerName: "Rajesh Patel",
-    ownerPhone: "+91 9123456789",
-    establishedYear: "2018",
-    capacity: "50 seats",
-    cuisineTypes: ["Gujarati", "North Indian", "Street Food", "Thali"],
-    features: ["Air Conditioned", "Family Seating", "Parking Available", "Home Delivery"],
-    operatingHours: "10:00 AM - 10:00 PM",
-    status: "pending",
-    applicationDate: "2024-01-15"
-  }
-};
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 
 export default function RestaurantDetail() {
-  const restaurant = restaurantData[1];
+  const { id } = useParams();
+  const [restaurant, setRestaurant] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+
+  useEffect(() => {
+    fetchRestaurantDetails();
+  }, [id]);
+
+  const fetchRestaurantDetails = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/${id}`);
+      const result = await response.json();
+      if (result.success) {
+        setRestaurant(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant details:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
+  if (!restaurant) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div>Restaurant not found</div>
+      </div>
+    );
+  }
 
   const handleImageClick = (image) => {
     setSelectedImage(image);
@@ -319,8 +313,9 @@ export default function RestaurantDetail() {
       maxHeight: '90%'
     },
     modalImage: {
-      width: '100%',
-      height: 'auto',
+      width: '600px',
+      height: '400px',
+      objectFit: 'cover',
       borderRadius: '8px'
     },
     closeButton: {
@@ -341,26 +336,56 @@ export default function RestaurantDetail() {
     <div style={styles.container}>
       {/* Header Section */}
       <div style={styles.header}>
-        <div>
-          <button
-            style={styles.backButton}
-            onClick={() => window.history.back()}
-            onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#1976d2';
-              e.target.style.color = 'white';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.backgroundColor = 'transparent';
-              e.target.style.color = '#1976d2';
-            }}
-          >
-            ← Back to List
-          </button>
-          <div style={{ marginTop: '24px' }}>
-            <h1 style={styles.restaurantTitle}>{restaurant.name}</h1>
-            <div style={styles.rating}>
-              <span>★★★★★</span>
-              <span>{restaurant.rating} ({restaurant.totalReviews} reviews)</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <button
+              style={styles.backButton}
+              onClick={() => window.history.back()}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#1976d2';
+                e.target.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = '#1976d2';
+              }}
+            >
+              ← Back to List
+            </button>
+            <div style={{ marginTop: '24px' }}>
+              <h1 style={styles.restaurantTitle}>{restaurant.restaurantName}</h1>
+              <div style={styles.rating} className="mt-5">
+                <span>★★★★★</span>
+                <span>Application submitted {Math.floor((new Date() - new Date(restaurant.createdAt)) / (1000 * 60 * 60 * 24))} days ago</span>
+              </div>
+            </div>
+          </div>
+          <div style={{
+            padding: '16px 24px',
+            borderRadius: '12px',
+            backgroundColor: restaurant.status === 'pending' ? '#fff3cd' : restaurant.status === 'approved' ? '#d4edda' : '#f8d7da',
+            border: `2px solid ${restaurant.status === 'pending' ? '#ffc107' : restaurant.status === 'approved' ? '#28a745' : '#dc3545'}`,
+            textAlign: 'center',
+            minWidth: '150px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{
+              fontSize: '0.875rem',
+              color: '#666',
+              fontWeight: '500',
+              marginBottom: '4px'
+            }}>Application Status</div>
+            <div style={{
+              fontSize: '1.25rem',
+              fontWeight: 'bold',
+              color: restaurant.status === 'pending' ? '#856404' : restaurant.status === 'approved' ? '#155724' : '#721c24',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}>
+              {restaurant.status === 'pending' && '⏳ '}
+              {restaurant.status === 'approved' && '✅ '}
+              {restaurant.status === 'rejected' && '❌ '}
+              {restaurant.status}
             </div>
           </div>
         </div>
@@ -381,14 +406,14 @@ export default function RestaurantDetail() {
                     <div style={styles.infoIcon}>🏪</div>
                     <div>
                       <div style={styles.infoLabel}>Restaurant Name</div>
-                      <div style={styles.infoValue}>{restaurant.name}</div>
+                      <div style={styles.infoValue}>{restaurant.restaurantName}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>📍</div>
                     <div>
                       <div style={styles.infoLabel}>Address</div>
-                      <div style={styles.infoValue}>{restaurant.address}</div>
+                      <div style={styles.infoValue}>{restaurant.address}, {restaurant.city}, {restaurant.state} - {restaurant.pincode}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
@@ -405,6 +430,13 @@ export default function RestaurantDetail() {
                       <div style={styles.infoValue}>{restaurant.country}</div>
                     </div>
                   </div>
+                  <div style={styles.infoItem}>
+                    <div style={styles.infoIcon}>💰</div>
+                    <div>
+                      <div style={styles.infoLabel}>Currency</div>
+                      <div style={styles.infoValue}>{restaurant.country === 'India' ? 'INR (₹)' : restaurant.country === 'United States' ? 'USD ($)' : restaurant.country === 'United Kingdom' ? 'GBP (£)' : restaurant.country === 'Canada' ? 'CAD ($)' : restaurant.country === 'Australia' ? 'AUD ($)' : restaurant.country === 'Germany' ? 'EUR (€)' : restaurant.country === 'France' ? 'EUR (€)' : restaurant.country === 'Japan' ? 'JPY (¥)' : restaurant.country === 'Singapore' ? 'SGD ($)' : restaurant.country === 'UAE' ? 'AED (د.إ)' : 'USD ($)'}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -416,25 +448,31 @@ export default function RestaurantDetail() {
                     </div>
                   </div>
                   <div style={styles.infoItem}>
-                    <div style={styles.infoIcon}>🕐</div>
+                    <div style={styles.infoIcon}>📄</div>
                     <div>
-                      <div style={styles.infoLabel}>Operating Hours</div>
-                      <div style={styles.infoValue}>{restaurant.operatingHours}</div>
+                      <div style={styles.infoLabel}>License Number</div>
+                      <div style={styles.infoValue}>{restaurant.licenseNumber}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
-                    <div style={styles.infoIcon}>👥</div>
+                    <div style={styles.infoIcon}>🏛️</div>
                     <div>
-                      <div style={styles.infoLabel}>Capacity</div>
-                      <div style={styles.infoValue}>{restaurant.capacity}</div>
+                      <div style={styles.infoLabel}>GST Number</div>
+                      <div style={styles.infoValue}>{restaurant.gstNumber}</div>
                     </div>
                   </div>
-
                   <div style={styles.infoItem}>
-                    <div style={styles.infoIcon}>💰</div>
+                    <div style={styles.infoIcon}>🏦</div>
                     <div>
-                      <div style={styles.infoLabel}>Currency</div>
-                      <div style={styles.infoValue}>{restaurant.currency}</div>
+                      <div style={styles.infoLabel}>Bank Account</div>
+                      <div style={styles.infoValue}>{restaurant.bankAccount}</div>
+                    </div>
+                  </div>
+                  <div style={styles.infoItem}>
+                    <div style={styles.infoIcon}>🔢</div>
+                    <div>
+                      <div style={styles.infoLabel}>IFSC Code</div>
+                      <div style={styles.infoValue}>{restaurant.ifscCode}</div>
                     </div>
                   </div>
                 </div>
@@ -446,7 +484,7 @@ export default function RestaurantDetail() {
                   <span style={{ ...styles.chip, ...styles.vegChip }}>
                     {restaurant.foodCategory}
                   </span>
-                  {restaurant.cuisineTypes.map((cuisine, index) => (
+                  {restaurant.cuisineTypes && restaurant.cuisineTypes.map((cuisine, index) => (
                     <span key={index} style={{ ...styles.chip, ...styles.outlinedChip }}>
                       {cuisine}
                     </span>
@@ -454,21 +492,12 @@ export default function RestaurantDetail() {
                 </div>
               </div>
 
-              <div style={{ marginTop: '24px' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '12px' }}>Features & Amenities</h3>
-                <div style={styles.chipContainer}>
-                  {restaurant.features.map((feature, index) => (
-                    <span key={index} style={{ ...styles.chip, ...styles.featureChip }}>
-                      {feature}
-                    </span>
-                  ))}
-                </div>
-              </div>
+
 
               <div style={{ marginTop: '24px' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '12px' }}>Description</h3>
                 <div style={styles.description}>
-                  {restaurant.description}
+                  {restaurant.description || 'No description provided'}
                 </div>
               </div>
             </div>
@@ -481,7 +510,7 @@ export default function RestaurantDetail() {
               <hr style={styles.divider} />
 
               <div style={styles.imageGrid}>
-                {restaurant.images.map((image, index) => (
+                {restaurant.restaurantImages && restaurant.restaurantImages.map((image, index) => (
                   <div
                     key={index}
                     style={styles.imageCard}
@@ -530,7 +559,7 @@ export default function RestaurantDetail() {
                 <div style={styles.infoIcon}>📱</div>
                 <div>
                   <div style={styles.infoLabel}>Contact</div>
-                  <div style={styles.infoValue}>{restaurant.ownerPhone}</div>
+                  <div style={styles.infoValue}>{restaurant.phone}</div>
                 </div>
               </div>
 
@@ -538,7 +567,7 @@ export default function RestaurantDetail() {
                 <div style={styles.infoIcon}>📅</div>
                 <div>
                   <div style={styles.infoLabel}>Established</div>
-                  <div style={styles.infoValue}>{restaurant.establishedYear}</div>
+                  <div style={styles.infoValue}>{new Date(restaurant.createdAt).getFullYear()}</div>
                 </div>
               </div>
             </div>
@@ -556,15 +585,15 @@ export default function RestaurantDetail() {
                 borderRadius: '8px',
                 marginBottom: '16px'
               }}>
-                <div style={styles.infoLabel}>FSSAI License</div>
-                <div style={{ ...styles.infoValue, fontWeight: '600' }}>{restaurant.certification}</div>
+                <div style={styles.infoLabel}>License Number</div>
+                <div style={{ ...styles.infoValue, fontWeight: '600' }}>{restaurant.licenseNumber}</div>
               </div>
 
               <div style={styles.infoItem}>
                 <div style={styles.infoIcon}>📋</div>
                 <div>
                   <div style={styles.infoLabel}>Application Date</div>
-                  <div style={styles.infoValue}>{restaurant.applicationDate}</div>
+                  <div style={styles.infoValue}>{new Date(restaurant.createdAt).toLocaleDateString()}</div>
                 </div>
               </div>
             </div>
@@ -577,25 +606,74 @@ export default function RestaurantDetail() {
               <hr style={styles.divider} />
 
               <div>
-                {restaurant.documents.map((doc, index) => (
-                  <div key={index} style={styles.documentItem}>
-                    <div style={styles.documentIcon}>
-                      {getStatusIcon(doc.status)}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={styles.documentName}>{doc.name}</div>
-                      <div style={{
-                        ...styles.documentStatus,
-                        backgroundColor: getStatusColor(doc.status)
-                      }}>
-                        {doc.status.toUpperCase()}
+                {restaurant.documents && Object.entries(restaurant.documents).map(([key, url]) => {
+                  if (!url) return null;
+                  
+                  const isImage = url.toLowerCase().includes('.jpg') || url.toLowerCase().includes('.jpeg') || url.toLowerCase().includes('.png') || url.toLowerCase().includes('.gif');
+                  const isPdf = url.toLowerCase().includes('.pdf');
+                  
+                  const handleDocumentClick = async () => {
+                    if (isImage) {
+                      handleImageClick(url);
+                    } else if (isPdf) {
+                      try {
+                        // Fetch the PDF file
+                        const response = await fetch(url);
+                        const blob = await response.blob();
+                        
+                        // Create a blob URL and download
+                        const blobUrl = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = blobUrl;
+                        link.download = `${key.replace(/([A-Z])/g, '_$1').toLowerCase()}.pdf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        // Clean up the blob URL
+                        window.URL.revokeObjectURL(blobUrl);
+                      } catch (error) {
+                        console.error('Download failed:', error);
+                        // Fallback: open in new tab
+                        window.open(url, '_blank');
+                      }
+                    } else {
+                      window.open(url, '_blank');
+                    }
+                  };
+                  
+                  return (
+                    <div key={key} style={styles.documentItem}>
+                      <div style={styles.documentIcon}>
+                        {isImage ? '🖼️' : isPdf ? '📄' : '📎'}
                       </div>
-                      <div style={styles.documentDate}>
-                        Uploaded: {doc.uploadDate}
+                      <div style={{ flex: 1 }}>
+                        <div style={styles.documentName}>{key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</div>
+                        <div style={{
+                          ...styles.documentStatus,
+                          backgroundColor: getStatusColor('verified')
+                        }}>
+                          UPLOADED
+                        </div>
+                        <button
+                          onClick={handleDocumentClick}
+                          style={{
+                            fontSize: '0.75rem',
+                            color: '#1976d2',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            padding: 0,
+                            marginTop: '4px'
+                          }}
+                        >
+                          {isImage ? 'View Image' : isPdf ? 'View PDF' : 'View Document'}
+                        </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

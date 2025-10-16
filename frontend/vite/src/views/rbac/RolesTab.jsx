@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -24,56 +24,60 @@ import {
   alpha,
   useTheme,
   Fade,
-  Avatar
+  Avatar,
+  Switch
 } from '@mui/material';
 import { IconPlus, IconEdit, IconTrash, IconSettings, IconUserShield } from '@tabler/icons-react';
-
-const mockPermissions = [
-  { id: 1, name: 'read', description: 'View and read data' },
-  { id: 2, name: 'user_edit', description: 'Edit user information' },
-  { id: 3, name: 'user_delete', description: 'Delete users' },
-  { id: 4, name: 'restaurant_manage', description: 'Manage restaurants' },
-  { id: 5, name: 'payment_approve', description: 'Approve payments' }
-];
-
-const mockRoles = [
-  { 
-    id: 1, 
-    name: 'Admin', 
-    description: 'Full system access', 
-    permissions: [1, 2, 3, 4, 5],
-    createdAt: '2024-01-15',
-    userCount: 3
-  },
-  { 
-    id: 2, 
-    name: 'Manager', 
-    description: 'Restaurant management access', 
-    permissions: [1, 4],
-    createdAt: '2024-01-16',
-    userCount: 8
-  },
-  { 
-    id: 3, 
-    name: 'Viewer', 
-    description: 'Read-only access', 
-    permissions: [1],
-    createdAt: '2024-01-16',
-    userCount: 15
-  }
-];
+import BlackSpinner from 'ui-component/BlackSpinner';
 
 export default function RolesTab() {
   const theme = useTheme();
-  const [roles, setRoles] = useState(mockRoles);
+  const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '', permissions: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchRoles();
+    fetchPermissions();
+  }, []);
+
+  const fetchRoles = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/roles`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRoles(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPermissions = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/permissions`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setPermissions(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+    }
+  };
 
   const handleOpen = (role = null) => {
     setEditingRole(role);
-    setFormData(role ? 
-      { name: role.name, description: role.description, permissions: role.permissions } : 
+    setFormData(role ?
+      { name: role.name, description: role.description, permissions: role.permissions } :
       { name: '', description: '', permissions: [] }
     );
     setOpen(true);
@@ -94,34 +98,57 @@ export default function RolesTab() {
     }));
   };
 
-  const handleSave = () => {
-    if (editingRole) {
-      setRoles(roles.map(r => 
-        r.id === editingRole.id 
-          ? { ...r, ...formData }
-          : r
-      ));
-    } else {
-      const newRole = {
-        id: Date.now(),
-        ...formData,
-        createdAt: new Date().toISOString().split('T')[0],
-        userCount: 0
-      };
-      setRoles([...roles, newRole]);
+  const handleSave = async () => {
+    try {
+      if (editingRole) {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/roles/${editingRole._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        if (result.success) {
+          setRoles(roles.map(r =>
+            r._id === editingRole._id ? result.data : r
+          ));
+        }
+      } else {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/roles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        if (result.success) {
+          setRoles([result.data, ...roles]);
+        }
+      }
+      handleClose();
+    } catch (error) {
+      console.error('Error saving role:', error);
     }
-    handleClose();
   };
 
-  const handleDelete = (id) => {
-    setRoles(roles.filter(r => r.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/roles/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRoles(roles.filter(r => r._id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting role:', error);
+    }
   };
 
-  const getPermissionNames = (permissionIds) => {
-    return mockPermissions
-      .filter(p => permissionIds.includes(p.id))
-      .map(p => p.name);
-  };
+  if (loading) {
+    return <BlackSpinner />;
+  }
 
   return (
     <Box sx={{ p: 4 }}>
@@ -149,19 +176,20 @@ export default function RolesTab() {
           <TableHead>
             <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
               <TableCell sx={{ fontWeight: 700, py: 2 }}>Role</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>Permissions</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Permissions</TableCell>    
               <TableCell sx={{ fontWeight: 700 }}>Users</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Created Date</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {roles.map((role, index) => (
-              <Fade in timeout={800 + index * 100} key={role.id}>
+              <Fade in timeout={800 + index * 100} key={role._id}>
                 <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+                      <Avatar sx={{ bgcolor: 'white', width: 40, height: 40 }}>
                         <IconUserShield size={20} />
                       </Avatar>
                       <Box>
@@ -176,28 +204,53 @@ export default function RolesTab() {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                      {getPermissionNames(role.permissions).map((permission) => (
-                        <Chip 
-                          key={permission}
-                          label={permission} 
+                      {role.permissions?.map((permission) => (
+                        <Chip
+                          key={permission._id}
+                          label={permission.name}
                           size="small"
-                          color="primary" 
+                          color="primary"
                           variant="outlined"
                         />
                       ))}
                     </Box>
                   </TableCell>
+
                   <TableCell>
-                    <Chip 
-                      label={`${role.userCount} users`} 
-                      color="success" 
+                    <Chip
+                      label="0 users"
+                      color="success"
                       variant="outlined"
                       size="small"
                     />
                   </TableCell>
                   <TableCell>
+                    <Switch
+                      checked={role.isActive}
+                      onChange={async (e) => {
+                        try {
+                          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/roles/${role._id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ ...role, isActive: e.target.checked })
+                          });
+                          const result = await response.json();
+                          if (result.success) {
+                            setRoles(roles.map(r =>
+                              r._id === role._id ? result.data : r
+                            ));
+                          }
+                        } catch (error) {
+                          console.error('Error updating role status:', error);
+                        }
+                      }}
+                      color="success"
+                    />
+                  </TableCell>
+                  <TableCell>
                     <Typography variant="body2" color="text.secondary">
-                      {role.createdAt}
+                      {new Date(role.createdAt).toLocaleDateString()}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -205,7 +258,7 @@ export default function RolesTab() {
                       <Tooltip title="Edit Role" arrow>
                         <IconButton
                           onClick={() => handleOpen(role)}
-                          sx={{ 
+                          sx={{
                             color: 'secondary.main',
                             borderRadius: 1,
                             '&:hover': {
@@ -220,8 +273,9 @@ export default function RolesTab() {
                       </Tooltip>
                       <Tooltip title="Delete Role" arrow>
                         <IconButton
-                          onClick={() => handleDelete(role.id)}
-                          sx={{ 
+                          onClick={() => handleDelete(role._id)}
+                          disabled={role.isSystem}
+                          sx={{
                             color: 'error.main',
                             borderRadius: 1,
                             '&:hover': {
@@ -242,6 +296,18 @@ export default function RolesTab() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {roles.length === 0 && (
+        <Box sx={{ p: 8, textAlign: 'center' }}>
+          <IconUserShield size={80} color={theme.palette.text.disabled} style={{ opacity: 0.5, marginBottom: 24 }} />
+          <Typography variant="h5" color="text.secondary" gutterBottom fontWeight="600">
+            No roles found
+          </Typography>
+          <Typography variant="body1" color="text.disabled">
+            Create your first role to manage user permissions
+          </Typography>
+        </Box>
+      )}
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
@@ -270,35 +336,43 @@ export default function RolesTab() {
                 Select Permissions
               </Typography>
               <FormGroup>
-                {mockPermissions.map((permission) => (
-                  <FormControlLabel
-                    key={permission.id}
-                    control={
-                      <Checkbox
-                        checked={formData.permissions.includes(permission.id)}
-                        onChange={() => handlePermissionChange(permission.id)}
-                      />
-                    }
-                    label={
-                      <Box>
-                        <Typography variant="body2" fontWeight="500">
-                          {permission.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {permission.description}
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                ))}
+                {permissions.length > 0 ? (
+                  permissions.map((permission) => (
+                    <FormControlLabel
+                      key={permission._id}
+                      control={
+                        <Checkbox
+                          checked={formData.permissions.includes(permission._id)}
+                          onChange={() => handlePermissionChange(permission._id)}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" fontWeight="500">
+                            {permission.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {permission.description}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  ))
+                ) : (
+                  <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No permissions found. Add first!
+                    </Typography>
+                  </Box>
+                )}
               </FormGroup>
             </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleSave}
             disabled={!formData.name || !formData.description || formData.permissions.length === 0}
           >

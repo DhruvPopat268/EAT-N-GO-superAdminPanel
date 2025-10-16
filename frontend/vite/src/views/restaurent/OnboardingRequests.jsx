@@ -29,7 +29,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  CircularProgress
 } from "@mui/material";
 import BlackSpinner from 'ui-component/BlackSpinner';
 import {
@@ -48,74 +49,89 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
-const requests = [
-  { 
-    id: 1, 
-    name: "Food Fiesta", 
-    location: "Ahmedabad", 
-    foodCategory: "Veg", 
-    phone: "+91 9876543210", 
-    email: "foodfiesta@email.com", 
-    status: "pending", 
-    submittedDays: 2,
-    rating: 4.5 
-  },
-  { 
-    id: 2, 
-    name: "Spice Hub", 
-    location: "Surat", 
-    foodCategory: "Mixed", 
-    phone: "+91 9876543211", 
-    email: "spicehub@email.com", 
-    status: "pending", 
-    submittedDays: 1,
-    rating: 4.2 
-  },
-  { 
-    id: 3, 
-    name: "Tasty Bites", 
-    location: "Mumbai", 
-    foodCategory: "Non-Veg", 
-    phone: "+91 9876543212", 
-    email: "tastybites@email.com", 
-    status: "pending", 
-    submittedDays: 5,
-    rating: 4.8 
-  },
-];
+
 
 export default function OnboardingRequests() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const [restaurants, setRestaurants] = useState(requests);
+  const [restaurants, setRestaurants] = useState([]);
   const [hoveredRow, setHoveredRow] = useState(null);
   const [rejectDialog, setRejectDialog] = useState({ open: false, restaurantId: null });
   const [rejectionReason, setRejectionReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(timer);
+    fetchPendingRestaurants();
   }, []);
+
+  const fetchPendingRestaurants = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/pending`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRestaurants(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return <BlackSpinner />;
   }
 
-  const handleAction = (id, action) => {
+  const handleAction = async (id, action) => {
     if (action === 'reject') {
       setRejectDialog({ open: true, restaurantId: id });
-    } else {
-      setRestaurants(prev => prev.filter(r => r.id !== id));
-      console.log(`${action} restaurant with id: ${id}`);
+    } else if (action === 'approve') {
+      setActionLoading(id);
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/${id}/approve`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        const result = await response.json();
+        if (result.success) {
+          setRestaurants(prev => prev.filter(r => r._id !== id));
+        }
+      } catch (error) {
+        console.error('Error approving restaurant:', error);
+      } finally {
+        setActionLoading(null);
+      }
     }
   };
 
-  const handleRejectConfirm = () => {
+  const handleRejectConfirm = async () => {
     const finalReason = rejectionReason === 'Other' ? customReason : rejectionReason;
-    setRestaurants(prev => prev.filter(r => r.id !== rejectDialog.restaurantId));
-    console.log(`Rejected restaurant ${rejectDialog.restaurantId} with reason: ${finalReason}`);
+    setActionLoading(rejectDialog.restaurantId);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/${rejectDialog.restaurantId}/reject`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason: finalReason })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRestaurants(prev => prev.filter(r => r._id !== rejectDialog.restaurantId));
+      }
+    } catch (error) {
+      console.error('Error rejecting restaurant:', error);
+    } finally {
+      setActionLoading(null);
+    }
     setRejectDialog({ open: false, restaurantId: null });
     setRejectionReason('');
     setCustomReason('');
@@ -129,6 +145,11 @@ export default function OnboardingRequests() {
 
   const handleView = (id) => {
     navigate(`/restaurant/detail/${id}`);
+  };
+
+  const getDaysAgo = (dateString) => {
+    const days = Math.floor((new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
+    return days;
   };
 
   const getCategoryColor = (category) => {
@@ -299,15 +320,15 @@ export default function OnboardingRequests() {
                   <TableCell sx={{ fontWeight: 700, py: 3, fontSize: '0.95rem' }}>Restaurant</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Location & Contact</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Category</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Rating</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Owner</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {restaurants.map((row, index) => (
-                    <TableRow key={row.id}
-                      onMouseEnter={() => setHoveredRow(row.id)}
+                    <TableRow key={row._id}
+                      onMouseEnter={() => setHoveredRow(row._id)}
                       onMouseLeave={() => setHoveredRow(null)}
                       sx={{
                         '&:hover': {
@@ -319,7 +340,7 @@ export default function OnboardingRequests() {
                             transform: 'translateY(0)',
                           }
                         },
-                        borderLeft: hoveredRow === row.id ? `6px solid ${theme.palette.primary.main}` : '6px solid transparent',
+                        borderLeft: hoveredRow === row._id ? `6px solid ${theme.palette.primary.main}` : '6px solid transparent',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         cursor: 'pointer'
                       }}
@@ -327,7 +348,7 @@ export default function OnboardingRequests() {
                       <TableCell sx={{ py: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                           <Badge
-                            badgeContent={row.submittedDays}
+                            badgeContent={getDaysAgo(row.createdAt)}
                             sx={{
                               '& .MuiBadge-badge': {
                                 fontSize: '0.75rem',
@@ -347,15 +368,15 @@ export default function OnboardingRequests() {
                                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                               }}
                             >
-                              {getInitials(row.name)}
+                              {getInitials(row.restaurantName)}
                             </Avatar>
                           </Badge>
                           <Box>
                             <Typography variant="h6" fontWeight="bold" color="text.primary">
-                              {row.name}
+                              {row.restaurantName}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              Submitted {row.submittedDays} days ago
+                              Submitted {getDaysAgo(row.createdAt)} days ago
                             </Typography>
                           </Box>
                         </Box>
@@ -366,7 +387,7 @@ export default function OnboardingRequests() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <LocationOn sx={{ fontSize: 18, color: 'text.secondary' }} />
                             <Typography variant="body2" fontWeight="500">
-                              {row.location}
+                              {row.city}, {row.state}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -403,12 +424,8 @@ export default function OnboardingRequests() {
 
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Star sx={{ fontSize: 18, color: '#ffd700' }} />
-                          <Typography variant="body1" fontWeight="bold">
-                            {row.rating}
-                          </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            /5.0
+                            {row.ownerName}
                           </Typography>
                         </Box>
                       </TableCell>
@@ -443,7 +460,8 @@ export default function OnboardingRequests() {
                               variant="contained"
                               color="success"
                               size="small"
-                              onClick={() => handleAction(row.id, "approve")}
+                              onClick={() => handleAction(row._id, "approve")}
+                              disabled={actionLoading === row._id}
                               sx={{ 
                                 minWidth: 44,
                                 height: 44,
@@ -455,7 +473,11 @@ export default function OnboardingRequests() {
                                 }
                               }}
                             >
-                              <CheckCircle sx={{ fontSize: 20 }} />
+                              {actionLoading === row._id ? (
+                                <CircularProgress size={20} color="inherit" />
+                              ) : (
+                                <CheckCircle sx={{ fontSize: 20 }} />
+                              )}
                             </Button>
                           </Tooltip>
                           
@@ -464,7 +486,8 @@ export default function OnboardingRequests() {
                               variant="outlined"
                               color="error"
                               size="small"
-                              onClick={() => handleAction(row.id, "reject")}
+                              onClick={() => handleAction(row._id, "reject")}
+                              disabled={actionLoading === row._id}
                               sx={{ 
                                 minWidth: 44,
                                 height: 44,
@@ -478,7 +501,11 @@ export default function OnboardingRequests() {
                                 }
                               }}
                             >
-                              <Cancel sx={{ fontSize: 20 }} />
+                              {actionLoading === row._id ? (
+                                <CircularProgress size={20} color="inherit" />
+                              ) : (
+                                <Cancel sx={{ fontSize: 20 }} />
+                              )}
                             </Button>
                           </Tooltip>
                           
@@ -487,7 +514,7 @@ export default function OnboardingRequests() {
                               variant="outlined"
                               color="primary"
                               size="small"
-                              onClick={() => handleView(row.id)}
+                              onClick={() => handleView(row._id)}
                               sx={{ 
                                 minWidth: 44,
                                 height: 44,
@@ -605,9 +632,10 @@ export default function OnboardingRequests() {
             onClick={handleRejectConfirm} 
             color="error" 
             variant="contained"
-            disabled={!rejectionReason || (rejectionReason === 'Other' && !customReason.trim())}
+            disabled={!rejectionReason || (rejectionReason === 'Other' && !customReason.trim()) || actionLoading}
+            startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : null}
           >
-            Reject Application
+            {actionLoading ? 'Rejecting...' : 'Reject Application'}
           </Button>
         </DialogActions>
       </Dialog>

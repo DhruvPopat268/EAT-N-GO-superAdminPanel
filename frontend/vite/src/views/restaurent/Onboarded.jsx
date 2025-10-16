@@ -37,42 +37,30 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
-const onboarded = [
-  { 
-    id: 3, 
-    name: "Veg Wonders", 
-    location: "Rajkot", 
-    foodCategory: "Veg", 
-    phone: "+91 9876543213", 
-    email: "vegwonders@email.com", 
-    approvedDate: "2024-01-15",
-    rating: 4.7,
-    daysSinceApproval: 10
-  },
-  { 
-    id: 6, 
-    name: "Royal Kitchen", 
-    location: "Delhi", 
-    foodCategory: "Mixed", 
-    phone: "+91 9876543214", 
-    email: "royalkitchen@email.com", 
-    approvedDate: "2024-01-10",
-    rating: 4.5,
-    daysSinceApproval: 15
-  },
-];
-
 export default function OnboardedRestaurants() {
   const theme = useTheme();
   const navigate = useNavigate();
-  const [restaurants] = useState(onboarded);
+  const [restaurants, setRestaurants] = useState([]);
   const [hoveredRow, setHoveredRow] = useState(null);
   const [loading, setLoading] = useState(true);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(timer);
+    fetchApprovedRestaurants();
   }, []);
+
+  const fetchApprovedRestaurants = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/approved` ,{ credentials: 'include' });
+      const result = await response.json();
+      if (result.success) {
+        setRestaurants(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching approved restaurants:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return <BlackSpinner />;
@@ -80,6 +68,11 @@ export default function OnboardedRestaurants() {
 
   const handleView = (id) => {
     navigate(`/restaurant/detail/${id}`);
+  };
+
+  const getDaysAgo = (dateString) => {
+    const days = Math.floor((new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
+    return days;
   };
 
   const getCategoryColor = (category) => {
@@ -256,8 +249,8 @@ export default function OnboardedRestaurants() {
               </TableHead>
               <TableBody>
                 {restaurants.map((row, index) => (
-                    <TableRow key={row.id}
-                      onMouseEnter={() => setHoveredRow(row.id)}
+                    <TableRow key={row._id}
+                      onMouseEnter={() => setHoveredRow(row._id)}
                       onMouseLeave={() => setHoveredRow(null)}
                       sx={{
                         '&:hover': {
@@ -269,7 +262,7 @@ export default function OnboardedRestaurants() {
                             transform: 'translateY(0)',
                           }
                         },
-                        borderLeft: hoveredRow === row.id ? `6px solid ${theme.palette.success.main}` : '6px solid transparent',
+                        borderLeft: hoveredRow === row._id ? `6px solid ${theme.palette.success.main}` : '6px solid transparent',
                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                         cursor: 'pointer'
                       }}
@@ -277,7 +270,7 @@ export default function OnboardedRestaurants() {
                       <TableCell sx={{ py: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
                           <Badge
-                            badgeContent={row.daysSinceApproval}
+                            badgeContent={getDaysAgo(row.updatedAt)}
                            
                             sx={{
                               '& .MuiBadge-badge': {
@@ -298,15 +291,15 @@ export default function OnboardedRestaurants() {
                                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                               }}
                             >
-                              {getInitials(row.name)}
+                              {getInitials(row.restaurantName)}
                             </Avatar>
                           </Badge>
                           <Box>
                             <Typography variant="h6" fontWeight="bold" color="text.primary">
-                              {row.name}
+                              {row.restaurantName}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
-                              Active for {row.daysSinceApproval} days
+                              Active for {getDaysAgo(row.updatedAt)} days
                             </Typography>
                           </Box>
                         </Box>
@@ -317,7 +310,7 @@ export default function OnboardedRestaurants() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <LocationOn sx={{ fontSize: 18, color: 'text.secondary' }} />
                             <Typography variant="body2" fontWeight="500">
-                              {row.location}
+                              {row.city}, {row.state}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -356,7 +349,7 @@ export default function OnboardedRestaurants() {
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Star sx={{ fontSize: 18, color: '#ffd700' }} />
                           <Typography variant="body1" fontWeight="bold">
-                            {row.rating}
+                            4.5
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             /5.0
@@ -366,7 +359,7 @@ export default function OnboardedRestaurants() {
 
                       <TableCell>
                         <Typography variant="body2" fontWeight="500">
-                          {row.approvedDate}
+                          {new Date(row.updatedAt).toLocaleDateString()}
                         </Typography>
                       </TableCell>
 
@@ -386,7 +379,7 @@ export default function OnboardedRestaurants() {
                               variant="outlined"
                               color="primary"
                               size="small"
-                              onClick={() => handleView(row.id)}
+                              onClick={() => handleView(row._id)}
                               sx={{ 
                                 minWidth: 44,
                                 height: 44,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -20,28 +20,50 @@ import {
   Stack,
   alpha,
   useTheme,
-  Fade
+  Fade,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Switch
 } from '@mui/material';
 import { IconPlus, IconEdit, IconTrash, IconKeyFilled } from '@tabler/icons-react';
-
-const mockPermissions = [
-  { id: 1, name: 'read', description: 'View and read data', createdAt: '2024-01-15' },
-  { id: 2, name: 'user_edit', description: 'Edit user information', createdAt: '2024-01-15' },
-  { id: 3, name: 'user_delete', description: 'Delete users', createdAt: '2024-01-15' },
-  { id: 4, name: 'restaurant_manage', description: 'Manage restaurants', createdAt: '2024-01-16' },
-  { id: 5, name: 'payment_approve', description: 'Approve payments', createdAt: '2024-01-16' }
-];
+import BlackSpinner from 'ui-component/BlackSpinner';
 
 export default function PermissionsTab() {
   const theme = useTheme();
-  const [permissions, setPermissions] = useState(mockPermissions);
+  const [permissions, setPermissions] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingPermission, setEditingPermission] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPermissions();
+  }, []);
+
+  const fetchPermissions = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/permissions`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setPermissions(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpen = (permission = null) => {
     setEditingPermission(permission);
-    setFormData(permission ? { name: permission.name, description: permission.description } : { name: '', description: '' });
+    setFormData(permission ? 
+      { name: permission.name, description: permission.description } : 
+      { name: '', description: '' }
+    );
     setOpen(true);
   };
 
@@ -51,27 +73,57 @@ export default function PermissionsTab() {
     setFormData({ name: '', description: '' });
   };
 
-  const handleSave = () => {
-    if (editingPermission) {
-      setPermissions(permissions.map(p => 
-        p.id === editingPermission.id 
-          ? { ...p, ...formData }
-          : p
-      ));
-    } else {
-      const newPermission = {
-        id: Date.now(),
-        ...formData,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setPermissions([...permissions, newPermission]);
+  const handleSave = async () => {
+    try {
+      if (editingPermission) {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/permissions/${editingPermission._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        if (result.success) {
+          setPermissions(permissions.map(p => 
+            p._id === editingPermission._id ? result.data : p
+          ));
+        }
+      } else {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/permissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formData)
+        });
+        const result = await response.json();
+        if (result.success) {
+          setPermissions([result.data, ...permissions]);
+        }
+      }
+      handleClose();
+    } catch (error) {
+      console.error('Error saving permission:', error);
     }
-    handleClose();
   };
 
-  const handleDelete = (id) => {
-    setPermissions(permissions.filter(p => p.id !== id));
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/permissions/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setPermissions(permissions.filter(p => p._id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting permission:', error);
+    }
   };
+
+  if (loading) {
+    return <BlackSpinner />;
+  }
 
   return (
     <Box sx={{ p: 4 }}>
@@ -100,13 +152,14 @@ export default function PermissionsTab() {
             <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
               <TableCell sx={{ fontWeight: 700, py: 2 }}>Permission Name</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Created Date</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {permissions.map((permission, index) => (
-              <Fade in timeout={800 + index * 100} key={permission.id}>
+              <Fade in timeout={800 + index * 100} key={permission._id}>
                 <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -123,8 +176,32 @@ export default function PermissionsTab() {
                     <Typography variant="body2">{permission.description}</Typography>
                   </TableCell>
                   <TableCell>
+                    <Switch
+                      checked={permission.isActive}
+                      onChange={async (e) => {
+                        try {
+                          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/permissions/${permission._id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ ...permission, isActive: e.target.checked })
+                          });
+                          const result = await response.json();
+                          if (result.success) {
+                            setPermissions(permissions.map(p => 
+                              p._id === permission._id ? result.data : p
+                            ));
+                          }
+                        } catch (error) {
+                          console.error('Error updating permission status:', error);
+                        }
+                      }}
+                      color="success"
+                    />
+                  </TableCell>
+                  <TableCell>
                     <Typography variant="body2" color="text.secondary">
-                      {permission.createdAt}
+                      {new Date(permission.createdAt).toLocaleDateString()}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -147,7 +224,7 @@ export default function PermissionsTab() {
                       </Tooltip>
                       <Tooltip title="Delete Permission" arrow>
                         <IconButton
-                          onClick={() => handleDelete(permission.id)}
+                          onClick={() => handleDelete(permission._id)}
                           sx={{ 
                             color: 'error.main',
                             borderRadius: 1,
@@ -169,6 +246,18 @@ export default function PermissionsTab() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {permissions.length === 0 && (
+        <Box sx={{ p: 8, textAlign: 'center' }}>
+          <IconKeyFilled size={80} color={theme.palette.text.disabled} style={{ opacity: 0.5, marginBottom: 24 }} />
+          <Typography variant="h5" color="text.secondary" gutterBottom fontWeight="600">
+            No permissions found
+          </Typography>
+          <Typography variant="body1" color="text.disabled">
+            Create your first permission to get started
+          </Typography>
+        </Box>
+      )}
 
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>
