@@ -1,8 +1,12 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const Restaurant = require('../models/Restaurant');
+const RestaurantSession = require('../models/RestaurantSession');
 const upload = require('../middleware/upload');
 const cloudinary = require('../config/cloudinary');
 const authMiddleware = require('../middleware/auth');
+const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const router = express.Router();
 
 const uploadToCloudinary = (buffer, folder) => {
@@ -20,6 +24,88 @@ const uploadToCloudinary = (buffer, folder) => {
     ).end(buffer);
   });
 };
+
+// Restaurant login
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const restaurant = await Restaurant.findOne({ email });
+    if (!restaurant) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials or restaurant not approved'
+      });
+    }
+    
+    const isValidPassword = await bcrypt.compare(password, restaurant.tempPassword);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+    
+    // Remove existing sessions for this restaurant
+    await RestaurantSession.deleteMany({ email: restaurant.email });
+    
+    const token = jwt.sign(
+      { restaurantId: restaurant._id, email: restaurant.email },
+      process.env.JWT_SECRET_RESTAURENT || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+    
+    // Create new session
+    await RestaurantSession.create({
+      email: restaurant.email,
+      token: token,
+      restaurantId: restaurant._id
+    });
+    
+    res.cookie('RestaurantToken', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+    
+    const restaurantResponse = restaurant.toObject();
+    delete restaurantResponse.tempPassword;
+    
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      token: token,
+      data: restaurantResponse
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Login failed',
+      error: error.message
+    });
+  }
+})
+
+router.get('/status', restaurantAuthMiddleware, async (req, res) => {
+
+  try {
+    const restaurantId = req.restaurant?.restaurantId;
+
+    const restaurentStatus = await Restaurant.findById(restaurantId).select('status');
+
+    res.status(200).json({
+      success: true,
+      data: restaurentStatus
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching restaurant status',
+      error: error.message
+    });
+  }
+} )
 
 // Get all restaurants
 router.get('/', authMiddleware, async (req, res) => {
@@ -85,8 +171,6 @@ router.get('/rejected', authMiddleware, async (req, res) => {
     });
   }
 });
-
-const bcrypt = require('bcryptjs');
 
 // Generate temporary password
 const generateTempPassword = (email) => {
