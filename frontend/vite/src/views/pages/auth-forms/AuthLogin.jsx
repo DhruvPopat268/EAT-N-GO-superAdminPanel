@@ -44,7 +44,11 @@ export default function AuthLogin() {
   };
 
   const handleLogin = async (event) => {
-    event.preventDefault();
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    console.log('Login attempt started');
     setLoading(true);
     setError('');
 
@@ -62,17 +66,22 @@ export default function AuthLogin() {
         localStorage.setItem('isAuthenticated', 'true');
         navigate('/dashboard/default');
       } else {
+        console.log('Login failed:', result.message);
         setError(result.message);
+        setLoading(false);
+        return;
       }
     } catch (error) {
+      console.log('Login error:', error);
       setError('Login failed. Please try again.');
-    } finally {
       setLoading(false);
+      return;
     }
+    setLoading(false);
   };
 
   return (
-    <>
+    <div>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <FormControl fullWidth sx={{ ...theme.typography.customInput }}>
         <InputLabel htmlFor="outlined-adornment-email-login">Email Address / Username</InputLabel>
@@ -129,7 +138,7 @@ export default function AuthLogin() {
             color="secondary" 
             fullWidth 
             size="large" 
-            type="submit" 
+            type="button" 
             variant="contained"
             onClick={handleLogin}
             disabled={loading}
@@ -159,6 +168,6 @@ export default function AuthLogin() {
           </Button>
         </AnimateButton>
       </Box>
-    </>
+    </div>
   );
 }

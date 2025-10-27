@@ -92,11 +92,11 @@ router.get('/status', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant?.restaurantId;
 
-    const restaurentStatus = await Restaurant.findById(restaurantId).select('status');
+    const restaurentData = await Restaurant.findById(restaurantId).select('status rejectedFormFields rejectionReason');
 
     res.status(200).json({
       success: true,
-      data: restaurentStatus
+      data: restaurentData
     });
   } catch (error) {
     res.status(500).json({
@@ -106,6 +106,103 @@ router.get('/status', restaurantAuthMiddleware, async (req, res) => {
     });
   }
 } )
+
+// Restaurant resubmit rejected application
+router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
+  { name: 'businessLicense', maxCount: 1 },
+  { name: 'gstCertificate', maxCount: 1 },
+  { name: 'panCard', maxCount: 1 },
+  { name: 'bankStatement', maxCount: 1 },
+  { name: 'foodLicense', maxCount: 1 },
+  { name: 'restaurantImages', maxCount: 10 }
+]), async (req, res) => {
+  try {
+    const restaurantId = req.restaurant?.restaurantId;
+    console.log('Restaurant ID for resubmission:', restaurantId);
+    console.log('Request body for resubmission:', req.body);
+    const updateData = JSON.parse(req.body.data || '{}');
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    if (restaurant.status !== 'rejected') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only resubmit rejected applications'
+      });
+    }
+
+    // Upload new documents to Cloudinary if provided
+    const documents = {};
+    let restaurantImages = [];
+    
+    if (req.files) {
+      for (const [key, files] of Object.entries(req.files)) {
+        if (key === 'restaurantImages' && files) {
+          restaurantImages = await Promise.all(
+            files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
+          );
+        } else if (files && files[0]) {
+          documents[key] = await uploadToCloudinary(files[0].buffer, 'restaurant-documents');
+        }
+      }
+    }
+
+    // Map flat fields to nested structure
+    const finalUpdateData = {
+      status: 'pending',
+      rejectionReason: null,
+      rejectedFormFields: []
+    };
+
+    // Map fields to correct nested structure
+    Object.entries(updateData).forEach(([key, value]) => {
+      if (['restaurantName', 'ownerName', 'foodCategory', 'cuisineTypes'].includes(key)) {
+        if (!finalUpdateData.basicInfo) finalUpdateData.basicInfo = {};
+        finalUpdateData.basicInfo[key] = value;
+      } else if (['email', 'phone', 'address', 'city', 'state', 'country', 'pincode'].includes(key)) {
+        if (!finalUpdateData.contactDetails) finalUpdateData.contactDetails = {};
+        finalUpdateData.contactDetails[key] = value;
+      } else if (['licenseNumber', 'gstNumber', 'bankAccount', 'ifscCode', 'description'].includes(key)) {
+        if (!finalUpdateData.businessDetails) finalUpdateData.businessDetails = {};
+        finalUpdateData.businessDetails[key] = value;
+      }
+    });
+
+    // Handle documents
+    if (Object.keys(documents).length > 0 || restaurantImages.length > 0) {
+      finalUpdateData.documents = { ...restaurant.documents, ...documents };
+      if (restaurantImages.length > 0) {
+        finalUpdateData.documents.restaurantImages = restaurantImages;
+      }
+    }
+
+    console.log('Final update data:', JSON.stringify(finalUpdateData, null, 2));
+
+    const updatedRestaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      finalUpdateData,
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Application resubmitted successfully',
+      data: updatedRestaurant
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error resubmitting application',
+      error: error.message
+    });
+  }
+});
 
 // Get all restaurants
 router.get('/', authMiddleware, async (req, res) => {
@@ -367,7 +464,7 @@ router.patch('/:id/approve', authMiddleware, async (req, res) => {
 // Reject restaurant (only from pending)
 router.patch('/:id/reject', authMiddleware, async (req, res) => {
   try {
-    const { reason } = req.body;
+    const { reason, formFields } = req.body;
     
     const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) {
@@ -387,6 +484,9 @@ router.patch('/:id/reject', authMiddleware, async (req, res) => {
     const updateData = { status: 'rejected' };
     if (reason) {
       updateData.rejectionReason = reason;
+    }
+    if (formFields && formFields.length > 0) {
+      updateData.rejectedFormFields = formFields;
     }
 
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(

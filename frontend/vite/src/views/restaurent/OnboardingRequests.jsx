@@ -30,7 +30,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Divider
 } from "@mui/material";
 import BlackSpinner from 'ui-component/BlackSpinner';
 import {
@@ -59,6 +63,7 @@ export default function OnboardingRequests() {
   const [rejectDialog, setRejectDialog] = useState({ open: false, restaurantId: null });
   const [rejectionReason, setRejectionReason] = useState('');
   const [customReason, setCustomReason] = useState('');
+  const [selectedFormFields, setSelectedFormFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
 
@@ -121,7 +126,10 @@ export default function OnboardingRequests() {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify({ reason: finalReason })
+        body: JSON.stringify({ 
+          reason: finalReason,
+          formFields: selectedFormFields
+        })
       });
       const result = await response.json();
       if (result.success) {
@@ -135,12 +143,83 @@ export default function OnboardingRequests() {
     setRejectDialog({ open: false, restaurantId: null });
     setRejectionReason('');
     setCustomReason('');
+    setSelectedFormFields([]);
   };
 
   const handleRejectCancel = () => {
     setRejectDialog({ open: false, restaurantId: null });
     setRejectionReason('');
     setCustomReason('');
+    setSelectedFormFields([]);
+  };
+
+  const handleFormFieldChange = (field) => {
+    setSelectedFormFields(prev => 
+      prev.includes(field) 
+        ? prev.filter(f => f !== field)
+        : [...prev, field]
+    );
+  };
+
+  const formFieldSections = {
+    'Basic Information': [
+      'restaurantName',
+      'ownerName',
+      'foodCategory',
+      'cuisineTypes'
+    ],
+    'Contact Details': [
+      'email',
+      'phone',
+      'address',
+      'city',
+      'state',
+      'country',
+      'pincode'
+    ],
+    'Business Details': [
+      'licenseNumber',
+      'gstNumber',
+      'bankAccount',
+      'ifscCode',
+      'description'
+    ],
+    'Documents': [
+      'businessLicense',
+      'gstCertificate',
+      'panCard',
+      'bankStatement',
+      'foodLicense',
+      'restaurantImages'
+    ]
+  };
+
+  const getFieldLabel = (field) => {
+    const labels = {
+      restaurantName: 'Restaurant Name',
+      ownerName: 'Owner Name',
+      foodCategory: 'Food Category',
+      cuisineTypes: 'Cuisine Types',
+      email: 'Email Address',
+      phone: 'Phone Number',
+      address: 'Address',
+      city: 'City',
+      state: 'State',
+      country: 'Country',
+      pincode: 'Pincode',
+      licenseNumber: 'License Number',
+      gstNumber: 'GST Number',
+      bankAccount: 'Bank Account',
+      ifscCode: 'IFSC Code',
+      description: 'Description',
+      businessLicense: 'Business License',
+      gstCertificate: 'GST Certificate',
+      panCard: 'PAN Card',
+      bankStatement: 'Bank Statement',
+      foodLicense: 'Food License',
+      restaurantImages: 'Restaurant Images'
+    };
+    return labels[field] || field;
   };
 
   const handleView = (id) => {
@@ -623,7 +702,88 @@ export default function OnboardingRequests() {
               value={customReason}
               onChange={(e) => setCustomReason(e.target.value)}
               placeholder="Please specify the reason for rejection..."
+              sx={{ mb: 2 }}
             />
+          )}
+
+          <Divider sx={{ my: 3 }} />
+          
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Select Form Fields to Re-submit
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Choose which fields the restaurant needs to correct and resubmit:
+          </Typography>
+          
+          <Box sx={{ 
+            maxHeight: 400, 
+            overflowY: 'auto',
+            border: '1px solid #e0e0e0',
+            borderRadius: 2,
+            p: 2
+          }}>
+            {Object.entries(formFieldSections).map(([sectionName, fields]) => (
+              <Box key={sectionName} sx={{ mb: 3 }}>
+                <Typography 
+                  variant="subtitle1" 
+                  fontWeight="bold" 
+                  color="primary.main"
+                  sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}
+                >
+                  {sectionName}
+                  <Chip 
+                    label={fields.filter(field => selectedFormFields.includes(field)).length + '/' + fields.length}
+                    size="small"
+                    color={fields.some(field => selectedFormFields.includes(field)) ? 'primary' : 'default'}
+                    variant="outlined"
+                  />
+                </Typography>
+                <FormGroup sx={{ pl: 2 }}>
+                  {fields.map((field) => (
+                    <FormControlLabel
+                      key={field}
+                      control={
+                        <Checkbox
+                          checked={selectedFormFields.includes(field)}
+                          onChange={() => handleFormFieldChange(field)}
+                          color="primary"
+                          size="small"
+                        />
+                      }
+                      label={getFieldLabel(field)}
+                      sx={{ 
+                        mb: 0.5,
+                        '& .MuiFormControlLabel-label': {
+                          fontSize: '0.9rem'
+                        }
+                      }}
+                    />
+                  ))}
+                </FormGroup>
+                {Object.keys(formFieldSections).indexOf(sectionName) < Object.keys(formFieldSections).length - 1 && (
+                  <Divider sx={{ mt: 2 }} />
+                )}
+              </Box>
+            ))}
+          </Box>
+          
+          {selectedFormFields.length > 0 && (
+            <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.50', borderRadius: 2 }}>
+              <Typography variant="body2" color="primary.main" fontWeight="bold">
+                Selected Fields ({selectedFormFields.length}):
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {selectedFormFields.map((field) => (
+                  <Chip
+                    key={field}
+                    label={getFieldLabel(field)}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                ))}
+              </Box>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
@@ -632,7 +792,7 @@ export default function OnboardingRequests() {
             onClick={handleRejectConfirm} 
             color="error" 
             variant="contained"
-            disabled={!rejectionReason || (rejectionReason === 'Other' && !customReason.trim()) || actionLoading}
+            disabled={!rejectionReason || (rejectionReason === 'Other' && !customReason.trim()) || actionLoading || selectedFormFields.length === 0}
             startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : null}
           >
             {actionLoading ? 'Rejecting...' : 'Reject Application'}

@@ -14,7 +14,9 @@ export default function RestaurantDetail() {
 
   const fetchRestaurantDetails = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/${id}`);
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/${id}`, {
+        credentials: 'include'
+      });
       const result = await response.json();
       if (result.success) {
         setRestaurant(result.data);
@@ -608,10 +610,11 @@ export default function RestaurantDetail() {
               <div>
                 {restaurant.documents && Object.entries(restaurant.documents).map(([key, url]) => {
                   if (!url) return null;
-                  
-                  const isImage = url.toLowerCase().includes('.jpg') || url.toLowerCase().includes('.jpeg') || url.toLowerCase().includes('.png') || url.toLowerCase().includes('.gif');
-                  const isPdf = url.toLowerCase().includes('.pdf');
-                  
+
+                  const urlString = url ? String(url) : '';
+                  const isImage = urlString.toLowerCase().includes('.jpg') || urlString.toLowerCase().includes('.jpeg') || urlString.toLowerCase().includes('.png') || urlString.toLowerCase().includes('.gif');
+                  const isPdf = urlString.toLowerCase().includes('.pdf');
+
                   const handleDocumentClick = async () => {
                     if (isImage) {
                       handleImageClick(url);
@@ -620,7 +623,7 @@ export default function RestaurantDetail() {
                         // Fetch the PDF file
                         const response = await fetch(url);
                         const blob = await response.blob();
-                        
+
                         // Create a blob URL and download
                         const blobUrl = window.URL.createObjectURL(blob);
                         const link = document.createElement('a');
@@ -629,7 +632,7 @@ export default function RestaurantDetail() {
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
-                        
+
                         // Clean up the blob URL
                         window.URL.revokeObjectURL(blobUrl);
                       } catch (error) {
@@ -641,7 +644,7 @@ export default function RestaurantDetail() {
                       window.open(url, '_blank');
                     }
                   };
-                  
+
                   return (
                     <div key={key} style={styles.documentItem}>
                       <div style={styles.documentIcon}>
