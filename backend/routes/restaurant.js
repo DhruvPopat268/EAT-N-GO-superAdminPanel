@@ -30,7 +30,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const restaurant = await Restaurant.findOne({ email });
+    const restaurant = await Restaurant.findOne({ 'contactDetails.email': email });
     if (!restaurant) {
       return res.status(401).json({
         success: false,
@@ -289,7 +289,7 @@ router.post('/', upload.fields([
     const restaurantData = JSON.parse(req.body.data);
     
     // Check if restaurant with email already exists
-    const existingRestaurant = await Restaurant.findOne({ email: restaurantData.email });
+    const existingRestaurant = await Restaurant.findOne({ 'contactDetails.email': restaurantData.email });
     if (existingRestaurant) {
       return res.status(400).json({ 
         success: false, 
@@ -317,12 +317,36 @@ router.post('/', upload.fields([
       }
     }
 
-    const restaurant = new Restaurant({
-      ...restaurantData,
-      documents,
-      restaurantImages,
+    // Convert flat data to nested structure
+    const nestedData = {
+      basicInfo: {
+        restaurantName: restaurantData.restaurantName,
+        ownerName: restaurantData.ownerName,
+        foodCategory: restaurantData.foodCategory,
+        cuisineTypes: restaurantData.cuisineTypes,
+        otherCuisine: restaurantData.otherCuisine
+      },
+      contactDetails: {
+        email: restaurantData.email,
+        phone: restaurantData.phone,
+        address: restaurantData.address,
+        city: restaurantData.city,
+        state: restaurantData.state,
+        country: restaurantData.country,
+        pincode: restaurantData.pincode
+      },
+      businessDetails: {
+        licenseNumber: restaurantData.licenseNumber,
+        gstNumber: restaurantData.gstNumber,
+        bankAccount: restaurantData.bankAccount,
+        ifscCode: restaurantData.ifscCode,
+        description: restaurantData.description
+      },
+      documents: { ...documents, restaurantImages },
       tempPassword: hashedTempPassword
-    });
+    };
+
+    const restaurant = new Restaurant(nestedData);
     await restaurant.save();
 
     res.status(201).json({
