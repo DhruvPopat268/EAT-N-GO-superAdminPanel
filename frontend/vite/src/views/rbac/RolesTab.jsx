@@ -218,8 +218,8 @@ export default function RolesTab() {
 
                   <TableCell>
                     <Chip
-                      label="0 users"
-                      color="success"
+                      label={`${role.userCount || 0} users`}
+                      color={role.userCount > 0 ? "success" : "default"}
                       variant="outlined"
                       size="small"
                     />

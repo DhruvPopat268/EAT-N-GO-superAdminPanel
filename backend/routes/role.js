@@ -6,10 +6,23 @@ const router = express.Router();
 // Get all roles
 router.get('/', authMiddleware, async (req, res) => {
   try {
+    const User = require('../models/User');
     const roles = await Role.find({ isActive: true }).populate('permissions').sort({ createdAt: -1 });
+    
+    // Add user count for each role
+    const rolesWithUserCount = await Promise.all(
+      roles.map(async (role) => {
+        const userCount = await User.countDocuments({ role: role._id, isActive: true });
+        return {
+          ...role.toObject(),
+          userCount
+        };
+      })
+    );
+    
     res.status(200).json({
       success: true,
-      data: roles
+      data: rolesWithUserCount
     });
   } catch (error) {
     res.status(500).json({
