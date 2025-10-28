@@ -290,6 +290,14 @@ router.post('/', upload.fields([
     console.log('body',req.body.data)
     const restaurantData = JSON.parse(req.body.data);
 
+    // Validate email is provided
+    if (!restaurantData.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
     // Check if restaurant with email already exists
     const existingRestaurant = await Restaurant.findOne({ 'contactDetails.email': restaurantData.email });
     if (existingRestaurant) {
