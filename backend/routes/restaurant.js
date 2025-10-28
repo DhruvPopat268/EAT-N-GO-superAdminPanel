@@ -8,6 +8,7 @@ const cloudinary = require('../config/cloudinary');
 const authMiddleware = require('../middleware/auth');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
+const { sendUserCredentials } = require('../services/emailService');
 const router = express.Router();
 
 const uploadToCloudinary = (buffer, folder) => {
@@ -359,16 +360,22 @@ router.post('/', upload.fields([
     const restaurant = new Restaurant(nestedData);
     await restaurant.save();
 
+    // Send credentials email
+    try {
+      await sendUserCredentials(
+        restaurantData.email,
+        restaurantData.restaurantName,
+        tempPassword,
+        'Restaurant'
+      );
+    } catch (emailError) {
+      console.error('Failed to send credentials email:', emailError);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Restaurant registered successfully',
-      data: {
-        ...restaurant.toObject(),
-        credentials: {
-          email: restaurant.email,
-          password: tempPassword
-        }
-      }
+      data: restaurant.toObject()
     });
   } catch (error) {
     res.status(400).json({

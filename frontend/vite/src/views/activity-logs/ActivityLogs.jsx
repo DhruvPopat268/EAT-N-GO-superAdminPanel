@@ -163,7 +163,7 @@ const ActivityLogs = () => {
               <TableCell>Module</TableCell>
               <TableCell>Sub Module</TableCell>
               <TableCell>Action</TableCell>
-              <TableCell>Description</TableCell>
+              {/* <TableCell>Description</TableCell> */}
               <TableCell>Timestamp</TableCell>
             </TableRow>
           </TableHead>
@@ -194,7 +194,7 @@ const ActivityLogs = () => {
                       size="small"
                     />
                   </TableCell>
-                  <TableCell>{log.description}</TableCell>
+                  {/* <TableCell>{log.description}</TableCell> */}
                   <TableCell>
                     {new Date(log.timestamp).toLocaleString()}
                   </TableCell>

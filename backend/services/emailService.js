@@ -42,4 +42,37 @@ const sendUserCredentials = async (userEmail, userName, password, roleName) => {
   }
 };
 
-module.exports = { sendUserCredentials };
+const sendRestaurantCredentials = async (restaurantEmail, restaurantName, password) => {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: restaurantEmail,
+    subject: 'Welcome to EAT-N-GO - Your Restaurant Account Details',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1976d2;">Welcome to EAT-N-GO</h2>
+        <p>Hello ${restaurantName},</p>
+        <p>Your restaurant has been registered successfully. Here are your login credentials:</p>
+        
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="margin-top: 0;">Login Details:</h3>
+          <p><strong>Email:</strong> ${restaurantEmail}</p>
+          <p><strong>Password:</strong> ${password}</p>
+        </div>
+        
+        <p style="color: #d32f2f;"><strong>Important:</strong> Please keep these credentials safe. You will need them to access your restaurant dashboard.</p>
+        
+        <p>Best regards,<br>EAT-N-GO Team</p>
+      </div>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('Restaurant credentials email sent successfully');
+  } catch (error) {
+    console.error('Error sending restaurant email:', error);
+    throw error;
+  }
+};
+
+module.exports = { sendUserCredentials, sendRestaurantCredentials };

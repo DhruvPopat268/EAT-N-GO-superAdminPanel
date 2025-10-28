@@ -1008,9 +1008,9 @@ export default function AddRestaurant() {
                     <Typography variant="h6" sx={{ color: "#2e7d32", mb: 2, fontWeight: "bold" }}>
                       🔐 Restaurant Panel Access Credentials
                     </Typography>
-                    <Box sx={{ bgcolor: "white", p: 2, borderRadius: 2, mb: 2 }}>
+                          <Box sx={{ bgcolor: "white", p: 2, borderRadius: 2, mb: 2 }}>
                       <Typography variant="body1" sx={{ color: "black", mb: 1 }}>
-                        <strong>Email:</strong> {submissionData.credentials.email}
+                        <strong>Email:</strong> {submissionData.email || formData.email}
                       </Typography>
                       <Typography variant="body1" sx={{ color: "black" }}>
                         <strong>Password:</strong> {submissionData.credentials.password}
