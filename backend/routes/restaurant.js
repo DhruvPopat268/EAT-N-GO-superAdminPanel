@@ -413,13 +413,13 @@ router.post(
       // Send credentials email
       try {
         console.log('📧 Sending credentials email to:', restaurantData.email);
-        await sendUserCredentials(
-          restaurantData.email,
-          restaurantData.restaurantName,
-          tempPassword,
-          'Restaurant'
-        );
-        console.log('✅ Credentials email sent successfully');
+        // await sendUserCredentials(
+        //   restaurantData.email,
+        //   restaurantData.restaurantName,
+        //   tempPassword,
+        //   'Restaurant'
+        // );
+        // console.log('✅ Credentials email sent successfully');
       } catch (emailError) {
         console.error('❌ Failed to send credentials email:', emailError);
       }

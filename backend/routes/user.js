@@ -122,12 +122,12 @@ router.post('/', authMiddleware, async (req, res) => {
     
     // Send credentials email
     try {
-      await sendUserCredentials(
-        user.email,
-        user.name,
-        password,
-        user.role.name
-      );
+      // await sendUserCredentials(
+      //   user.email,
+      //   user.name,
+      //   password,
+      //   user.role.name
+      // );
     } catch (emailError) {
       console.error('Failed to send credentials email:', emailError);
     }
