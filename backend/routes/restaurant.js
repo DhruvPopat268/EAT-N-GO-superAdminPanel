@@ -312,6 +312,7 @@ router.post('/', upload.fields([
 ]), async (req, res) => {
   try {
     console.log('body', req.body.data)
+    console.log('files', req.files)
     const restaurantData = JSON.parse(req.body.data);
 
     // Validate email is provided
