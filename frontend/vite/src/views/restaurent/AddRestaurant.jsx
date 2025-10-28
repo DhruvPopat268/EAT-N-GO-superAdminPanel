@@ -49,7 +49,8 @@ import {
   Email,
   Phone,
   AccountBalance,
-  VerifiedUser
+  VerifiedUser,
+  ContentCopy
 } from '@mui/icons-material';
 
 const steps = ['Basic Info', 'Contact Details', 'Business Details', 'Upload Documents', 'Review'];
@@ -1008,13 +1009,31 @@ export default function AddRestaurant() {
                     <Typography variant="h6" sx={{ color: "#2e7d32", mb: 2, fontWeight: "bold" }}>
                       🔐 Restaurant Panel Access Credentials
                     </Typography>
-                          <Box sx={{ bgcolor: "white", p: 2, borderRadius: 2, mb: 2 }}>
-                      <Typography variant="body1" sx={{ color: "black", mb: 1 }}>
-                        <strong>Email:</strong> {submissionData.email || formData.email}
-                      </Typography>
-                      <Typography variant="body1" sx={{ color: "black" }}>
-                        <strong>Password:</strong> {submissionData.credentials.password}
-                      </Typography>
+                    <Box sx={{ bgcolor: "white", p: 2, borderRadius: 2, mb: 2 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                        <Typography variant="body1" sx={{ color: "black" }}>
+                          <strong>Email:</strong> {submissionData.email || formData.email}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => navigator.clipboard.writeText(submissionData.email || formData.email)}
+                          sx={{ color: "#4caf50" }}
+                        >
+                          <ContentCopy fontSize="small" />
+                        </IconButton>
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <Typography variant="body1" sx={{ color: "black" }}>
+                          <strong>Password:</strong> {submissionData.credentials.password}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => navigator.clipboard.writeText(submissionData.credentials.password)}
+                          sx={{ color: "#4caf50" }}
+                        >
+                          <ContentCopy fontSize="small" />
+                        </IconButton>
+                      </Box>
                     </Box>
 
                     <Button
