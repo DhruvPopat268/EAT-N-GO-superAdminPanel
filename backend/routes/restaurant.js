@@ -316,66 +316,48 @@ router.post(
     try {
       console.log('✅ Received request to register restaurant');
 
-      console.log('📦 Raw body data:', req.body.data);
-      console.log('📂 Uploaded files:', req.files);
-
       const restaurantData = JSON.parse(req.body.data);
       console.log('🧾 Parsed restaurant data:', restaurantData);
 
-      // Validate email
       if (!restaurantData.email) {
-        console.log('❌ Missing email in restaurantData');
         return res.status(400).json({
           success: false,
           message: 'Email is required'
         });
       }
 
-      // Check existing restaurant
-      console.log('🔍 Checking if restaurant exists with email:', restaurantData.email);
       const existingRestaurant = await Restaurant.findOne({
         'contactDetails.email': restaurantData.email
       });
 
       if (existingRestaurant) {
-        console.log('⚠️ Restaurant with this email already exists');
         return res.status(400).json({
           success: false,
           message: 'Restaurant with this email already exists'
         });
       }
 
-      // Generate temp password
+      // Generate temp password (plain + hashed)
       const tempPassword = generateTempPassword(restaurantData.email);
-      console.log('🔑 Generated temporary password:', tempPassword);
-
       const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
-      console.log('🔒 Hashed temporary password created');
 
-      // Upload files to Cloudinary
+      // Upload files
       const documents = {};
       let restaurantImages = [];
 
       if (req.files && Object.keys(req.files).length > 0) {
-        console.log('☁️ Uploading documents to Cloudinary...');
         for (const [key, files] of Object.entries(req.files)) {
-          console.log(`📁 Processing field: ${key}`);
           if (key === 'restaurantImages' && files) {
             restaurantImages = await Promise.all(
               files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
             );
-            console.log(`🖼️ Uploaded ${restaurantImages.length} restaurant images`);
           } else if (files && files[0]) {
             const uploadResult = await uploadToCloudinary(files[0].buffer, 'restaurant-documents');
             documents[key] = uploadResult;
-            console.log(`📄 Uploaded document for ${key}:`, uploadResult.secure_url);
           }
         }
-      } else {
-        console.log('⚠️ No files found in request');
       }
 
-      // Prepare nested structure
       const nestedData = {
         basicInfo: {
           restaurantName: restaurantData.restaurantName,
@@ -401,33 +383,32 @@ router.post(
           description: restaurantData.description
         },
         documents: { ...documents, restaurantImages },
-        tempPassword: hashedTempPassword
+        tempPassword: hashedTempPassword // store only hashed version in DB
       };
-
-      console.log('🧩 Final nested restaurant data ready for DB save:', nestedData);
 
       const restaurant = new Restaurant(nestedData);
       await restaurant.save();
-      console.log('✅ Restaurant saved successfully in DB:', restaurant._id);
 
-      // Send credentials email
+      // Send email (optional)
       try {
-        console.log('📧 Sending credentials email to:', restaurantData.email);
         // await sendUserCredentials(
         //   restaurantData.email,
         //   restaurantData.restaurantName,
         //   tempPassword,
         //   'Restaurant'
         // );
-        // console.log('✅ Credentials email sent successfully');
       } catch (emailError) {
-        console.error('❌ Failed to send credentials email:', emailError);
+        console.error('❌ Email sending failed:', emailError);
       }
 
+      // ✅ Include plain tempPassword only in response (not in DB)
       res.status(201).json({
         success: true,
         message: 'Restaurant registered successfully',
-        data: restaurant.toObject()
+        data: {
+          ...restaurant.toObject(),
+          plainTempPassword: tempPassword
+        }
       });
     } catch (error) {
       console.error('💥 Error registering restaurant:', error);
@@ -439,7 +420,6 @@ router.post(
     }
   }
 );
-
 
 // Approve restaurant
 router.post('/approve/:id', authMiddleware, async (req, res) => {
