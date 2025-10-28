@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 // Global API response interceptor for handling 401 errors
 let isRedirecting = false;
 
@@ -25,5 +27,16 @@ window.fetch = async (...args) => {
     throw error;
   }
 };
+
+// Axios response interceptor
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      handleUnauthorized();
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default handleUnauthorized;
