@@ -278,6 +278,29 @@ router.get('/rejected', authMiddleware, async (req, res) => {
   }
 });
 
+// Get restaurant by ID
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: restaurant
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching restaurant',
+      error: error.message
+    });
+  }
+});
+
 // Create new restaurant with file uploads
 router.post('/', upload.fields([
   { name: 'businessLicense', maxCount: 1 },
@@ -288,7 +311,7 @@ router.post('/', upload.fields([
   { name: 'restaurantImages', maxCount: 10 }
 ]), async (req, res) => {
   try {
-    console.log('body',req.body.data)
+    console.log('body', req.body.data)
     const restaurantData = JSON.parse(req.body.data);
 
     // Validate email is provided
@@ -433,14 +456,14 @@ router.post('/approve/:id', authMiddleware, async (req, res) => {
 // Reject restaurant
 router.post('/reject/:id', authMiddleware, async (req, res) => {
   try {
-    const { rejectionReason, rejectedFormFields } = req.body;
+    const { reason, formFields } = req.body;
 
     const restaurant = await Restaurant.findByIdAndUpdate(
       req.params.id,
       {
         status: 'rejected',
-        rejectionReason,
-        rejectedFormFields
+        rejectionReason: reason,
+        rejectedFormFields: formFields
       },
       { new: true }
     );
@@ -457,7 +480,7 @@ router.post('/reject/:id', authMiddleware, async (req, res) => {
       'Restaurant Management',
       'Onboarding',
       'reject',
-      `Rejected restaurant with ID ${req.params.id}. Reason: ${rejectionReason}`,
+      `Rejected restaurant with ID ${req.params.id}. Reason: ${reason}`,
       restaurant.basicInfo.restaurantName
     );
 
@@ -470,29 +493,6 @@ router.post('/reject/:id', authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error rejecting restaurant',
-      error: error.message
-    });
-  }
-});
-
-// Get restaurant by ID
-router.get('/:id', authMiddleware, async (req, res) => {
-  try {
-    const restaurant = await Restaurant.findById(req.params.id);
-    if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        message: 'Restaurant not found'
-      });
-    }
-    res.status(200).json({
-      success: true,
-      data: restaurant
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching restaurant',
       error: error.message
     });
   }
