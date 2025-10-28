@@ -402,6 +402,7 @@ router.post('/', upload.fields([
       data: restaurant.toObject()
     });
   } catch (error) {
+    console.log('Error registering restaurant:', error);
     res.status(400).json({
       success: false,
       message: 'Error registering restaurant',
