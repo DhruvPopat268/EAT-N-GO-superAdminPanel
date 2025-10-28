@@ -302,114 +302,144 @@ router.get('/:id', authMiddleware, async (req, res) => {
 });
 
 // Create new restaurant with file uploads
-router.post('/', upload.fields([
-  { name: 'businessLicense', maxCount: 1 },
-  { name: 'gstCertificate', maxCount: 1 },
-  { name: 'panCard', maxCount: 1 },
-  { name: 'bankStatement', maxCount: 1 },
-  { name: 'foodLicense', maxCount: 1 },
-  { name: 'restaurantImages', maxCount: 10 }
-]), async (req, res) => {
-  try {
-    console.log('body', req.body.data)
-    console.log('files', req.files)
-    const restaurantData = JSON.parse(req.body.data);
-
-    // Validate email is provided
-    if (!restaurantData.email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
-    }
-
-    // Check if restaurant with email already exists
-    const existingRestaurant = await Restaurant.findOne({ 'contactDetails.email': restaurantData.email });
-    if (existingRestaurant) {
-      return res.status(400).json({
-        success: false,
-        message: 'Restaurant with this email already exists'
-      });
-    }
-
-    // Generate temporary password
-    const tempPassword = generateTempPassword(restaurantData.email);
-    const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
-
-    // Upload documents to Cloudinary
-    const documents = {};
-    let restaurantImages = [];
-
-    if (req.files) {
-      for (const [key, files] of Object.entries(req.files)) {
-        if (key === 'restaurantImages' && files) {
-          restaurantImages = await Promise.all(
-            files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
-          );
-        } else if (files && files[0]) {
-          documents[key] = await uploadToCloudinary(files[0].buffer, 'restaurant-documents');
-        }
-      }
-    }
-
-    // Convert flat data to nested structure
-    const nestedData = {
-      basicInfo: {
-        restaurantName: restaurantData.restaurantName,
-        ownerName: restaurantData.ownerName,
-        foodCategory: restaurantData.foodCategory,
-        cuisineTypes: restaurantData.cuisineTypes,
-        otherCuisine: restaurantData.otherCuisine
-      },
-      contactDetails: {
-        email: restaurantData.email,
-        phone: restaurantData.phone,
-        address: restaurantData.address,
-        city: restaurantData.city,
-        state: restaurantData.state,
-        country: restaurantData.country,
-        pincode: restaurantData.pincode
-      },
-      businessDetails: {
-        licenseNumber: restaurantData.licenseNumber,
-        gstNumber: restaurantData.gstNumber,
-        bankAccount: restaurantData.bankAccount,
-        ifscCode: restaurantData.ifscCode,
-        description: restaurantData.description
-      },
-      documents: { ...documents, restaurantImages },
-      tempPassword: hashedTempPassword
-    };
-
-    const restaurant = new Restaurant(nestedData);
-    await restaurant.save();
-
-    // Send credentials email
+router.post(
+  '/',
+  upload.fields([
+    { name: 'businessLicense', maxCount: 1 },
+    { name: 'gstCertificate', maxCount: 1 },
+    { name: 'panCard', maxCount: 1 },
+    { name: 'bankStatement', maxCount: 1 },
+    { name: 'foodLicense', maxCount: 1 },
+    { name: 'restaurantImages', maxCount: 10 }
+  ]),
+  async (req, res) => {
     try {
-      await sendUserCredentials(
-        restaurantData.email,
-        restaurantData.restaurantName,
-        tempPassword,
-        'Restaurant'
-      );
-    } catch (emailError) {
-      console.error('Failed to send credentials email:', emailError);
-    }
+      console.log('✅ Received request to register restaurant');
 
-    res.status(201).json({
-      success: true,
-      message: 'Restaurant registered successfully',
-      data: restaurant.toObject()
-    });
-  } catch (error) {
-    console.log('Error registering restaurant:', error);
-    res.status(400).json({
-      success: false,
-      message: 'Error registering restaurant',
-      error: error.message
-    });
+      console.log('📦 Raw body data:', req.body.data);
+      console.log('📂 Uploaded files:', req.files);
+
+      const restaurantData = JSON.parse(req.body.data);
+      console.log('🧾 Parsed restaurant data:', restaurantData);
+
+      // Validate email
+      if (!restaurantData.email) {
+        console.log('❌ Missing email in restaurantData');
+        return res.status(400).json({
+          success: false,
+          message: 'Email is required'
+        });
+      }
+
+      // Check existing restaurant
+      console.log('🔍 Checking if restaurant exists with email:', restaurantData.email);
+      const existingRestaurant = await Restaurant.findOne({
+        'contactDetails.email': restaurantData.email
+      });
+
+      if (existingRestaurant) {
+        console.log('⚠️ Restaurant with this email already exists');
+        return res.status(400).json({
+          success: false,
+          message: 'Restaurant with this email already exists'
+        });
+      }
+
+      // Generate temp password
+      const tempPassword = generateTempPassword(restaurantData.email);
+      console.log('🔑 Generated temporary password:', tempPassword);
+
+      const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
+      console.log('🔒 Hashed temporary password created');
+
+      // Upload files to Cloudinary
+      const documents = {};
+      let restaurantImages = [];
+
+      if (req.files && Object.keys(req.files).length > 0) {
+        console.log('☁️ Uploading documents to Cloudinary...');
+        for (const [key, files] of Object.entries(req.files)) {
+          console.log(`📁 Processing field: ${key}`);
+          if (key === 'restaurantImages' && files) {
+            restaurantImages = await Promise.all(
+              files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
+            );
+            console.log(`🖼️ Uploaded ${restaurantImages.length} restaurant images`);
+          } else if (files && files[0]) {
+            const uploadResult = await uploadToCloudinary(files[0].buffer, 'restaurant-documents');
+            documents[key] = uploadResult;
+            console.log(`📄 Uploaded document for ${key}:`, uploadResult.secure_url);
+          }
+        }
+      } else {
+        console.log('⚠️ No files found in request');
+      }
+
+      // Prepare nested structure
+      const nestedData = {
+        basicInfo: {
+          restaurantName: restaurantData.restaurantName,
+          ownerName: restaurantData.ownerName,
+          foodCategory: restaurantData.foodCategory,
+          cuisineTypes: restaurantData.cuisineTypes,
+          otherCuisine: restaurantData.otherCuisine
+        },
+        contactDetails: {
+          email: restaurantData.email,
+          phone: restaurantData.phone,
+          address: restaurantData.address,
+          city: restaurantData.city,
+          state: restaurantData.state,
+          country: restaurantData.country,
+          pincode: restaurantData.pincode
+        },
+        businessDetails: {
+          licenseNumber: restaurantData.licenseNumber,
+          gstNumber: restaurantData.gstNumber,
+          bankAccount: restaurantData.bankAccount,
+          ifscCode: restaurantData.ifscCode,
+          description: restaurantData.description
+        },
+        documents: { ...documents, restaurantImages },
+        tempPassword: hashedTempPassword
+      };
+
+      console.log('🧩 Final nested restaurant data ready for DB save:', nestedData);
+
+      const restaurant = new Restaurant(nestedData);
+      await restaurant.save();
+      console.log('✅ Restaurant saved successfully in DB:', restaurant._id);
+
+      // Send credentials email
+      try {
+        console.log('📧 Sending credentials email to:', restaurantData.email);
+        await sendUserCredentials(
+          restaurantData.email,
+          restaurantData.restaurantName,
+          tempPassword,
+          'Restaurant'
+        );
+        console.log('✅ Credentials email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Failed to send credentials email:', emailError);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Restaurant registered successfully',
+        data: restaurant.toObject()
+      });
+    } catch (error) {
+      console.error('💥 Error registering restaurant:', error);
+      res.status(400).json({
+        success: false,
+        message: 'Error registering restaurant',
+        error: error.message
+      });
+    }
   }
-});
+);
+
 
 // Approve restaurant
 router.post('/approve/:id', authMiddleware, async (req, res) => {
