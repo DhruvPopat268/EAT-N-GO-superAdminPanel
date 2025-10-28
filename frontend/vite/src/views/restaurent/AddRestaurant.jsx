@@ -996,7 +996,7 @@ export default function AddRestaurant() {
                 </CardContent>
               </Card>
 
-              {submissionData?.credentials && (
+              {submissionData?.contactDetails?.email && submissionData?.tempPassword && (
                 <Card
                   sx={{
                     bgcolor: "#e8f5e8",
@@ -1012,11 +1012,11 @@ export default function AddRestaurant() {
                     <Box sx={{ bgcolor: "white", p: 2, borderRadius: 2, mb: 2 }}>
                       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
                         <Typography variant="body1" sx={{ color: "black" }}>
-                          <strong>Email:</strong> {submissionData.email || formData.email}
+                          <strong>Email:</strong> {submissionData?.contactDetails?.email || formData.email}
                         </Typography>
                         <IconButton
                           size="small"
-                          onClick={() => navigator.clipboard.writeText(submissionData.email || formData.email)}
+                          onClick={() => navigator.clipboard.writeText(submissionData?.contactDetails?.email || formData.email)}
                           sx={{ color: "#4caf50" }}
                         >
                           <ContentCopy fontSize="small" />
@@ -1024,11 +1024,11 @@ export default function AddRestaurant() {
                       </Box>
                       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                         <Typography variant="body1" sx={{ color: "black" }}>
-                          <strong>Password:</strong> {submissionData.credentials.password}
+                          <strong>Password:</strong> {submissionData?.tempPassword}
                         </Typography>
                         <IconButton
                           size="small"
-                          onClick={() => navigator.clipboard.writeText(submissionData.credentials.password)}
+                          onClick={() => navigator.clipboard.writeText(submissionData?.tempPassword)}
                           sx={{ color: "#4caf50" }}
                         >
                           <ContentCopy fontSize="small" />
