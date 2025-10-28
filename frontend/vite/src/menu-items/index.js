@@ -8,6 +8,7 @@ import rbac from './rbac';
 import subscription from './subscription';
 import customers from './customers';
 import support from './support';
+import activityLogs from './activityLogs';
 
 // ==============================|| MENU ITEMS ||============================== //
 
@@ -16,9 +17,10 @@ const menuItems = {
     dashboard,
     restaurent,
     // orders,
-    // payments,
+    payments,
     // customers,
     rbac,
+    activityLogs,
     // subscription,
     // support
   ]

@@ -97,8 +97,8 @@ export default function OnboardingRequests() {
     } else if (action === 'approve') {
       setActionLoading(id);
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/${id}/approve`, {
-          method: 'PATCH',
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/approve/${id}`, {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -120,8 +120,8 @@ export default function OnboardingRequests() {
     const finalReason = rejectionReason === 'Other' ? customReason : rejectionReason;
     setActionLoading(rejectDialog.restaurantId);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/${rejectDialog.restaurantId}/reject`, {
-        method: 'PATCH',
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/reject/${rejectDialog.restaurantId}`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -241,6 +241,7 @@ export default function OnboardingRequests() {
   };
 
   const getInitials = (name) => {
+    if (!name) return 'R';
     return name.split(' ').map(word => word[0]).join('').toUpperCase();
   };
 
@@ -447,12 +448,12 @@ export default function OnboardingRequests() {
                                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                               }}
                             >
-                              {getInitials(row.restaurantName)}
+                              {getInitials(row.basicInfo?.restaurantName || row.restaurantName)}
                             </Avatar>
                           </Badge>
                           <Box>
                             <Typography variant="h6" fontWeight="bold" color="text.primary">
-                              {row.restaurantName}
+                              {row.basicInfo?.restaurantName || row.restaurantName}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               Submitted {getDaysAgo(row.createdAt)} days ago
@@ -466,19 +467,19 @@ export default function OnboardingRequests() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <LocationOn sx={{ fontSize: 18, color: 'text.secondary' }} />
                             <Typography variant="body2" fontWeight="500">
-                              {row.city}, {row.state}
+                              {row.contactDetails?.city || row.city}, {row.contactDetails?.state || row.state}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Phone sx={{ fontSize: 16, color: 'text.secondary' }} />
                             <Typography variant="caption" color="text.secondary">
-                              {row.phone}
+                              {row.contactDetails?.phone || row.phone}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Email sx={{ fontSize: 16, color: 'text.secondary' }} />
                             <Typography variant="caption" color="text.secondary">
-                              {row.email}
+                              {row.contactDetails?.email || row.email}
                             </Typography>
                           </Box>
                         </Stack>
@@ -487,7 +488,7 @@ export default function OnboardingRequests() {
                       <TableCell>
                         <Chip
                           icon={<Fastfood sx={{ fontSize: 18 }} />}
-                          label={row.foodCategory}
+                          label={row.basicInfo?.foodCategory || row.foodCategory}
                           color={getCategoryColor(row.foodCategory)}
                           size="medium"
                           sx={{ 
@@ -504,7 +505,7 @@ export default function OnboardingRequests() {
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           <Typography variant="body2" color="text.secondary">
-                            {row.ownerName}
+                            {row.basicInfo?.ownerName || row.ownerName}
                           </Typography>
                         </Box>
                       </TableCell>

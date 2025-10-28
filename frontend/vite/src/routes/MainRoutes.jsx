@@ -7,6 +7,7 @@ import CustomerRoutes from './CustomerRoutes';
 import SupportRoutes from './SupportRoutes';
 import UtilityRoutes from './UtilityRoutes';
 import RestaurentRoutes from './RestaurentRoutes';
+import ActivityLogRoutes from './ActivityLogRoutes';
 
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated');
@@ -32,6 +33,7 @@ const MainRoutes = {
     CustomerRoutes,
     SupportRoutes,
     RestaurentRoutes,
+    ActivityLogRoutes,
     ...UtilityRoutes
   ]
 };

@@ -34,6 +34,7 @@ app.use('/api/restaurants', require('./routes/restaurant'));
 app.use('/api/permissions', require('./routes/permission'));
 app.use('/api/roles', require('./routes/role'));
 app.use('/api/users', require('./routes/user'));
+app.use('/api/activity-logs', require('./routes/activityLog'));
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

@@ -355,7 +355,7 @@ export default function RestaurantDetail() {
               ← Back to List
             </button>
             <div style={{ marginTop: '24px' }}>
-              <h1 style={styles.restaurantTitle}>{restaurant.restaurantName}</h1>
+              <h1 style={styles.restaurantTitle}>{restaurant.basicInfo?.restaurantName || restaurant.restaurantName}</h1>
               <div style={styles.rating} className="mt-5">
                 <span>★★★★★</span>
                 <span>Application submitted {Math.floor((new Date() - new Date(restaurant.createdAt)) / (1000 * 60 * 60 * 24))} days ago</span>
@@ -408,35 +408,35 @@ export default function RestaurantDetail() {
                     <div style={styles.infoIcon}>🏪</div>
                     <div>
                       <div style={styles.infoLabel}>Restaurant Name</div>
-                      <div style={styles.infoValue}>{restaurant.restaurantName}</div>
+                      <div style={styles.infoValue}>{restaurant.basicInfo?.restaurantName || restaurant.restaurantName}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>📍</div>
                     <div>
                       <div style={styles.infoLabel}>Address</div>
-                      <div style={styles.infoValue}>{restaurant.address}, {restaurant.city}, {restaurant.state} - {restaurant.pincode}</div>
+                      <div style={styles.infoValue}>{restaurant.contactDetails?.address || restaurant.address}, {restaurant.contactDetails?.city || restaurant.city}, {restaurant.contactDetails?.state || restaurant.state} - {restaurant.contactDetails?.pincode || restaurant.pincode}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>📞</div>
                     <div>
                       <div style={styles.infoLabel}>Phone</div>
-                      <div style={styles.infoValue}>{restaurant.phone}</div>
+                      <div style={styles.infoValue}>{restaurant.contactDetails?.phone || restaurant.phone}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>🌍</div>
                     <div>
                       <div style={styles.infoLabel}>Country</div>
-                      <div style={styles.infoValue}>{restaurant.country}</div>
+                      <div style={styles.infoValue}>{restaurant.contactDetails?.country || restaurant.country}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>💰</div>
                     <div>
                       <div style={styles.infoLabel}>Currency</div>
-                      <div style={styles.infoValue}>{restaurant.country === 'India' ? 'INR (₹)' : restaurant.country === 'United States' ? 'USD ($)' : restaurant.country === 'United Kingdom' ? 'GBP (£)' : restaurant.country === 'Canada' ? 'CAD ($)' : restaurant.country === 'Australia' ? 'AUD ($)' : restaurant.country === 'Germany' ? 'EUR (€)' : restaurant.country === 'France' ? 'EUR (€)' : restaurant.country === 'Japan' ? 'JPY (¥)' : restaurant.country === 'Singapore' ? 'SGD ($)' : restaurant.country === 'UAE' ? 'AED (د.إ)' : 'USD ($)'}</div>
+                      <div style={styles.infoValue}>{(restaurant.contactDetails?.country || restaurant.country) === 'India' ? 'INR (₹)' : (restaurant.contactDetails?.country || restaurant.country) === 'United States' ? 'USD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'United Kingdom' ? 'GBP (£)' : (restaurant.contactDetails?.country || restaurant.country) === 'Canada' ? 'CAD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'Australia' ? 'AUD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'Germany' ? 'EUR (€)' : (restaurant.contactDetails?.country || restaurant.country) === 'France' ? 'EUR (€)' : (restaurant.contactDetails?.country || restaurant.country) === 'Japan' ? 'JPY (¥)' : (restaurant.contactDetails?.country || restaurant.country) === 'Singapore' ? 'SGD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'UAE' ? 'AED (د.إ)' : 'USD ($)'}</div>
                     </div>
                   </div>
                 </div>
@@ -446,35 +446,35 @@ export default function RestaurantDetail() {
                     <div style={styles.infoIcon}>✉️</div>
                     <div>
                       <div style={styles.infoLabel}>Email</div>
-                      <div style={styles.infoValue}>{restaurant.email}</div>
+                      <div style={styles.infoValue}>{restaurant.contactDetails?.email || restaurant.email}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>📄</div>
                     <div>
                       <div style={styles.infoLabel}>License Number</div>
-                      <div style={styles.infoValue}>{restaurant.licenseNumber}</div>
+                      <div style={styles.infoValue}>{restaurant.businessDetails?.licenseNumber || restaurant.licenseNumber}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>🏛️</div>
                     <div>
                       <div style={styles.infoLabel}>GST Number</div>
-                      <div style={styles.infoValue}>{restaurant.gstNumber}</div>
+                      <div style={styles.infoValue}>{restaurant.businessDetails?.gstNumber || restaurant.gstNumber}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>🏦</div>
                     <div>
                       <div style={styles.infoLabel}>Bank Account</div>
-                      <div style={styles.infoValue}>{restaurant.bankAccount}</div>
+                      <div style={styles.infoValue}>{restaurant.businessDetails?.bankAccount || restaurant.bankAccount}</div>
                     </div>
                   </div>
                   <div style={styles.infoItem}>
                     <div style={styles.infoIcon}>🔢</div>
                     <div>
                       <div style={styles.infoLabel}>IFSC Code</div>
-                      <div style={styles.infoValue}>{restaurant.ifscCode}</div>
+                      <div style={styles.infoValue}>{restaurant.businessDetails?.ifscCode || restaurant.ifscCode}</div>
                     </div>
                   </div>
                 </div>
@@ -484,9 +484,9 @@ export default function RestaurantDetail() {
                 <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '12px' }}>Food Categories</h3>
                 <div style={styles.chipContainer}>
                   <span style={{ ...styles.chip, ...styles.vegChip }}>
-                    {restaurant.foodCategory}
+                    {restaurant.basicInfo?.foodCategory || restaurant.foodCategory}
                   </span>
-                  {restaurant.cuisineTypes && restaurant.cuisineTypes.map((cuisine, index) => (
+                  {(restaurant.basicInfo?.cuisineTypes || restaurant.cuisineTypes) && (restaurant.basicInfo?.cuisineTypes || restaurant.cuisineTypes).map((cuisine, index) => (
                     <span key={index} style={{ ...styles.chip, ...styles.outlinedChip }}>
                       {cuisine}
                     </span>
@@ -499,7 +499,7 @@ export default function RestaurantDetail() {
               <div style={{ marginTop: '24px' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '12px' }}>Description</h3>
                 <div style={styles.description}>
-                  {restaurant.description || 'No description provided'}
+                  {restaurant.businessDetails?.description || restaurant.description || 'No description provided'}
                 </div>
               </div>
             </div>
@@ -512,7 +512,7 @@ export default function RestaurantDetail() {
               <hr style={styles.divider} />
 
               <div style={styles.imageGrid}>
-                {restaurant.restaurantImages && restaurant.restaurantImages.map((image, index) => (
+                {(restaurant.documents?.restaurantImages || restaurant.restaurantImages) && (restaurant.documents?.restaurantImages || restaurant.restaurantImages).map((image, index) => (
                   <div
                     key={index}
                     style={styles.imageCard}
@@ -552,7 +552,7 @@ export default function RestaurantDetail() {
                   👤
                 </div>
                 <div>
-                  <div style={styles.ownerName}>{restaurant.ownerName}</div>
+                  <div style={styles.ownerName}>{restaurant.basicInfo?.ownerName || restaurant.ownerName}</div>
                   <div style={styles.ownerTitle}>Restaurant Owner</div>
                 </div>
               </div>
@@ -561,7 +561,7 @@ export default function RestaurantDetail() {
                 <div style={styles.infoIcon}>📱</div>
                 <div>
                   <div style={styles.infoLabel}>Contact</div>
-                  <div style={styles.infoValue}>{restaurant.phone}</div>
+                  <div style={styles.infoValue}>{restaurant.contactDetails?.phone || restaurant.phone}</div>
                 </div>
               </div>
 
@@ -588,7 +588,7 @@ export default function RestaurantDetail() {
                 marginBottom: '16px'
               }}>
                 <div style={styles.infoLabel}>License Number</div>
-                <div style={{ ...styles.infoValue, fontWeight: '600' }}>{restaurant.licenseNumber}</div>
+                <div style={{ ...styles.infoValue, fontWeight: '600' }}>{restaurant.businessDetails?.licenseNumber || restaurant.licenseNumber}</div>
               </div>
 
               <div style={styles.infoItem}>

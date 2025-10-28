@@ -85,6 +85,7 @@ export default function OnboardedRestaurants() {
   };
 
   const getInitials = (name) => {
+    if (!name) return 'R';
     return name.split(' ').map(word => word[0]).join('').toUpperCase();
   };
 
@@ -291,12 +292,12 @@ export default function OnboardedRestaurants() {
                                 boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
                               }}
                             >
-                              {getInitials(row.restaurantName)}
+                              {getInitials(row.basicInfo?.restaurantName || row.restaurantName)}
                             </Avatar>
                           </Badge>
                           <Box>
                             <Typography variant="h6" fontWeight="bold" color="text.primary">
-                              {row.restaurantName}
+                              {row.basicInfo?.restaurantName || row.restaurantName}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                               Active for {getDaysAgo(row.updatedAt)} days
@@ -310,19 +311,19 @@ export default function OnboardedRestaurants() {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <LocationOn sx={{ fontSize: 18, color: 'text.secondary' }} />
                             <Typography variant="body2" fontWeight="500">
-                              {row.city}, {row.state}
+                              {row.contactDetails?.city || row.city}, {row.contactDetails?.state || row.state}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Phone sx={{ fontSize: 16, color: 'text.secondary' }} />
                             <Typography variant="caption" color="text.secondary">
-                              {row.phone}
+                              {row.contactDetails?.phone || row.phone}
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                             <Email sx={{ fontSize: 16, color: 'text.secondary' }} />
                             <Typography variant="caption" color="text.secondary">
-                              {row.email}
+                              {row.contactDetails?.email || row.email}
                             </Typography>
                           </Box>
                         </Stack>
@@ -331,7 +332,7 @@ export default function OnboardedRestaurants() {
                       <TableCell>
                         <Chip
                           icon={<Fastfood sx={{ fontSize: 18 }} />}
-                          label={row.foodCategory}
+                          label={row.basicInfo?.foodCategory || row.foodCategory}
                           color={getCategoryColor(row.foodCategory)}
                           size="medium"
                           sx={{ 
