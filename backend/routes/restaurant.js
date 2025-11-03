@@ -84,8 +84,7 @@ router.post('/login', async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Login successful',
-      token: token,
-      data: restaurantResponse
+      token: token
     });
   } catch (error) {
     res.status(500).json({
@@ -391,12 +390,12 @@ router.post(
 
       // Send email (optional)
       try {
-        // await sendUserCredentials(
-        //   restaurantData.email,
-        //   restaurantData.restaurantName,
-        //   tempPassword,
-        //   'Restaurant'
-        // );
+        await sendUserCredentials(
+          restaurantData.email,
+          restaurantData.restaurantName,
+          tempPassword,
+          'Restaurant'
+        );
       } catch (emailError) {
         console.error('❌ Email sending failed:', emailError);
       }
