@@ -4,6 +4,7 @@ const RestaurantSession = require('../models/RestaurantSession');
 const restaurantAuthMiddleware = async (req, res, next) => {
   try {
     const token = req.cookies.RestaurantToken;
+    console.log('RestaurantToken:', token);
     
     if (!token) {
       return res.status(401).json({
