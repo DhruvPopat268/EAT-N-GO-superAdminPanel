@@ -3,7 +3,13 @@ const RestaurantSession = require('../models/RestaurantSession');
 
 const restaurantAuthMiddleware = async (req, res, next) => {
   try {
-    const token = req.cookies.RestaurantToken;
+    let token = req.cookies.RestaurantToken;
+    
+    // Fallback to Authorization header if cookie is not present
+    if (!token && req.headers.authorization) {
+      token = req.headers.authorization.replace('Bearer ', '');
+    }
+    
     console.log('RestaurantToken:', token);
     
     if (!token) {
