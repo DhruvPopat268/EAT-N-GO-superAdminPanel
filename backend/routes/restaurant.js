@@ -212,6 +212,133 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
   }
 });
 
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Restaurent <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+// Get current restaurant details (using restaurant middleware)
+router.get('/details', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.restaurant.restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: restaurant
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching restaurant details',
+      error: error.message
+    });
+  }
+});
+
+// Get restaurant useful details
+router.get('/usefullDetails', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findById(req.restaurant.restaurantId, 'basicInfo.foodCategory contactDetails.country');
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    const foodCategory = restaurant.basicInfo?.foodCategory;
+    const categories = foodCategory === 'Mixed' ? ['Veg', 'Non-Veg'] : [foodCategory];
+
+    res.status(200).json({
+      success: true,
+      data: { 
+        foodCategory: categories,
+        country: restaurant.contactDetails?.country
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching food category',
+      error: error.message
+    });
+  }
+});
+
+// Update restaurant data
+router.patch('/updateData', restaurantAuthMiddleware, upload.array('restaurantImages', 10), async (req, res) => {
+  try {
+    const restaurantId = req.restaurant.restaurantId;
+
+    // Get existing restaurant data
+    const existingRestaurant = await Restaurant.findById(restaurantId);
+
+    // Parse JSON data from form
+    const updateData = {};
+    if (req.body.basicInfo) {
+      updateData.basicInfo = JSON.parse(req.body.basicInfo);
+    }
+    if (req.body.contactDetails) {
+      updateData.contactDetails = JSON.parse(req.body.contactDetails);
+    }
+    if (req.body.businessDetails) {
+      updateData.businessDetails = JSON.parse(req.body.businessDetails);
+    }
+
+    // Collect existing image URLs from form data
+    const existingImages = [];
+    Object.keys(req.body).forEach(key => {
+      if (key.startsWith('restaurantImages_existing_') && req.body[key].startsWith('http')) {
+        existingImages.push(req.body[key]);
+      }
+    });
+
+    // Upload new restaurant images if provided
+    let newUploadedImages = [];
+    if (req.files && req.files.length > 0) {
+      newUploadedImages = await Promise.all(
+        req.files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
+      );
+    }
+
+    // Combine existing and new images
+    const allImages = [...existingImages, ...newUploadedImages];
+
+    if (allImages.length > 0) {
+      updateData.documents = { ...existingRestaurant.documents, restaurantImages: allImages };
+    }
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      updateData,
+      { new: true }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Restaurant updated successfully',
+      data: restaurant
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating restaurant',
+      error: error.message
+    });
+  }
+});
+
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
 // Get all restaurants
 router.get('/', authMiddleware, async (req, res) => {
   try {
@@ -247,7 +374,7 @@ router.get('/pending', authMiddleware, async (req, res) => {
 
 router.get('/approved', authMiddleware, async (req, res) => {
   try {
-    const restaurants = await Restaurant.find({ status: "approved" }).sort({ createdAt: -1 });
+    const restaurants = await Restaurant.find({ status: "approved" }).sort({ updatedAt: -1 });
     res.status(200).json({
       success: true,
       data: restaurants
@@ -263,7 +390,7 @@ router.get('/approved', authMiddleware, async (req, res) => {
 
 router.get('/rejected', authMiddleware, async (req, res) => {
   try {
-    const restaurants = await Restaurant.find({ status: "rejected" }).sort({ createdAt: -1 });
+    const restaurants = await Restaurant.find({ status: "rejected" }).sort({ updatedAt: -1 });
     res.status(200).json({
       success: true,
       data: restaurants
@@ -563,92 +690,6 @@ router.put('/:id', authMiddleware, upload.fields([
     });
   }
 });
-
-// // Approve restaurant (only from pending)
-// router.patch('/:id/approve', authMiddleware, async (req, res) => {
-//   try {
-//     const restaurant = await Restaurant.findById(req.params.id);
-//     if (!restaurant) {
-//       return res.status(404).json({
-//         success: false,
-//         message: 'Restaurant not found'
-//       });
-//     }
-
-//     if (restaurant.status !== 'pending') {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Can only approve restaurants with pending status'
-//       });
-//     }
-
-//     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
-//       req.params.id,
-//       { status: 'approved' },
-//       { new: true }
-//     );
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Restaurant approved successfully',
-//       data: updatedRestaurant
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: 'Error approving restaurant',
-//       error: error.message
-//     });
-//   }
-// });
-
-// // Reject restaurant (only from pending)
-// router.patch('/:id/reject', authMiddleware, async (req, res) => {
-//   try {
-//     const { reason, formFields } = req.body;
-
-//     const restaurant = await Restaurant.findById(req.params.id);
-//     if (!restaurant) {
-//       return res.status(404).json({
-//         success: false,
-//         message: 'Restaurant not found'
-//       });
-//     }
-
-//     if (restaurant.status !== 'pending') {
-//       return res.status(400).json({
-//         success: false,
-//         message: 'Can only reject restaurants with pending status'
-//       });
-//     }
-
-//     const updateData = { status: 'rejected' };
-//     if (reason) {
-//       updateData.rejectionReason = reason;
-//     }
-//     if (formFields && formFields.length > 0) {
-//       updateData.rejectedFormFields = formFields;
-//     }
-
-//     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
-//       req.params.id,
-//       updateData,
-//       { new: true }
-//     );
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Restaurant rejected successfully',
-//       data: updatedRestaurant
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: 'Error rejecting restaurant',
-//       error: error.message
-//     });
-//   }
-// });
 
 // Delete restaurant
 router.delete('/:id', authMiddleware, async (req, res) => {

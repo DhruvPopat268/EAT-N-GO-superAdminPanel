@@ -53,14 +53,13 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
-
-
 export default function OnboardingRequests() {
   const theme = useTheme();
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [hoveredRow, setHoveredRow] = useState(null);
   const [rejectDialog, setRejectDialog] = useState({ open: false, restaurantId: null });
+  const [approveDialog, setApproveDialog] = useState({ open: false, restaurantId: null, restaurantName: '' });
   const [rejectionReason, setRejectionReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [selectedFormFields, setSelectedFormFields] = useState([]);
@@ -95,25 +94,35 @@ export default function OnboardingRequests() {
     if (action === 'reject') {
       setRejectDialog({ open: true, restaurantId: id });
     } else if (action === 'approve') {
-      setActionLoading(id);
-      try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/approve/${id}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
-        });
-        const result = await response.json();
-        if (result.success) {
-          setRestaurants(prev => prev.filter(r => r._id !== id));
-        }
-      } catch (error) {
-        console.error('Error approving restaurant:', error);
-      } finally {
-        setActionLoading(null);
-      }
+      const restaurant = restaurants.find(r => r._id === id);
+      setApproveDialog({ open: true, restaurantId: id, restaurantName: restaurant?.basicInfo?.restaurantName || restaurant?.restaurantName || 'this restaurant' });
     }
+  };
+
+  const handleApproveConfirm = async () => {
+    setActionLoading(approveDialog.restaurantId);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/approve/${approveDialog.restaurantId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRestaurants(prev => prev.filter(r => r._id !== approveDialog.restaurantId));
+      }
+    } catch (error) {
+      console.error('Error approving restaurant:', error);
+    } finally {
+      setActionLoading(null);
+    }
+    setApproveDialog({ open: false, restaurantId: null, restaurantName: '' });
+  };
+
+  const handleApproveCancel = () => {
+    setApproveDialog({ open: false, restaurantId: null, restaurantName: '' });
   };
 
   const handleRejectConfirm = async () => {
@@ -669,6 +678,39 @@ export default function OnboardingRequests() {
             </Card>
           </Box>
       )}
+
+      {/* Approval Confirmation Dialog */}
+      <Dialog open={approveDialog.open} onClose={handleApproveCancel} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          <CheckCircle sx={{ fontSize: 48, color: 'success.main', mb: 2 }} />
+          <Typography variant="h5" fontWeight="bold">
+            Approve Restaurant?
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', pb: 2 }}>
+          <Typography variant="body1" color="text.secondary">
+            Are you sure you want to approve <strong>{approveDialog.restaurantName}</strong>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This action will activate the restaurant and allow them to start receiving orders.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3 }}>
+          <Button onClick={handleApproveCancel} variant="outlined" sx={{ minWidth: 100 }}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleApproveConfirm} 
+            color="success" 
+            variant="contained"
+            disabled={actionLoading}
+            startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : <CheckCircle />}
+            sx={{ minWidth: 100 }}
+          >
+            {actionLoading ? 'Approving...' : 'Approve'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Rejection Reason Dialog */}
       <Dialog open={rejectDialog.open} onClose={handleRejectCancel} maxWidth="sm" fullWidth>

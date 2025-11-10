@@ -15,7 +15,7 @@
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "4.4.1",
     "apexcharts": "4.7.0",
-    "axios": "^1.13.0",
+    "axios": "^1.13.1",
     "date-fns": "^4.1.0",
     "framer-motion": "12.10.1",
     "lodash-es": "4.17.21",

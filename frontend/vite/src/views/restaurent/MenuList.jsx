@@ -34,13 +34,9 @@ import {
 } from '@mui/material';
 import { Edit, Delete, Visibility, CloudUpload } from '@mui/icons-material';
 import { IconBuildingStore, IconSearch, IconChefHat } from '@tabler/icons-react';
+import { useNavigate } from 'react-router-dom';
 
-const mockRestaurants = [
-  { id: 1, name: 'Pizza Palace' },
-  { id: 2, name: 'Burger House' },
-  { id: 3, name: 'Sushi World' },
-  { id: 4, name: 'Taco Bell' }
-];
+
 
 const categoryOptions = [
   { id: 'all', name: 'All Categories' },
@@ -67,113 +63,66 @@ const subcategoryOptions = [
   { id: 'sandwiches', name: 'Sandwiches' }
 ];
 
-const mockMenuItems = {
-  1: [
-    { 
-      id: 1, 
-      name: 'Margherita Pizza', 
-      description: 'Classic pizza with tomato and mozzarella', 
-      price: 299, 
-      category: 'veg', 
-      subcategory: 'pizza',
-      attributeValue: 1,
-      attributeUnit: 'medium', 
-      status: 'active',
-      image: '/pizza1.jpg'
-    },
-    { 
-      id: 2, 
-      name: 'Pepperoni Pizza', 
-      description: 'Pizza with pepperoni and cheese', 
-      price: 399, 
-      category: 'non-veg', 
-      subcategory: 'pizza',
-      attributeValue: 1,
-      attributeUnit: 'large', 
-      status: 'active',
-      image: '/pizza2.jpg'
-    },
-    { 
-      id: 3, 
-      name: 'Coca Cola', 
-      description: 'Refreshing cold drink', 
-      price: 50, 
-      category: 'veg', 
-      subcategory: 'beverages',
-      attributeValue: 330,
-      attributeUnit: 'ml', 
-      status: 'inactive',
-      image: '/coke.jpg'
-    }
-  ],
-  2: [
-    { 
-      id: 4, 
-      name: 'Chicken Burger', 
-      description: 'Grilled chicken burger with lettuce', 
-      price: 199, 
-      category: 'non-veg', 
-      subcategory: 'burger',
-      attributeValue: 1,
-      attributeUnit: 'regular', 
-      status: 'active',
-      image: '/burger1.jpg'
-    },
-    { 
-      id: 5, 
-      name: 'Paneer Burger', 
-      description: 'Grilled paneer burger with vegetables', 
-      price: 179, 
-      category: 'veg', 
-      subcategory: 'burger',
-      attributeValue: 1,
-      attributeUnit: 'regular', 
-      status: 'active',
-      image: '/burger2.jpg'
-    }
-  ],
-  3: [
-    { 
-      id: 6, 
-      name: 'Hakka Noodles', 
-      description: 'Stir-fried noodles with vegetables', 
-      price: 180, 
-      category: 'veg', 
-      subcategory: 'chinese',
-      attributeValue: 250,
-      attributeUnit: 'grams', 
-      status: 'active',
-      image: '/noodles.jpg'
-    }
-  ],
-  4: [
-    { 
-      id: 7, 
-      name: 'Butter Chicken', 
-      description: 'Creamy tomato-based chicken curry', 
-      price: 320, 
-      category: 'non-veg', 
-      subcategory: 'punjabi',
-      attributeValue: 2,
-      attributeUnit: 'pieces', 
-      status: 'active',
-      image: '/butter-chicken.jpg'
-    }
-  ]
-};
 
 export default function MenuList() {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(categoryOptions[0]);
   const [selectedSubcategory, setSelectedSubcategory] = useState(subcategoryOptions[0]);
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [searchTerm, setSearchTerm] = useState('');
-  const [menuItems, setMenuItems] = useState(mockMenuItems);
+  const [menuItems, setMenuItems] = useState([]);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+
+  React.useEffect(() => {
+    fetchRestaurantNames();
+  }, []);
+
+  React.useEffect(() => {
+    if (selectedRestaurant) {
+      fetchMenuItems(selectedRestaurant.restaurantId);
+    } else {
+      setMenuItems([]);
+    }
+  }, [selectedRestaurant]);
+
+  const fetchRestaurantNames = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/restaurantNames`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        setRestaurants(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant names:', error);
+    }
+  };
+
+  const fetchMenuItems = async (restaurantId) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/byRestaurant`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ restaurantId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMenuItems(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching menu items:', error);
+    }
+  };
 
   const handleStatusToggle = (itemId) => {
     setMenuItems(prevItems => {
@@ -190,22 +139,18 @@ export default function MenuList() {
   };
 
   const handleViewItem = (itemId) => {
-    const item = filteredItems.find(item => item.id === itemId);
-    setSelectedItem(item);
-    setViewDialogOpen(true);
+    navigate(`/item-detail/${itemId}`);
   };
 
   const handleEditItem = (itemId) => {
-    const item = filteredItems.find(item => item.id === itemId);
+    const item = filteredItems.find(item => item._id === itemId);
     setSelectedItem(item);
     setEditFormData({
       name: item.name,
       description: item.description,
-      price: item.price,
-      attributeValue: item.attributeValue,
-      attributeUnit: item.attributeUnit,
-      category: categoryOptions.find(cat => cat.id === item.category),
-      subcategory: subcategoryOptions.find(sub => sub.id === item.subcategory)
+      price: item.attributes[0]?.price || 0,
+      category: categoryOptions.find(cat => cat.id.toLowerCase() === item.category.toLowerCase()),
+      subcategory: { id: item.subcategory._id, name: item.subcategory.name }
     });
     setEditDialogOpen(true);
   };
@@ -249,21 +194,22 @@ export default function MenuList() {
   const getFilteredItems = () => {
     if (!selectedRestaurant) return [];
     
-    let items = menuItems[selectedRestaurant.id] || [];
+    let items = menuItems || [];
     
     // Filter by category
-    if (selectedCategory.id !== 'all') {
-      items = items.filter(item => item.category === selectedCategory.id);
+    if (selectedCategory?.id !== 'all') {
+      items = items.filter(item => item.category?.toLowerCase() === selectedCategory.id.toLowerCase());
     }
     
     // Filter by subcategory
-    if (selectedSubcategory.id !== 'all') {
-      items = items.filter(item => item.subcategory === selectedSubcategory.id);
+    if (selectedSubcategory?.id !== 'all') {
+      items = items.filter(item => item.subcategory?.name?.toLowerCase() === selectedSubcategory.name?.toLowerCase());
     }
     
     // Filter by status
     if (selectedStatus !== 'All Status') {
-      items = items.filter(item => item.status === selectedStatus);
+      const statusValue = selectedStatus === 'active';
+      items = items.filter(item => item.isAvailable === statusValue);
     }
     
     // Filter by search term
@@ -309,7 +255,7 @@ export default function MenuList() {
             <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
               <Autocomplete
                 sx={{ minWidth: 250 }}
-                options={mockRestaurants}
+                options={restaurants}
                 getOptionLabel={(option) => option.name}
                 value={selectedRestaurant}
                 onChange={(event, newValue) => setSelectedRestaurant(newValue)}
@@ -397,12 +343,13 @@ export default function MenuList() {
             <Table sx={{ minWidth: 800 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
-                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Item</TableCell>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Image</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Item</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subcategory</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Attributes</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
                 </TableRow>
@@ -431,7 +378,7 @@ export default function MenuList() {
                           No menu items found
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {searchTerm || selectedCategory.id !== 'all' || selectedSubcategory.id !== 'all' || selectedStatus !== 'All Status'
+                          {searchTerm || selectedCategory?.id !== 'all' || selectedSubcategory?.id !== 'all' || selectedStatus !== 'All Status'
                             ? 'Try adjusting your filters'
                             : 'This restaurant has no menu items yet'
                           }
@@ -441,27 +388,26 @@ export default function MenuList() {
                   </TableRow>
                 ) : (
                   filteredItems.map((item, index) => (
-                    <Fade in timeout={1200 + index * 100} key={item.id}>
+                    <Fade in timeout={1200 + index * 100} key={item._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
+                        <TableCell>#{index + 1}</TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Avatar 
-                              src={item.image} 
-                              sx={{ 
-                                bgcolor: 'white', 
-                                width: 50, 
-                                height: 50,
-                                borderRadius: 2
-                              }}
-                            >
-                              <IconChefHat size={24} />
-                            </Avatar>
-                            <Box>
-                              <Typography variant="subtitle1" fontWeight="bold">
-                                {item.name}
-                              </Typography>
-                            </Box>
-                          </Box>
+                          <Avatar 
+                            src={item.images?.[0]} 
+                            sx={{ 
+                              bgcolor: 'white', 
+                              width: 60, 
+                              height: 60,
+                              borderRadius: 2
+                            }}
+                          >
+                            <IconChefHat size={24} />
+                          </Avatar>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {item.name}
+                          </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200 }}>
@@ -470,15 +416,15 @@ export default function MenuList() {
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={categoryOptions.find(cat => cat.id === item.category)?.name || item.category} 
-                            color={item.category === 'veg' ? 'success' : item.category === 'non-veg' ? 'error' : 'warning'} 
+                            label={item.category} 
+                            color={item.category.toLowerCase() === 'veg' ? 'success' : item.category.toLowerCase() === 'non-veg' ? 'error' : 'warning'} 
                             variant="outlined"
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={subcategoryOptions.find(sub => sub.id === item.subcategory)?.name || item.subcategory} 
+                            label={item.subcategory?.name || 'N/A'} 
                             color="primary" 
                             variant="outlined"
                             size="small"
@@ -486,27 +432,19 @@ export default function MenuList() {
                         </TableCell>
                         <TableCell>
                           <Typography variant="h6" fontWeight="bold">
-                            ₹{item.price}
+                            ₹{item.attributes?.[0]?.price || 0}
                           </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={`${item.attributeValue} ${item.attributeUnit}`} 
-                            color="secondary" 
-                            variant="outlined"
-                            size="small"
-                          />
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Switch
-                              checked={item.status === 'active'}
-                              onChange={() => handleStatusToggle(item.id)}
+                              checked={item.isAvailable}
+                              onChange={() => handleStatusToggle(item._id)}
                               size="small"
                             />
                             <Chip 
-                              label={item.status} 
-                              color={item.status === 'active' ? 'success' : 'error'}
+                              label={item.isAvailable ? 'Available' : 'Unavailable'} 
+                              color={item.isAvailable ? 'success' : 'error'}
                               variant="outlined"
                               size="small"
                             />
@@ -516,7 +454,7 @@ export default function MenuList() {
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <Tooltip title="View Item" arrow>
                               <IconButton
-                                onClick={() => handleViewItem(item.id)}
+                                onClick={() => handleViewItem(item._id)}
                                 sx={{ 
                                   color: 'info.main',
                                   borderRadius: 1,
@@ -532,7 +470,7 @@ export default function MenuList() {
                             </Tooltip>
                             <Tooltip title="Edit Item" arrow>
                               <IconButton
-                                onClick={() => handleEditItem(item.id)}
+                                onClick={() => handleEditItem(item._id)}
                                 sx={{ 
                                   color: 'secondary.main',
                                   borderRadius: 1,
@@ -548,7 +486,7 @@ export default function MenuList() {
                             </Tooltip>
                             <Tooltip title="Delete Item" arrow>
                               <IconButton
-                                onClick={() => handleDeleteItem(item.id)}
+                                onClick={() => handleDeleteItem(item._id)}
                                 sx={{ 
                                   color: 'error.main',
                                   borderRadius: 1,
@@ -615,7 +553,7 @@ export default function MenuList() {
                     size="small"
                   />
                   <Chip 
-                    label={subcategoryOptions.find(sub => sub.id === selectedItem.subcategory)?.name} 
+                    label={selectedItem.subcategory?.name || 'N/A'} 
                     color="primary" 
                     variant="outlined"
                     size="small"
