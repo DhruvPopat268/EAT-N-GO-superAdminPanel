@@ -10,6 +10,7 @@ const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
 const { sendUserCredentials } = require('../services/emailService');
 const router = express.Router();
+const Item = require('../models/Item');
 
 const uploadToCloudinary = (buffer, folder) => {
   return new Promise((resolve, reject) => {
@@ -338,6 +339,22 @@ router.patch('/updateData', restaurantAuthMiddleware, upload.array('restaurantIm
 });
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+// Get distinct restaurant names from items
+router.get('/restaurantNames', authMiddleware , async (req, res) => {
+  try {
+    const restaurants = await Item.aggregate([
+      { $group: { _id: '$restaurantId' } },
+      { $lookup: { from: 'restaurants', localField: '_id', foreignField: '_id', as: 'restaurant' } },
+      { $unwind: '$restaurant' },
+      { $project: { restaurantId: '$restaurant._id', name: '$restaurant.basicInfo.restaurantName' } },
+      { $sort: { name: 1 } }
+    ]);
+    res.json({ success: true, data: restaurants });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Get all restaurants
 router.get('/', authMiddleware, async (req, res) => {

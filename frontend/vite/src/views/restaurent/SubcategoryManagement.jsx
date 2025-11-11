@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -32,59 +32,68 @@ import {
 } from '@mui/material';
 import { Edit, Delete, CloudUpload } from '@mui/icons-material';
 import { IconCategory, IconPlus } from '@tabler/icons-react';
+import axios from 'axios';
 
-const mockSubcategories = [
-  { 
-    id: 1, 
-    name: 'Pizza', 
-    category: 'veg', 
-    image: '/pizza-category.jpg',
-    status: 'active',
-    createdAt: '2024-01-15'
-  },
-  { 
-    id: 2, 
-    name: 'Burger', 
-    category: 'non-veg', 
-    image: '/burger-category.jpg',
-    status: 'active',
-    createdAt: '2024-01-16'
-  },
-  { 
-    id: 3, 
-    name: 'Chinese', 
-    category: 'mixed', 
-    image: '/chinese-category.jpg',
-    status: 'inactive',
-    createdAt: '2024-01-17'
-  },
-  { 
-    id: 4, 
-    name: 'Beverages', 
-    category: 'veg', 
-    image: '/beverages-category.jpg',
-    status: 'active',
-    createdAt: '2024-01-18'
-  }
-];
+
 
 export default function SubcategoryManagement() {
   const theme = useTheme();
-  const [subcategories, setSubcategories] = useState(mockSubcategories);
+  const [subcategories, setSubcategories] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
+    restaurantId: '',
     image: null
   });
 
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  useEffect(() => {
+    if (selectedRestaurant) {
+      fetchSubcategories();
+    }
+  }, [selectedRestaurant]);
+
+  const fetchRestaurants = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/restaurantNames`, { withCredentials: true });
+      setRestaurants(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+      setRestaurants([]);
+    }
+  };
+
+  const fetchSubcategories = async () => {
+    if (!selectedRestaurant) return;
+    setLoading(true);
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories?restaurantId=${selectedRestaurant}`);
+      setSubcategories(response.data);
+    } catch (error) {
+      console.error('Error fetching subcategories:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddSubcategory = () => {
+    if (!selectedRestaurant) {
+      alert('Please select a restaurant first');
+      return;
+    }
     setEditMode(false);
-    setFormData({ name: '', category: '', image: null });
+    setFormData({ name: '', category: '', restaurantId: selectedRestaurant, image: null });
     setDialogOpen(true);
   };
 
@@ -94,44 +103,51 @@ export default function SubcategoryManagement() {
     setFormData({
       name: subcategory.name,
       category: subcategory.category,
+      restaurantId: subcategory.restaurantId || selectedRestaurant,
       image: null
     });
     setDialogOpen(true);
   };
 
-  const handleDeleteSubcategory = (id) => {
+  const handleDeleteSubcategory = async (id) => {
     if (window.confirm('Are you sure you want to delete this subcategory?')) {
-      setSubcategories(prev => prev.filter(item => item.id !== id));
+      try {
+        await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories/${id}`);
+        setSubcategories(prev => prev.filter(item => item.id !== id));
+      } catch (error) {
+        console.error('Error deleting subcategory:', error);
+      }
     }
   };
 
-  const handleStatusToggle = (id) => {
-    setSubcategories(prev => prev.map(item => 
-      item.id === id 
-        ? { ...item, status: item.status === 'active' ? 'inactive' : 'active' }
-        : item
-    ));
-  };
-
-  const handleSubmit = () => {
-    if (editMode) {
-      setSubcategories(prev => prev.map(item => 
-        item.id === selectedSubcategory.id 
-          ? { ...item, name: formData.name, category: formData.category }
-          : item
+  const handleStatusToggle = async (id) => {
+    const subcategory = subcategories.find(item => item.id === id);
+    const newStatus = subcategory.status === 'active' ? 'inactive' : 'active';
+    try {
+      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories/${id}`, { ...subcategory, status: newStatus });
+      setSubcategories(prev => prev.map(item =>
+        item.id === id ? { ...item, status: newStatus } : item
       ));
-    } else {
-      const newSubcategory = {
-        id: Date.now(),
-        name: formData.name,
-        category: formData.category,
-        image: '/default-category.jpg',
-        status: 'active',
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setSubcategories(prev => [...prev, newSubcategory]);
+    } catch (error) {
+      console.error('Error updating subcategory status:', error);
     }
-    setDialogOpen(false);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (editMode) {
+        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories/${selectedSubcategory.id}`, formData);
+        setSubcategories(prev => prev.map(item =>
+          item.id === selectedSubcategory.id ? response.data : item
+        ));
+      } else {
+        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories`, formData);
+        setSubcategories(prev => [...prev, response.data]);
+      }
+      setDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving subcategory:', error);
+    }
   };
 
   const filteredSubcategories = subcategories.filter(item => {
@@ -184,6 +200,21 @@ export default function SubcategoryManagement() {
       <Fade in timeout={900}>
         <Card sx={{ mb: 3, p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
           <Stack direction="row" spacing={3} alignItems="center">
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel>Restaurant</InputLabel>
+              <Select
+                value={selectedRestaurant}
+                label="Restaurant"
+                onChange={(e) => setSelectedRestaurant(e.target.value)}
+              >
+                <MenuItem value="">Select Restaurant</MenuItem>
+                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                    {restaurant.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <FormControl sx={{ minWidth: 180 }}>
               <InputLabel>Category</InputLabel>
               <Select
@@ -214,9 +245,9 @@ export default function SubcategoryManagement() {
       </Fade>
 
       <Fade in timeout={1000}>
-        <Card 
-          sx={{ 
-            borderRadius: 3, 
+        <Card
+          sx={{
+            borderRadius: 3,
             border: '1px solid rgba(0,0,0,0.06)',
             overflow: 'hidden',
             background: 'white'
@@ -252,89 +283,48 @@ export default function SubcategoryManagement() {
                   filteredSubcategories.map((subcategory, index) => (
                     <Fade in timeout={1200 + index * 100} key={subcategory.id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
+
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Avatar 
-                              src={subcategory.image} 
-                              sx={{ 
-                                bgcolor: 'primary.main', 
-                                width: 50, 
-                                height: 50,
-                                borderRadius: 2
-                              }}
-                            >
-                              <IconCategory size={24} />
-                            </Avatar>
-                            <Box>
-                              <Typography variant="subtitle1" fontWeight="bold">
-                                {subcategory.name}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={subcategory.category.charAt(0).toUpperCase() + subcategory.category.slice(1)} 
-                            color={getCategoryColor(subcategory.category)} 
-                            variant="outlined"
+                          <Chip
+                            label={subcategory.category}
+                            color={getCategoryColor(subcategory.category)}
                             size="small"
+                            sx={{ textTransform: 'capitalize' }}
                           />
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Switch
-                              checked={subcategory.status === 'active'}
-                              onChange={() => handleStatusToggle(subcategory.id)}
-                              size="small"
-                            />
-                            <Chip 
-                              label={subcategory.status} 
-                              color={subcategory.status === 'active' ? 'success' : 'error'}
-                              variant="outlined"
-                              size="small"
-                            />
-                          </Box>
+                          <Switch
+                            checked={subcategory.status === 'active'}
+                            onChange={() => handleStatusToggle(subcategory.id)}
+                            color="primary"
+                          />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2">
                             {new Date(subcategory.createdAt).toLocaleDateString()}
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Tooltip title="Edit Subcategory" arrow>
+                          <Stack direction="row" spacing={1}>
+                            <Tooltip title="Edit">
                               <IconButton
+                                size="small"
                                 onClick={() => handleEditSubcategory(subcategory)}
-                                sx={{ 
-                                  color: 'secondary.main',
-                                  borderRadius: 1,
-                                  '&:hover': {
-                                    backgroundColor: 'secondary.main',
-                                    color: 'white',
-                                    transform: 'scale(1.08)'
-                                  }
-                                }}
+                                sx={{ color: 'primary.main' }}
                               >
-                                <Edit sx={{ fontSize: 18 }} />
+                                <Edit size={18} />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Delete Subcategory" arrow>
+                            <Tooltip title="Delete">
                               <IconButton
+                                size="small"
                                 onClick={() => handleDeleteSubcategory(subcategory.id)}
-                                sx={{ 
-                                  color: 'error.main',
-                                  borderRadius: 1,
-                                  '&:hover': {
-                                    backgroundColor: 'error.main',
-                                    color: 'white',
-                                    transform: 'scale(1.08)'
-                                  }
-                                }}
+                                sx={{ color: 'error.main' }}
                               >
-                                <Delete sx={{ fontSize: 18 }} />
+                                <Delete size={18} />
                               </IconButton>
                             </Tooltip>
-                          </Box>
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     </Fade>
@@ -346,90 +336,76 @@ export default function SubcategoryManagement() {
         </Card>
       </Fade>
 
-      {/* Add/Edit Dialog */}
-      <Dialog 
-        open={dialogOpen} 
-        onClose={() => setDialogOpen(false)} 
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            p: 1,
-            width: 400,
-            maxWidth: 400
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 2 }}>
-          <Typography variant="h5" fontWeight="bold">
-            {editMode ? 'Edit Subcategory' : 'Add New Subcategory'}
-          </Typography>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {editMode ? 'Edit Subcategory' : 'Add New Subcategory'}
         </DialogTitle>
-        <DialogContent sx={{ pb: 2 }}>
+        <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
-            <TextField
-              fullWidth
-              label="Subcategory Name"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              placeholder="Enter subcategory name"
-            />
+            <FormControl fullWidth>
+              <InputLabel>Restaurant</InputLabel>
+              <Select
+                value={formData.restaurantId}
+                label="Restaurant"
+                onChange={(e) => setFormData(prev => ({ ...prev, restaurantId: e.target.value }))}
+                disabled={editMode}
+              >
+                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                    {restaurant.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
                 value={formData.category}
                 label="Category"
-                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
               >
                 <MenuItem value="veg">Veg</MenuItem>
                 <MenuItem value="non-veg">Non-Veg</MenuItem>
                 <MenuItem value="mixed">Mixed</MenuItem>
               </Select>
             </FormControl>
+            <TextField
+              fullWidth
+              label="Subcategory Name"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            />
+
             <Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography variant="body2" fontWeight="bold">
-                  Subcategory Image
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUpload />}
+                fullWidth
+                sx={{ py: 2 }}
+              >
+                Upload Image
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.files[0] }))}
+                />
+              </Button>
+              {formData.image && (
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  Selected: {formData.image.name}
                 </Typography>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUpload />}
-                  sx={{ 
-                    borderStyle: 'dashed',
-                    py: 2,
-                    textTransform: 'none'
-                  }}
-                >
-                  {formData.image ? formData.image.name : 'Upload Image'}
-                  <input
-                    type="file"
-                    hidden
-                    accept="image/*"
-                    onChange={(e) => setFormData({...formData, image: e.target.files[0]})}
-                  />
-                </Button>
-                {formData.image && (
-                  <Typography variant="caption" color="text.secondary">
-                    Selected: {formData.image.name}
-                  </Typography>
-                )}
-              </Box>
+              )}
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={() => setDialogOpen(false)}
-            variant="outlined"
-            sx={{ borderRadius: 2 }}
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="contained" 
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button
             onClick={handleSubmit}
-            disabled={!formData.name || !formData.category}
-            sx={{ borderRadius: 2, px: 3 }}
+            variant="contained"
+            disabled={!formData.name || !formData.category || !formData.restaurantId}
           >
             {editMode ? 'Update' : 'Create'}
           </Button>

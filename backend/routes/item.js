@@ -124,21 +124,6 @@ router.post('/admin/detail', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-// Get distinct restaurant names from items
-router.get('/restaurantNames', authMiddleware, async (req, res) => {
-  try {
-    const restaurants = await Item.aggregate([
-      { $group: { _id: '$restaurantId' } },
-      { $lookup: { from: 'restaurants', localField: '_id', foreignField: '_id', as: 'restaurant' } },
-      { $unwind: '$restaurant' },
-      { $project: { restaurantId: '$restaurant._id', name: '$restaurant.basicInfo.restaurantName' } },
-      { $sort: { name: 1 } }
-    ]);
-    res.json({ success: true, data: restaurants });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
 
 // Delete item
 router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {

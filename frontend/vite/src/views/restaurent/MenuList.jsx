@@ -93,7 +93,7 @@ export default function MenuList() {
 
   const fetchRestaurantNames = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/restaurantNames`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/restaurantNames`, {
         credentials: 'include'
       });
       const result = await response.json();

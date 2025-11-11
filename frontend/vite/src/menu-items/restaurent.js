@@ -67,39 +67,37 @@ const restaurent = {
             type: 'collapse',
             icon: icons.IconChefHat,
             children: [
-                // {
-                //     id: 'add-menu-item',
-                //     title: 'Add Menu Item',
-                //     type: 'item',
-                //     url: '/restaurant/add-menu-item',
-                // },
+                {
+                    id: 'add-menu-item',
+                    title: 'Add Menu Item',
+                    type: 'item',
+                    url: '/restaurant/add-menu-item',
+                },
                 {
                     id: 'menu-list',
                     title: 'Menu List',
                     type: 'item',
                     url: '/restaurant/menu-list',
                 },
-                // {
-                //     id: 'subcategory-management',
-                //     title: 'Subcategory Management',
-                //     type: 'item',
-                //     url: '/restaurant/subcategory-management',
+                {
+                    id: 'subcategory-management',
+                    title: 'Subcategory Management',
+                    type: 'item',
+                    url: '/restaurant/subcategory-management',
+                },
+                {
+                    id: 'attributes-management',
+                    title: 'Attributes Management',
+                    type: 'item',
+                    url: '/restaurant/attributes-management',
+                },
+                {
+                    id: 'addon-management',
+                    title: 'Addon Management',
+                    type: 'item',
+                    url: '/restaurant/addon-management',
                   
-                // },
-                // {
-                //     id: 'attributes-management',
-                //     title: 'Attributes Management',
-                //     type: 'item',
-                //     url: '/restaurant/attributes-management',
-                  
-                // },
-                // {
-                //     id: 'addon-management',
-                //     title: 'Addon Management',
-                //     type: 'item',
-                //     url: '/restaurant/addon-management',
-                  
-                // }
+                }
             ]
         }
     ]
