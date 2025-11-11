@@ -72,7 +72,7 @@ router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async
       updateData,
       { new: true }
     ).populate('subcategory').populate('attributes.attribute');
-    console.log(item);
+    // console.log(item);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
@@ -122,6 +122,24 @@ router.post('/admin/detail', authMiddleware, async (req, res) => {
     res.json({ success: true, data: item });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update item status
+router.patch('/status', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const { itemId, isAvailable } = req.body;
+    const item = await Item.findOneAndUpdate(
+      { _id: itemId, restaurantId: req.restaurant.restaurantId },
+      { isAvailable },
+      { new: true }
+    );
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+    res.json({ success: true, data: item });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 });
 

@@ -127,8 +127,8 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
 ]), async (req, res) => {
   try {
     const restaurantId = req.restaurant?.restaurantId;
-    console.log('Restaurant ID for resubmission:', restaurantId);
-    console.log('Request body for resubmission:', req.body);
+    // console.log('Restaurant ID for resubmission:', restaurantId);
+    // console.log('Request body for resubmission:', req.body);
     const updateData = JSON.parse(req.body.data || '{}');
 
     const restaurant = await Restaurant.findById(restaurantId);
@@ -191,7 +191,7 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
       }
     }
 
-    console.log('Final update data:', JSON.stringify(finalUpdateData, null, 2));
+    // console.log('Final update data:', JSON.stringify(finalUpdateData, null, 2));
 
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
@@ -457,10 +457,10 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      console.log('✅ Received request to register restaurant');
+      // console.log('✅ Received request to register restaurant');
 
       const restaurantData = JSON.parse(req.body.data);
-      console.log('🧾 Parsed restaurant data:', restaurantData);
+      // console.log('🧾 Parsed restaurant data:', restaurantData);
 
       if (!restaurantData.email) {
         return res.status(400).json({

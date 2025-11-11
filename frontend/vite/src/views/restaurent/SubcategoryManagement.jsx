@@ -30,7 +30,8 @@ import {
   Chip,
   Switch,
   Snackbar,
-  Alert
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { Edit, Delete, CloudUpload } from '@mui/icons-material';
 import { IconCategory, IconPlus } from '@tabler/icons-react';
@@ -51,6 +52,7 @@ export default function SubcategoryManagement() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -84,7 +86,7 @@ export default function SubcategoryManagement() {
     if (!selectedRestaurant) return;
     setLoading(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin`, {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/get`, {
         restaurantId: selectedRestaurant
       }, { withCredentials: true });
       setSubcategories(response.data.data || []);
@@ -112,7 +114,7 @@ export default function SubcategoryManagement() {
       restaurantId: subcategory.restaurantId || selectedRestaurant,
       image: null
     });
-    setImagePreview(null);
+    setImagePreview(subcategory.image);
     setDialogOpen(true);
   };
 
@@ -122,7 +124,7 @@ export default function SubcategoryManagement() {
         await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/delete`, {
           data: { id, restaurantId: selectedRestaurant }
         }, { withCredentials: true });
-        setSubcategories(prev => prev.filter(item => item.id !== id));
+        setSubcategories(prev => prev.filter(item => item._id !== id));
         toast.success('Subcategory deleted successfully');
       } catch (error) {
         console.error('Error deleting subcategory:', error);
@@ -132,18 +134,18 @@ export default function SubcategoryManagement() {
   };
 
   const handleStatusToggle = async (id) => {
-    const subcategory = subcategories.find(item => item.id === id);
-    const newStatus = subcategory.status === 'active' ? 'inactive' : 'active';
+    const subcategory = subcategories.find(item => item._id === id);
+    const newStatus = !subcategory.isAvailable;
     try {
       await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/status`, {
         id,
-        isAvailable: newStatus === 'active',
+        isAvailable: newStatus,
         restaurantId: selectedRestaurant
       }, { withCredentials: true });
       setSubcategories(prev => prev.map(item =>
-        item.id === id ? { ...item, status: newStatus } : item
+        item._id === id ? { ...item, isAvailable: newStatus } : item
       ));
-      toast.success(`Subcategory ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
+      toast.success(`Subcategory ${newStatus ? 'activated' : 'deactivated'}`);
     } catch (error) {
       console.error('Error updating subcategory status:', error);
       toast.error('Failed to update status');
@@ -151,18 +153,26 @@ export default function SubcategoryManagement() {
   };
 
   const handleSubmit = async () => {
+    setSubmitting(true);
     try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('category', formData.category);
+      formDataToSend.append('restaurantId', formData.restaurantId);
+
+      if (formData.image) {
+        formDataToSend.append('image', formData.image);
+      }
+
       if (editMode) {
-        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/update`, {
-          id: selectedSubcategory.id,
-          ...formData
-        }, { withCredentials: true });
+        formDataToSend.append('id', selectedSubcategory._id);
+        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/update`, formDataToSend, { withCredentials: true });
         setSubcategories(prev => prev.map(item =>
-          item.id === selectedSubcategory.id ? response.data.data : item
+          item._id === selectedSubcategory._id ? response.data.data : item
         ));
         toast.success('Subcategory updated successfully');
       } else {
-        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin`, formData, { withCredentials: true });
+        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin`, formDataToSend, { withCredentials: true });
         setSubcategories(prev => [...prev, response.data.data]);
         toast.success('Subcategory created successfully');
       }
@@ -170,12 +180,14 @@ export default function SubcategoryManagement() {
     } catch (error) {
       console.error('Error saving subcategory:', error);
       toast.error(`Failed to ${editMode ? 'update' : 'create'} subcategory`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const filteredSubcategories = subcategories.filter(item => {
     const categoryMatch = categoryFilter === 'all' || item.category === categoryFilter;
-    const statusMatch = statusFilter === 'all' || item.status === statusFilter;
+    const statusMatch = statusFilter === 'all' || (statusFilter === 'Available' ? item.isAvailable : !item.isAvailable);
     return categoryMatch && statusMatch;
   });
 
@@ -246,9 +258,9 @@ export default function SubcategoryManagement() {
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                <MenuItem value="veg">Veg</MenuItem>
-                <MenuItem value="non-veg">Non-Veg</MenuItem>
-                <MenuItem value="mixed">Mixed</MenuItem>
+                <MenuItem value="Veg">Veg</MenuItem>
+                <MenuItem value="Non-Veg">Non-Veg</MenuItem>
+                <MenuItem value="Mixed">Mixed</MenuItem>
               </Select>
             </FormControl>
             <FormControl sx={{ minWidth: 150 }}>
@@ -259,8 +271,8 @@ export default function SubcategoryManagement() {
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <MenuItem value="all">All Status</MenuItem>
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="inactive">Inactive</MenuItem>
+                <MenuItem value="Available">Available</MenuItem>
+                <MenuItem value="Unavailable">Unavailable</MenuItem>
               </Select>
             </FormControl>
           </Stack>
@@ -280,6 +292,7 @@ export default function SubcategoryManagement() {
             <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Subcategory</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
@@ -290,7 +303,7 @@ export default function SubcategoryManagement() {
               <TableBody>
                 {filteredSubcategories.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={6} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconCategory size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -304,21 +317,41 @@ export default function SubcategoryManagement() {
                   </TableRow>
                 ) : (
                   filteredSubcategories.map((subcategory, index) => (
-                    <Fade in timeout={1200 + index * 100} key={subcategory.id}>
+                    <Fade in timeout={1200 + index * 100} key={subcategory._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
-
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Avatar
+                              src={subcategory.image}
+                              sx={{
+                                bgcolor: 'primary.main',
+                                width: 50,
+                                height: 50,
+                                borderRadius: 2
+                              }}
+                            >
+                              <IconCategory size={24} />
+                            </Avatar>
+                            <Box>
+                              <Typography variant="subtitle1" fontWeight="bold">
+                                {subcategory.name}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
                         <TableCell>
                           <Chip
                             label={subcategory.category}
-                            color={getCategoryColor(subcategory.category)}
+                            color={getCategoryColor(subcategory.category.toLowerCase())}
                             size="small"
                             sx={{ textTransform: 'capitalize' }}
                           />
                         </TableCell>
                         <TableCell>
                           <Switch
-                            checked={subcategory.status === 'active'}
-                            onChange={() => handleStatusToggle(subcategory.id)}
+                            checked={subcategory.isAvailable}
+                            onChange={() => handleStatusToggle(subcategory._id)}
                             color="primary"
                           />
                         </TableCell>
@@ -341,7 +374,7 @@ export default function SubcategoryManagement() {
                             <Tooltip title="Delete">
                               <IconButton
                                 size="small"
-                                onClick={() => handleDeleteSubcategory(subcategory.id)}
+                                onClick={() => handleDeleteSubcategory(subcategory._id)}
                                 sx={{ color: 'error.main' }}
                               >
                                 <Delete size={18} />
@@ -387,9 +420,9 @@ export default function SubcategoryManagement() {
                 label="Category"
                 onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
               >
-                <MenuItem value="veg">Veg</MenuItem>
-                <MenuItem value="non-veg">Non-Veg</MenuItem>
-                <MenuItem value="mixed">Mixed</MenuItem>
+                <MenuItem value="Veg">Veg</MenuItem>
+                <MenuItem value="Non-Veg">Non-Veg</MenuItem>
+                <MenuItem value="Mixed">Mixed</MenuItem>
               </Select>
             </FormControl>
             <TextField
@@ -448,13 +481,14 @@ export default function SubcategoryManagement() {
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={!formData.name || !formData.category || !formData.restaurantId}
+            disabled={!formData.name || !formData.category || !formData.restaurantId || submitting}
+            startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : null}
           >
-            {editMode ? 'Update' : 'Create'}
+            {submitting ? (editMode ? 'Updating...' : 'Creating...') : (editMode ? 'Update' : 'Create')}
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {toast.toasts.map((toastItem) => (
         <Snackbar
           key={toastItem.id}

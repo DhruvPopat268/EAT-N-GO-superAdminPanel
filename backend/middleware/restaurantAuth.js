@@ -5,7 +5,7 @@ const restaurantAuthMiddleware = async (req, res, next) => {
   try {
     let token = req.cookies.RestaurantToken || (req.headers.authorization && req.headers.authorization.replace('Bearer ', ''));
     
-    console.log('RestaurantToken:', token);
+    // console.log('RestaurantToken:', token);
     
     // if (!token) {
     //   return res.status(401).json({
@@ -15,13 +15,13 @@ const restaurantAuthMiddleware = async (req, res, next) => {
     // }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET_RESTAURENT || 'your-secret-key');
-    console.log('Decoded token:', decoded);
+    // console.log('Decoded token:', decoded);
     
     const session = await RestaurantSession.findOne({ token });
-    console.log('Session found:', session ? 'Yes' : 'No');
+    // console.log('Session found:', session ? 'Yes' : 'No');
     
     if (!session) {
-      console.log('No session found for token');
+      // console.log('No session found for token');
       return res.status(401).json({
         success: false,
         message: 'Invalid session - no session found for this token'

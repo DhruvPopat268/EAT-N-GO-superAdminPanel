@@ -23,11 +23,12 @@ const addonItemSchema = new mongoose.Schema(
       trim: true,
     },
     description: String,
-    images: [String],
+    image: String,
     attributes: [
       {
         name: String,
         price: { type: Number, default: 0 },
+        _id: false,
       },
     ],
     currency: {

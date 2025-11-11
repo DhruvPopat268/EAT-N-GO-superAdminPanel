@@ -9,7 +9,7 @@ const subcategorySchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['Veg', 'Non-Veg', 'Mixed'],
+      enum: ['Veg','Non-Veg', 'Mixed'],
       required: true,
     },
     name: {

@@ -268,7 +268,8 @@ export default function UsersTab() {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" color="text.secondary">
-                      {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
+                      {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
+
                     </Typography>
                   </TableCell>
                   <TableCell>

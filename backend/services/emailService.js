@@ -35,7 +35,7 @@ const sendUserCredentials = async (userEmail, userName, password, roleName) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('Credentials email sent successfully');
+    // console.log('Credentials email sent successfully');
   } catch (error) {
     console.error('Error sending email:', error);
     throw error;
@@ -68,7 +68,7 @@ const sendRestaurantCredentials = async (restaurantEmail, restaurantName, passwo
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('Restaurant credentials email sent successfully');
+    // console.log('Restaurant credentials email sent successfully');
   } catch (error) {
     console.error('Error sending restaurant email:', error);
     throw error;

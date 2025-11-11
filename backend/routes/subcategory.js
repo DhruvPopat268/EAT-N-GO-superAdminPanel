@@ -23,17 +23,17 @@ router.post('/', restaurantAuthMiddleware, upload.single('image'), async (req, r
         restaurantId: req.restaurant.restaurantId,
       };
 
-      console.log('✅ File received:', req.file.originalname);
+      // console.log('✅ File received:', req.file.originalname);
 
       // ✅ Upload single file to Cloudinary
       if (req.file) {
-        console.log('📤 Uploading to Cloudinary...');
+        // console.log('📤 Uploading to Cloudinary...');
         try {
           const imageUrl = await uploadToCloudinary(
             req.file.buffer,
             'subcategory-images'
           );
-          console.log('✅ Cloudinary URL:', imageUrl);
+          // console.log('✅ Cloudinary URL:', imageUrl);
           subcategoryData.image = imageUrl;
         } catch (uploadError) {
           console.error('❌ Cloudinary upload error:', uploadError);
@@ -45,12 +45,12 @@ router.post('/', restaurantAuthMiddleware, upload.single('image'), async (req, r
         }
       }
 
-      console.log('💾 Saving subcategory data:', subcategoryData);
+      // console.log('💾 Saving subcategory data:', subcategoryData);
       
       const subcategory = new Subcategory(subcategoryData);
       await subcategory.save();
 
-      console.log('✅ Saved subcategory:', subcategory);
+      // console.log('✅ Saved subcategory:', subcategory);
 
       res.status(201).json({ success: true, data: subcategory });
     } catch (error) {

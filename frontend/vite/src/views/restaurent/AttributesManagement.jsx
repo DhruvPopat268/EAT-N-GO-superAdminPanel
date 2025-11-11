@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -20,77 +20,151 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Switch,
+  Snackbar,
+  Alert,
+  CircularProgress
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
 import { IconAdjustments, IconPlus } from '@tabler/icons-react';
+import axios from 'axios';
+import { useToast } from '../../utils/toast.jsx';
 
-const mockAttributes = [
-  { 
-    id: 1, 
-    name: 'Size', 
-    createdAt: '2024-01-15'
-  },
-  { 
-    id: 2, 
-    name: 'Weight', 
-    createdAt: '2024-01-16'
-  },
-  { 
-    id: 3, 
-    name: 'Volume', 
-    createdAt: '2024-01-17'
-  },
-  { 
-    id: 4, 
-    name: 'Pieces', 
-    createdAt: '2024-01-18'
-  }
-];
+
 
 export default function AttributesManagement() {
   const theme = useTheme();
-  const [attributes, setAttributes] = useState(mockAttributes);
+  const toast = useToast();
+  const [attributes, setAttributes] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedAttribute, setSelectedAttribute] = useState(null);
-  const [formData, setFormData] = useState({ name: '' });
+  const [selectedRestaurant, setSelectedRestaurant] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formData, setFormData] = useState({ name: '', restaurantId: '' });
+
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  useEffect(() => {
+    if (selectedRestaurant) {
+      fetchAttributes();
+    }
+  }, [selectedRestaurant]);
+
+  const fetchRestaurants = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/restaurantNames`, { withCredentials: true });
+      setRestaurants(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+      toast.error('Failed to load restaurants');
+      setRestaurants([]);
+    }
+  };
+
+  const fetchAttributes = async () => {
+    if (!selectedRestaurant) return;
+    setLoading(true);
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/get`, {
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
+      setAttributes(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching attributes:', error);
+      toast.error('Failed to load attributes');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddAttribute = () => {
+    if (!selectedRestaurant) {
+      toast.warning('Please select a restaurant first');
+      return;
+    }
     setEditMode(false);
-    setFormData({ name: '' });
+    setFormData({ name: '', restaurantId: selectedRestaurant });
     setDialogOpen(true);
   };
 
   const handleEditAttribute = (attribute) => {
     setEditMode(true);
     setSelectedAttribute(attribute);
-    setFormData({ name: attribute.name });
+    setFormData({ 
+      name: attribute.name, 
+      restaurantId: attribute.restaurantId || selectedRestaurant 
+    });
     setDialogOpen(true);
   };
 
-  const handleDeleteAttribute = (id) => {
+  const handleDeleteAttribute = async (id) => {
     if (window.confirm('Are you sure you want to delete this attribute?')) {
-      setAttributes(prev => prev.filter(item => item.id !== id));
+      try {
+        await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/delete`, {
+          data: { id, restaurantId: selectedRestaurant }
+        }, { withCredentials: true });
+        setAttributes(prev => prev.filter(item => item._id !== id));
+        toast.success('Attribute deleted successfully');
+      } catch (error) {
+        console.error('Error deleting attribute:', error);
+        toast.error('Failed to delete attribute');
+      }
     }
   };
 
-  const handleSubmit = () => {
-    if (editMode) {
-      setAttributes(prev => prev.map(item => 
-        item.id === selectedAttribute.id 
-          ? { ...item, name: formData.name }
-          : item
+  const handleStatusToggle = async (id) => {
+    const attribute = attributes.find(item => item._id === id);
+    const newStatus = !attribute.isAvailable;
+    try {
+      await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/status`, {
+        id,
+        isAvailable: newStatus,
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
+      setAttributes(prev => prev.map(item =>
+        item._id === id ? { ...item, isAvailable: newStatus } : item
       ));
-    } else {
-      const newAttribute = {
-        id: Date.now(),
-        name: formData.name,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setAttributes(prev => [...prev, newAttribute]);
+      toast.success(`Attribute ${newStatus ? 'activated' : 'deactivated'}`);
+    } catch (error) {
+      console.error('Error updating attribute status:', error);
+      toast.error('Failed to update status');
     }
-    setDialogOpen(false);
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      if (editMode) {
+        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/update`, {
+          id: selectedAttribute._id,
+          ...formData
+        }, { withCredentials: true });
+        setAttributes(prev => prev.map(item =>
+          item._id === selectedAttribute._id ? response.data.data : item
+        ));
+        toast.success('Attribute updated successfully');
+      } else {
+        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin`, formData, { withCredentials: true });
+        setAttributes(prev => [...prev, response.data.data]);
+        toast.success('Attribute created successfully');
+      }
+      setDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving attribute:', error);
+      toast.error(`Failed to ${editMode ? 'update' : 'create'} attribute`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -125,6 +199,28 @@ export default function AttributesManagement() {
         </Box>
       </Fade>
 
+      <Fade in timeout={900}>
+        <Card sx={{ mb: 3, p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
+          <Stack direction="row" spacing={3} alignItems="center">
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel>Restaurant</InputLabel>
+              <Select
+                value={selectedRestaurant}
+                label="Restaurant"
+                onChange={(e) => setSelectedRestaurant(e.target.value)}
+              >
+                <MenuItem value="">Select Restaurant</MenuItem>
+                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                    {restaurant.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </Card>
+      </Fade>
+
       <Fade in timeout={1000}>
         <Card 
           sx={{ 
@@ -138,7 +234,9 @@ export default function AttributesManagement() {
             <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>id</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Attribute Name</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Created Date</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
                 </TableRow>
@@ -146,7 +244,7 @@ export default function AttributesManagement() {
               <TableBody>
                 {attributes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={5} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconAdjustments size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -160,12 +258,20 @@ export default function AttributesManagement() {
                   </TableRow>
                 ) : (
                   attributes.map((attribute, index) => (
-                    <Fade in timeout={1200 + index * 100} key={attribute.id}>
+                    <Fade in timeout={1200 + index * 100} key={attribute._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
+                        <TableCell>#{index + 1}</TableCell>
                         <TableCell>
                           <Typography variant="subtitle1" fontWeight="bold">
                             {attribute.name}
                           </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={attribute.isAvailable}
+                            onChange={() => handleStatusToggle(attribute._id)}
+                            color="primary"
+                          />
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2" color="text.secondary">
@@ -173,40 +279,26 @@ export default function AttributesManagement() {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Tooltip title="Edit Attribute" arrow>
+                          <Stack direction="row" spacing={1}>
+                            <Tooltip title="Edit">
                               <IconButton
+                                size="small"
                                 onClick={() => handleEditAttribute(attribute)}
-                                sx={{ 
-                                  color: 'secondary.main',
-                                  borderRadius: 1,
-                                  '&:hover': {
-                                    backgroundColor: 'secondary.main',
-                                    color: 'white',
-                                    transform: 'scale(1.08)'
-                                  }
-                                }}
+                                sx={{ color: 'primary.main' }}
                               >
-                                <Edit sx={{ fontSize: 18 }} />
+                                <Edit size={18} />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Delete Attribute" arrow>
+                            <Tooltip title="Delete">
                               <IconButton
-                                onClick={() => handleDeleteAttribute(attribute.id)}
-                                sx={{ 
-                                  color: 'error.main',
-                                  borderRadius: 1,
-                                  '&:hover': {
-                                    backgroundColor: 'error.main',
-                                    color: 'white',
-                                    transform: 'scale(1.08)'
-                                  }
-                                }}
+                                size="small"
+                                onClick={() => handleDeleteAttribute(attribute._id)}
+                                sx={{ color: 'error.main' }}
                               >
-                                <Delete sx={{ fontSize: 18 }} />
+                                <Delete size={18} />
                               </IconButton>
                             </Tooltip>
-                          </Box>
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     </Fade>
@@ -238,6 +330,21 @@ export default function AttributesManagement() {
         </DialogTitle>
         <DialogContent sx={{ pb: 2 }}>
           <Stack spacing={3} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>Restaurant</InputLabel>
+              <Select
+                value={formData.restaurantId}
+                label="Restaurant"
+                onChange={(e) => setFormData(prev => ({ ...prev, restaurantId: e.target.value }))}
+                disabled={editMode}
+              >
+                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                    {restaurant.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               fullWidth
               label="Attribute Name"
@@ -258,13 +365,36 @@ export default function AttributesManagement() {
           <Button 
             variant="contained" 
             onClick={handleSubmit}
-            disabled={!formData.name}
+            disabled={!formData.name || !formData.restaurantId || submitting}
+            startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : null}
             sx={{ borderRadius: 2, px: 3 }}
           >
-            {editMode ? 'Update' : 'Create'}
+            {submitting ? (editMode ? 'Updating...' : 'Creating...') : (editMode ? 'Update' : 'Create')}
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {toast.toasts.map((toastItem) => (
+        <Snackbar
+          key={toastItem.id}
+          open={true}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 2 }}
+        >
+          <Alert
+            severity={toastItem.severity}
+            variant="filled"
+            sx={{
+              borderRadius: 2,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              minWidth: 300,
+              fontWeight: 500
+            }}
+          >
+            {toastItem.message}
+          </Alert>
+        </Snackbar>
+      ))}
     </Box>
   );
 }

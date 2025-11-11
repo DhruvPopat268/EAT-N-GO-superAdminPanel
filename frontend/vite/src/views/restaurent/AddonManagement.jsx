@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -33,6 +33,7 @@ import {
 } from '@mui/material';
 import { Edit, Delete, CloudUpload, Add, Remove } from '@mui/icons-material';
 import { IconPackage, IconPlus } from '@tabler/icons-react';
+import axios from 'axios';
 
 const mockCategories = [
   { id: 'veg', name: 'Veg' },
@@ -84,13 +85,16 @@ const mockAddons = [
 
 export default function AddonManagement() {
   const theme = useTheme();
-  const [addons, setAddons] = useState(mockAddons);
+  const [addons, setAddons] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedAddon, setSelectedAddon] = useState(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [subcategoryFilter, setSubcategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: null,
@@ -98,6 +102,43 @@ export default function AddonManagement() {
     image: null,
     attributes: [{ attribute: null, price: '' }]
   });
+
+  useEffect(() => {
+    fetchRestaurants();
+  }, []);
+
+  useEffect(() => {
+    if (selectedRestaurant) {
+      fetchAddons();
+    }
+  }, [selectedRestaurant]);
+
+  const fetchRestaurants = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/restaurantNames`, { withCredentials: true });
+      setRestaurants(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+      setRestaurants([]);
+    }
+  };
+
+  const fetchAddons = async () => {
+    if (!selectedRestaurant) return;
+    try {
+      setLoading(true);
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/list`, {
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
+      if (response.data.success) {
+        setAddons(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching addons:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddAttribute = () => {
     setFormData({
@@ -121,6 +162,10 @@ export default function AddonManagement() {
   };
 
   const handleAddAddon = () => {
+    if (!selectedRestaurant) {
+      alert('Please select a restaurant first');
+      return;
+    }
     setEditMode(false);
     setFormData({
       name: '',
@@ -148,48 +193,93 @@ export default function AddonManagement() {
     setDialogOpen(true);
   };
 
-  const handleDeleteAddon = (id) => {
+  const handleDeleteAddon = async (id) => {
     if (window.confirm('Are you sure you want to delete this addon?')) {
-      setAddons(prev => prev.filter(item => item.id !== id));
+      try {
+        const response = await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/delete`, {
+          data: { id, restaurantId: selectedRestaurant }
+        }, { withCredentials: true });
+        if (response.data.success) {
+          setAddons(prev => prev.filter(item => item._id !== id));
+        }
+      } catch (error) {
+        console.error('Error deleting addon:', error);
+      }
     }
   };
 
-  const handleStatusToggle = (id) => {
-    setAddons(prev => prev.map(item =>
-      item.id === id
-        ? { ...item, status: item.status === 'active' ? 'inactive' : 'active' }
-        : item
-    ));
+  const handleStatusToggle = async (id, currentStatus) => {
+    try {
+      const newStatus = !currentStatus;
+      const response = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/status`, {
+        id,
+        isAvailable: newStatus,
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
+      if (response.data.success) {
+        setAddons(prev => prev.map(item =>
+          item._id === id ? { ...item, isAvailable: newStatus } : item
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
-  const handleSubmit = () => {
-    const addonData = {
-      name: formData.name,
-      category: formData.category?.id,
-      subcategory: formData.subcategory?.id,
-      image: '/default-addon.jpg',
-      attributes: formData.attributes.map(attr => ({
-        attribute: attr.attribute?.id,
-        price: parseInt(attr.price)
-      }))
-    };
-
-    if (editMode) {
-      setAddons(prev => prev.map(item =>
-        item.id === selectedAddon.id
-          ? { ...item, ...addonData }
-          : item
-      ));
-    } else {
-      const newAddon = {
-        id: Date.now(),
-        ...addonData,
-        status: 'active',
-        createdAt: new Date().toISOString().split('T')[0]
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      const formDataToSend = new FormData();
+      
+      const addonData = {
+        name: formData.name,
+        category: formData.category?.id,
+        subcategory: formData.subcategory?.id,
+        restaurantId: selectedRestaurant,
+        attributes: formData.attributes.map(attr => ({
+          attribute: attr.attribute?.id,
+          price: parseInt(attr.price)
+        }))
       };
-      setAddons(prev => [...prev, newAddon]);
+
+      if (editMode) {
+        addonData.id = selectedAddon._id;
+      }
+
+      formDataToSend.append('data', JSON.stringify(addonData));
+      
+      if (formData.image) {
+        formDataToSend.append('image', formData.image);
+      }
+
+      let response;
+      if (editMode) {
+        response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/update`, formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          withCredentials: true
+        });
+      } else {
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin`, formDataToSend, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          withCredentials: true
+        });
+      }
+
+      if (response.data.success) {
+        if (editMode) {
+          setAddons(prev => prev.map(item =>
+            item._id === selectedAddon._id ? response.data.data : item
+          ));
+        } else {
+          setAddons(prev => [...prev, response.data.data]);
+        }
+        setDialogOpen(false);
+      }
+    } catch (error) {
+      console.error('Error saving addon:', error);
+    } finally {
+      setLoading(false);
     }
-    setDialogOpen(false);
   };
 
   const filteredSubcategories = mockSubcategories.filter(sub =>
@@ -202,8 +292,8 @@ export default function AddonManagement() {
 
   const filteredAddons = addons.filter(addon => {
     const categoryMatch = categoryFilter === 'all' || addon.category === categoryFilter;
-    const subcategoryMatch = subcategoryFilter === 'all' || addon.subcategory === subcategoryFilter;
-    const statusMatch = statusFilter === 'all' || addon.status === statusFilter;
+    const subcategoryMatch = subcategoryFilter === 'all' || addon.subcategory?.name === subcategoryFilter;
+    const statusMatch = statusFilter === 'all' || (statusFilter === 'active' ? addon.isAvailable : !addon.isAvailable);
     return categoryMatch && subcategoryMatch && statusMatch;
   });
 
@@ -251,6 +341,21 @@ export default function AddonManagement() {
       <Fade in timeout={900}>
         <Card sx={{ mb: 3, p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
           <Stack direction="row" spacing={3} alignItems="center">
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel>Restaurant</InputLabel>
+              <Select
+                value={selectedRestaurant}
+                label="Restaurant"
+                onChange={(e) => setSelectedRestaurant(e.target.value)}
+              >
+                <MenuItem value="">Select Restaurant</MenuItem>
+                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                    {restaurant.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <FormControl sx={{ minWidth: 180 }}>
               <InputLabel>Category</InputLabel>
               <Select
@@ -276,7 +381,7 @@ export default function AddonManagement() {
               >
                 <MenuItem value="all">All Subcategories</MenuItem>
                 {availableSubcategories.map(sub => (
-                  <MenuItem key={sub.id} value={sub.id}>{sub.name}</MenuItem>
+                  <MenuItem key={sub.id} value={sub.name}>{sub.name}</MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -288,8 +393,8 @@ export default function AddonManagement() {
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <MenuItem value="all">All Status</MenuItem>
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="inactive">Inactive</MenuItem>
+                <MenuItem value="active">Available</MenuItem>
+                <MenuItem value="inactive">Unavailable</MenuItem>
               </Select>
             </FormControl>
           </Stack>
@@ -305,7 +410,8 @@ export default function AddonManagement() {
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Addon</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subcategory</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Attributes & Pricing</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Attributes</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Prices</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
                 </TableRow>
@@ -313,7 +419,7 @@ export default function AddonManagement() {
               <TableBody>
                 {filteredAddons.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconPackage size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -327,7 +433,7 @@ export default function AddonManagement() {
                   </TableRow>
                 ) : (
                   filteredAddons.map((addon, index) => (
-                    <Fade in timeout={1200 + index * 100} key={addon.id}>
+                    <Fade in timeout={1200 + index * 100} key={addon._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -349,15 +455,15 @@ export default function AddonManagement() {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={mockCategories.find(c => c.id === addon.category)?.name}
-                            color={getCategoryColor(addon.category)}
+                            label={addon.category}
+                            color={getCategoryColor(addon.category.toLowerCase())}
                             variant="outlined"
                             size="small"
                           />
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={mockSubcategories.find(s => s.id === addon.subcategory)?.name}
+                            label={addon.subcategory?.name || 'N/A'}
                             color="primary"
                             variant="outlined"
                             size="small"
@@ -365,27 +471,32 @@ export default function AddonManagement() {
                         </TableCell>
                         <TableCell>
                           <Stack spacing={1}>
-                            {addon.attributes.map((attr, i) => (
-                              <Chip
-                                key={i}
-                                label={`${mockAttributes.find(a => a.id === attr.attribute)?.name}: ₹${attr.price}`}
-                                color="secondary"
-                                variant="outlined"
-                                size="small"
-                              />
+                            {addon.attributes?.map((attr, i) => (
+                              <Typography key={i} variant="body2" sx={{ mb: 0.5 }}>
+                                {attr.name}
+                              </Typography>
+                            ))}
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Stack spacing={1}>
+                            {addon.attributes?.map((attr, i) => (
+                              <Typography key={i} variant="body2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
+                                ₹{attr.price}
+                              </Typography>
                             ))}
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Switch
-                              checked={addon.status === 'active'}
-                              onChange={() => handleStatusToggle(addon.id)}
+                              checked={addon.isAvailable}
+                              onChange={() => handleStatusToggle(addon._id, addon.isAvailable)}
                               size="small"
                             />
                             <Chip
-                              label={addon.status}
-                              color={addon.status === 'active' ? 'success' : 'error'}
+                              label={addon.isAvailable ? 'Available' : 'Unavailable'}
+                              color={addon.isAvailable ? 'success' : 'error'}
                               variant="outlined"
                               size="small"
                             />
@@ -411,7 +522,7 @@ export default function AddonManagement() {
                             </Tooltip>
                             <Tooltip title="Delete Addon" arrow>
                               <IconButton
-                                onClick={() => handleDeleteAddon(addon.id)}
+                                onClick={() => handleDeleteAddon(addon._id)}
                                 sx={{
                                   color: 'error.main',
                                   borderRadius: 1,
@@ -583,11 +694,11 @@ export default function AddonManagement() {
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={!formData.name || !formData.category || !formData.subcategory || 
+            disabled={loading || !formData.name || !formData.category || !formData.subcategory || 
               formData.attributes.some(attr => !attr.attribute || !attr.price)}
             sx={{ borderRadius: 2, px: 3 }}
           >
-            {editMode ? 'Update' : 'Create'}
+            {loading ? 'Saving...' : (editMode ? 'Update' : 'Create')}
           </Button>
         </DialogActions>
       </Dialog>

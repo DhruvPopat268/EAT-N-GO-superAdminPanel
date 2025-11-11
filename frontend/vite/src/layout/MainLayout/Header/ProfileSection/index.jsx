@@ -133,7 +133,7 @@ export default function ProfileSection() {
                     <Box sx={{ p: 2, pb: 0 }}>
                       <Stack>
                         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-                          <Typography variant="h4">Good Morning,</Typography>
+
                           <Typography component="span" variant="h4" sx={{ fontWeight: 400 }}>
                             Johne Doe
                           </Typography>
@@ -166,78 +166,64 @@ export default function ProfileSection() {
                         '&::-webkit-scrollbar': { width: 5 }
                       }}
                     >
-            
+
                       <Divider />
                       <Card sx={{ bgcolor: 'primary.light', my: 2 }}>
                         <CardContent>
                           <Grid container spacing={3} direction="column">
-                            <Grid>
-                              <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                                <Grid>
-                                  <Typography variant="subtitle1">Start DND Mode</Typography>
-                                </Grid>
-                                <Grid>
-                                  <Switch
-                                    color="primary"
-                                    checked={sdm}
-                                    onChange={(e) => setSdm(e.target.checked)}
-                                    name="sdm"
-                                    size="small"
-                                  />
-                                </Grid>
+                            
+                         
+                          <Grid>
+                            <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Grid>
+                                <Typography variant="subtitle1">Allow Notifications</Typography>
                               </Grid>
-                            </Grid>
-                            <Grid>
-                              <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                                <Grid>
-                                  <Typography variant="subtitle1">Allow Notifications</Typography>
-                                </Grid>
-                                <Grid>
-                                  <Switch
-                                    checked={notification}
-                                    onChange={(e) => setNotification(e.target.checked)}
-                                    name="sdm"
-                                    size="small"
-                                  />
-                                </Grid>
+                              <Grid>
+                                <Switch
+                                  checked={notification}
+                                  onChange={(e) => setNotification(e.target.checked)}
+                                  name="sdm"
+                                  size="small"
+                                />
                               </Grid>
                             </Grid>
                           </Grid>
-                        </CardContent>
-                      </Card>
-                      <Divider />
-                      <List
-                        component="nav"
-                        sx={{
-                          width: '100%',
-                          maxWidth: 350,
-                          minWidth: 300,
-                          borderRadius: `${borderRadius}px`,
-                          '& .MuiListItemButton-root': { mt: 0.5 }
-                        }}
-                      >
-                        <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} selected={selectedIndex === 0}>
-                          <ListItemIcon>
-                            <IconSettings stroke={1.5} size="20px" />
-                          </ListItemIcon>
-                          <ListItemText primary={<Typography variant="body2">Account Settings</Typography>} />
-                        </ListItemButton>
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                    <Divider />
+                    <List
+                      component="nav"
+                      sx={{
+                        width: '100%',
+                        maxWidth: 350,
+                        minWidth: 300,
+                        borderRadius: `${borderRadius}px`,
+                        '& .MuiListItemButton-root': { mt: 0.5 }
+                      }}
+                    >
+                      <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} selected={selectedIndex === 0}>
+                        <ListItemIcon>
+                          <IconSettings stroke={1.5} size="20px" />
+                        </ListItemIcon>
+                        <ListItemText primary={<Typography variant="body2">Account Settings</Typography>} />
+                      </ListItemButton>
 
-                        <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} selected={selectedIndex === 4} onClick={handleLogout}>
-                          <ListItemIcon>
-                            <IconLogout stroke={1.5} size="20px" />
-                          </ListItemIcon>
-                          <ListItemText primary={<Typography variant="body2">Logout</Typography>} />
-                        </ListItemButton>
-                      </List>
-                    </Box>
+                      <ListItemButton sx={{ borderRadius: `${borderRadius}px` }} selected={selectedIndex === 4} onClick={handleLogout}>
+                        <ListItemIcon>
+                          <IconLogout stroke={1.5} size="20px" />
+                        </ListItemIcon>
+                        <ListItemText primary={<Typography variant="body2">Logout</Typography>} />
+                      </ListItemButton>
+                    </List>
+                  </Box>
                   </MainCard>
                 )}
-              </Paper>
-            </Transitions>
+            </Paper>
+          </Transitions>
           </ClickAwayListener>
         )}
-      </Popper>
+    </Popper >
     </>
   );
 }
