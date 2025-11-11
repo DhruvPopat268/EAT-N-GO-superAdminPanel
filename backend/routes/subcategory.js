@@ -16,28 +16,52 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
   }
 });
 
-// Create subcategory
-router.post('/', restaurantAuthMiddleware, upload.array('images', 5), async (req, res) => {
-  try {
-    const subcategoryData = { ...req.body, restaurantId: req.restaurant.restaurantId };
-    
-    if (req.files && req.files.length > 0) {
-      const imageUrls = await Promise.all(
-        req.files.map(file => uploadToCloudinary(file.buffer, 'subcategory-images'))
-      );
-      subcategoryData.images = imageUrls;
+router.post('/', restaurantAuthMiddleware, upload.single('image'), async (req, res) => {
+    try {
+      const subcategoryData = {
+        ...req.body,
+        restaurantId: req.restaurant.restaurantId,
+      };
+
+      console.log('✅ File received:', req.file.originalname);
+
+      // ✅ Upload single file to Cloudinary
+      if (req.file) {
+        console.log('📤 Uploading to Cloudinary...');
+        try {
+          const imageUrl = await uploadToCloudinary(
+            req.file.buffer,
+            'subcategory-images'
+          );
+          console.log('✅ Cloudinary URL:', imageUrl);
+          subcategoryData.image = imageUrl;
+        } catch (uploadError) {
+          console.error('❌ Cloudinary upload error:', uploadError);
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Failed to upload image',
+            error: uploadError.message 
+          });
+        }
+      }
+
+      console.log('💾 Saving subcategory data:', subcategoryData);
+      
+      const subcategory = new Subcategory(subcategoryData);
+      await subcategory.save();
+
+      console.log('✅ Saved subcategory:', subcategory);
+
+      res.status(201).json({ success: true, data: subcategory });
+    } catch (error) {
+      console.error('❌ Route error:', error);
+      res.status(400).json({ success: false, message: error.message });
     }
-    
-    const subcategory = new Subcategory(subcategoryData);
-    await subcategory.save();
-    res.status(201).json({ success: true, data: subcategory });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
   }
-});
+);
 
 // Update subcategory
-router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async (req, res) => {
+router.put('/update', restaurantAuthMiddleware, upload.single('image'), async (req, res) => {
   try {
     const { id, ...updateData } = req.body;
     
@@ -115,9 +139,13 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 // Get all subcategories for restaurant
-router.get('/admin', authMiddleware, async (req, res) => {
+router.post('/admin/get', authMiddleware, async (req, res) => {
   try {
-    const subcategories = await Subcategory.find({ restaurantId: req.restaurant.restaurantId }).sort({ createdAt: -1 });
+    const { restaurantId } = req.body;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
+    }
+    const subcategories = await Subcategory.find({ restaurantId }).sort({ createdAt: -1 });
     res.json({ success: true, data: subcategories });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -125,18 +153,21 @@ router.get('/admin', authMiddleware, async (req, res) => {
 });
 
 // Create subcategory
-router.post('/admin', authMiddleware, upload.array('images', 5), async (req, res) => {
+router.post('/admin', authMiddleware, upload.single('image'), async (req, res) => {
   try {
-    const subcategoryData = { ...req.body, restaurantId: req.restaurant.restaurantId };
-    
-    if (req.files && req.files.length > 0) {
-      const imageUrls = await Promise.all(
-        req.files.map(file => uploadToCloudinary(file.buffer, 'subcategory-images'))
-      );
-      subcategoryData.images = imageUrls;
+    const { restaurantId, ...subcategoryData } = req.body;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
     }
     
-    const subcategory = new Subcategory(subcategoryData);
+    const finalData = { ...subcategoryData, restaurantId };
+    
+    if (req.file) {
+      const imageUrl = await uploadToCloudinary(req.file.buffer, 'subcategory-images');
+      finalData.image = imageUrl;
+    }
+    
+    const subcategory = new Subcategory(finalData);
     await subcategory.save();
     res.status(201).json({ success: true, data: subcategory });
   } catch (error) {
@@ -145,19 +176,20 @@ router.post('/admin', authMiddleware, upload.array('images', 5), async (req, res
 });
 
 // Update subcategory
-router.put('/admin/update', authMiddleware, upload.array('images', 5), async (req, res) => {
+router.put('/admin/update', authMiddleware, upload.single('image'), async (req, res) => {
   try {
-    const { id, ...updateData } = req.body;
+    const { id, restaurantId, ...updateData } = req.body;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
+    }
     
-    if (req.files && req.files.length > 0) {
-      const imageUrls = await Promise.all(
-        req.files.map(file => uploadToCloudinary(file.buffer, 'subcategory-images'))
-      );
-      updateData.images = imageUrls;
+    if (req.file) {
+      const imageUrl = await uploadToCloudinary(req.file.buffer, 'subcategory-images');
+      updateData.image = imageUrl;
     }
     
     const subcategory = await Subcategory.findOneAndUpdate(
-      { _id: id, restaurantId: req.restaurant.restaurantId },
+      { _id: id, restaurantId },
       updateData,
       { new: true }
     );
@@ -174,10 +206,13 @@ router.put('/admin/update', authMiddleware, upload.array('images', 5), async (re
 // Update subcategory status
 router.patch('/admin/status', authMiddleware, async (req, res) => {
   try {
-    const { id, isAvailable } = req.body;
+    const { id, isAvailable, restaurantId } = req.body;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
+    }
     
     const subcategory = await Subcategory.findOneAndUpdate(
-      { _id: id, restaurantId: req.restaurant.restaurantId },
+      { _id: id, restaurantId },
       { isAvailable },
       { new: true }
     );
@@ -191,11 +226,11 @@ router.patch('/admin/status', authMiddleware, async (req, res) => {
     
     await Promise.all([
       Item.updateMany(
-        { subcategory: id, restaurantId: req.restaurant.restaurantId },
+        { subcategory: id, restaurantId },
         { isAvailable }
       ),
       AddonItem.updateMany(
-        { subcategory: id, restaurantId: req.restaurant.restaurantId },
+        { subcategory: id, restaurantId },
         { isAvailable }
       )
     ]);
@@ -209,8 +244,11 @@ router.patch('/admin/status', authMiddleware, async (req, res) => {
 // Delete subcategory
 router.delete('/admin/delete', authMiddleware, async (req, res) => {
   try {
-    const { id } = req.body;
-    const subcategory = await Subcategory.findOneAndDelete({ _id: id, restaurantId: req.restaurant.restaurantId });
+    const { id, restaurantId } = req.body;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
+    }
+    const subcategory = await Subcategory.findOneAndDelete({ _id: id, restaurantId });
     if (!subcategory) {
       return res.status(404).json({ success: false, message: 'Subcategory not found' });
     }

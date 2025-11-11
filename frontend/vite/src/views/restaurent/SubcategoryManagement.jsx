@@ -28,16 +28,20 @@ import {
   MenuItem,
   Grid,
   Chip,
-  Switch
+  Switch,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { Edit, Delete, CloudUpload } from '@mui/icons-material';
 import { IconCategory, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
+import { useToast } from '../../utils/toast.jsx';
 
 
 
 export default function SubcategoryManagement() {
   const theme = useTheme();
+  const toast = useToast();
   const [subcategories, setSubcategories] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -53,6 +57,7 @@ export default function SubcategoryManagement() {
     restaurantId: '',
     image: null
   });
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     fetchRestaurants();
@@ -70,6 +75,7 @@ export default function SubcategoryManagement() {
       setRestaurants(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (error) {
       console.error('Error fetching restaurants:', error);
+      toast.error('Failed to load restaurants');
       setRestaurants([]);
     }
   };
@@ -78,22 +84,22 @@ export default function SubcategoryManagement() {
     if (!selectedRestaurant) return;
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories?restaurantId=${selectedRestaurant}`);
-      setSubcategories(response.data);
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin`, {
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
+      setSubcategories(response.data.data || []);
     } catch (error) {
       console.error('Error fetching subcategories:', error);
+      toast.error('Failed to load subcategories');
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddSubcategory = () => {
-    if (!selectedRestaurant) {
-      alert('Please select a restaurant first');
-      return;
-    }
     setEditMode(false);
     setFormData({ name: '', category: '', restaurantId: selectedRestaurant, image: null });
+    setImagePreview(null);
     setDialogOpen(true);
   };
 
@@ -106,16 +112,21 @@ export default function SubcategoryManagement() {
       restaurantId: subcategory.restaurantId || selectedRestaurant,
       image: null
     });
+    setImagePreview(null);
     setDialogOpen(true);
   };
 
   const handleDeleteSubcategory = async (id) => {
     if (window.confirm('Are you sure you want to delete this subcategory?')) {
       try {
-        await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories/${id}`);
+        await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/delete`, {
+          data: { id, restaurantId: selectedRestaurant }
+        }, { withCredentials: true });
         setSubcategories(prev => prev.filter(item => item.id !== id));
+        toast.success('Subcategory deleted successfully');
       } catch (error) {
         console.error('Error deleting subcategory:', error);
+        toast.error('Failed to delete subcategory');
       }
     }
   };
@@ -124,29 +135,41 @@ export default function SubcategoryManagement() {
     const subcategory = subcategories.find(item => item.id === id);
     const newStatus = subcategory.status === 'active' ? 'inactive' : 'active';
     try {
-      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories/${id}`, { ...subcategory, status: newStatus });
+      await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/status`, {
+        id,
+        isAvailable: newStatus === 'active',
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
       setSubcategories(prev => prev.map(item =>
         item.id === id ? { ...item, status: newStatus } : item
       ));
+      toast.success(`Subcategory ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
     } catch (error) {
       console.error('Error updating subcategory status:', error);
+      toast.error('Failed to update status');
     }
   };
 
   const handleSubmit = async () => {
     try {
       if (editMode) {
-        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories/${selectedSubcategory.id}`, formData);
+        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/update`, {
+          id: selectedSubcategory.id,
+          ...formData
+        }, { withCredentials: true });
         setSubcategories(prev => prev.map(item =>
-          item.id === selectedSubcategory.id ? response.data : item
+          item.id === selectedSubcategory.id ? response.data.data : item
         ));
+        toast.success('Subcategory updated successfully');
       } else {
-        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/admin/subcategories`, formData);
-        setSubcategories(prev => [...prev, response.data]);
+        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin`, formData, { withCredentials: true });
+        setSubcategories(prev => [...prev, response.data.data]);
+        toast.success('Subcategory created successfully');
       }
       setDialogOpen(false);
     } catch (error) {
       console.error('Error saving subcategory:', error);
+      toast.error(`Failed to ${editMode ? 'update' : 'create'} subcategory`);
     }
   };
 
@@ -389,13 +412,33 @@ export default function SubcategoryManagement() {
                   type="file"
                   hidden
                   accept="image/*"
-                  onChange={(e) => setFormData(prev => ({ ...prev, image: e.target.files[0] }))}
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    setFormData(prev => ({ ...prev, image: file }));
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => setImagePreview(e.target.result);
+                      reader.readAsDataURL(file);
+                    }
+                  }}
                 />
               </Button>
-              {formData.image && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Selected: {formData.image.name}
-                </Typography>
+              {imagePreview && (
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '200px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd'
+                    }}
+                  />
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {formData.image?.name}
+                  </Typography>
+                </Box>
               )}
             </Box>
           </Stack>
@@ -411,6 +454,28 @@ export default function SubcategoryManagement() {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {toast.toasts.map((toastItem) => (
+        <Snackbar
+          key={toastItem.id}
+          open={true}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 2 }}
+        >
+          <Alert
+            severity={toastItem.severity}
+            variant="filled"
+            sx={{
+              borderRadius: 2,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              minWidth: 300,
+              fontWeight: 500
+            }}
+          >
+            {toastItem.message}
+          </Alert>
+        </Snackbar>
+      ))}
     </Box>
   );
 }

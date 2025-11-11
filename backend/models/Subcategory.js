@@ -17,7 +17,7 @@ const subcategorySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    images: [String],
+    image: String,
     isAvailable: {
       type: Boolean,
       default: true,
