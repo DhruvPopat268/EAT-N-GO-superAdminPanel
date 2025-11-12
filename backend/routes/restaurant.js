@@ -254,7 +254,7 @@ router.get('/usefullDetails', restaurantAuthMiddleware, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: { 
+      data: {
         foodCategory: categories,
         country: restaurant.contactDetails?.country
       }
@@ -340,8 +340,39 @@ router.patch('/updateData', restaurantAuthMiddleware, upload.array('restaurantIm
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+// Get restaurant useful details
+router.post('/admin/usefullDetails', authMiddleware, async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+    const restaurant = await Restaurant.findById(restaurantId, 'basicInfo.foodCategory contactDetails.country');
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    const foodCategory = restaurant.basicInfo?.foodCategory;
+    const categories = foodCategory === 'Mixed' ? ['Veg', 'Non-Veg'] : [foodCategory];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        foodCategory: categories,
+        country: restaurant.contactDetails?.country
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching food category',
+      error: error.message
+    });
+  }
+});
+
 // Get distinct restaurant names from items
-router.get('/restaurantNames', authMiddleware , async (req, res) => {
+router.get('/restaurantNames', authMiddleware, async (req, res) => {
   try {
     const restaurants = await Item.aggregate([
       { $group: { _id: '$restaurantId' } },

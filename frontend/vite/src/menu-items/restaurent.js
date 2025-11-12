@@ -96,7 +96,12 @@ const restaurent = {
                     title: 'Addon Management',
                     type: 'item',
                     url: '/restaurant/addon-management',
-                  
+                },
+                {
+                    id: 'combo-management',
+                    title: 'Combo Management',
+                    type: 'item',
+                    url: '/restaurant/combo-management',
                 }
             ]
         }

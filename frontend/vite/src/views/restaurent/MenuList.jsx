@@ -107,7 +107,7 @@ export default function MenuList() {
 
   const fetchMenuItems = async (restaurantId) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/byRestaurant`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/byRestaurant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

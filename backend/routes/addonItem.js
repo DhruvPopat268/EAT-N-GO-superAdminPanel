@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const AddonItem = require('../models/AddonItem');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
+const authMiddleware = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { uploadToCloudinary } = require('../utils/cloudinary');
 
@@ -99,7 +100,7 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 // Get all addon items for restaurant
-router.post('/admin/list', async (req, res) => {
+router.post('/admin/list', authMiddleware, async (req, res) => {
   try {
     const { restaurantId } = req.body;
     const addonItems = await AddonItem.find({ restaurantId }).populate('subcategory').sort({ createdAt: -1 });
@@ -110,7 +111,7 @@ router.post('/admin/list', async (req, res) => {
 });
 
 // Create addon item
-router.post('/admin', upload.single('image'), async (req, res) => {
+router.post('/admin', authMiddleware, upload.single('image'), async (req, res) => {
   try {
     const addonData = JSON.parse(req.body.data || '{}');
 
@@ -129,7 +130,7 @@ router.post('/admin', upload.single('image'), async (req, res) => {
 });
 
 // Update addon item
-router.put('/admin/update', upload.single('image'), async (req, res) => {
+router.put('/admin/update', authMiddleware, upload.single('image'), async (req, res) => {
   try {
     const updateData = JSON.parse(req.body.data || '{}');
     const { id, restaurantId } = updateData;
@@ -156,7 +157,7 @@ router.put('/admin/update', upload.single('image'), async (req, res) => {
 });
 
 // Update addon item status
-router.patch('/admin/status', async (req, res) => {
+router.patch('/admin/status', authMiddleware, async (req, res) => {
   try {
     const { id, isAvailable, restaurantId } = req.body;
     const addonItem = await AddonItem.findOneAndUpdate(
@@ -174,7 +175,7 @@ router.patch('/admin/status', async (req, res) => {
 });
 
 // Delete addon item
-router.delete('/admin/delete', async (req, res) => {
+router.delete('/admin/delete', authMiddleware, async (req, res) => {
   try {
     const { id, restaurantId } = req.body;
     const addonItem = await AddonItem.findOneAndDelete({ _id: id, restaurantId });

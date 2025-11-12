@@ -38,6 +38,7 @@ app.use('/api/attributes', require('./routes/attribute'));
 app.use('/api/subcategories', require('./routes/subcategory'));
 app.use('/api/items', require('./routes/item'));
 app.use('/api/addon-items', require('./routes/addonItem'));
+app.use('/api/combos', require('./routes/combo'));
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
