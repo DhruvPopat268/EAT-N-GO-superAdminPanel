@@ -22,7 +22,7 @@ import {
   alpha,
   useTheme
 } from "@mui/material";
-import BlackSpinner from 'ui-component/BlackSpinner';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import {
   Visibility,
   Restaurant,
@@ -63,7 +63,7 @@ export default function RejectedRestaurants() {
   };
 
   if (loading) {
-    return <BlackSpinner />;
+    return <ThemeSpinner message="Loading rejected restaurants..." />;
   }
 
   const handleView = (id) => {

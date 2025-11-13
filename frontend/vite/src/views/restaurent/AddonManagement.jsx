@@ -34,8 +34,6 @@ import {
 import { Edit, Delete, CloudUpload, Add, Remove } from '@mui/icons-material';
 import { IconPackage, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
-import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
-import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 const mockCategories = [

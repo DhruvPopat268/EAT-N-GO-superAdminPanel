@@ -37,8 +37,6 @@ import { Edit, Delete, CloudUpload } from '@mui/icons-material';
 import { IconCategory, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
-import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
-import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 

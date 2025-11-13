@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 export default function RestaurantDetail() {
   const { id } = useParams();
@@ -29,11 +30,7 @@ export default function RestaurantDetail() {
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <div>Loading...</div>
-      </div>
-    );
+    return <ThemeSpinner message="Loading restaurant details..." />;
   }
 
   if (!restaurant) {

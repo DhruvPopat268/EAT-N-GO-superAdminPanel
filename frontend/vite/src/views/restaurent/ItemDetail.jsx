@@ -24,7 +24,7 @@ import {
 } from '@mui/material';
 import { ArrowBack, Restaurant } from '@mui/icons-material';
 import { IconChefHat } from '@tabler/icons-react';
-import BlackSpinner from 'ui-component/BlackSpinner';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 export default function ItemDetail() {
   const theme = useTheme();
@@ -59,7 +59,7 @@ export default function ItemDetail() {
   };
 
   if (loading) {
-    return <BlackSpinner />;
+    return <ThemeSpinner message="Loading item details..." />;
   }
 
   if (!item) {

@@ -36,7 +36,7 @@ import {
   Checkbox,
   Divider
 } from "@mui/material";
-import BlackSpinner from 'ui-component/BlackSpinner';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import {
   CheckCircle,
   Cancel,
@@ -87,7 +87,7 @@ export default function OnboardingRequests() {
   };
 
   if (loading) {
-    return <BlackSpinner />;
+    return <ThemeSpinner message="Loading onboarding requests..." />;
   }
 
   const handleAction = async (id, action) => {

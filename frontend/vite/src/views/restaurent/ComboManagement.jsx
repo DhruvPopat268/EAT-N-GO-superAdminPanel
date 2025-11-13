@@ -39,8 +39,6 @@ import { IconPackage, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
 import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
-import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
-import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 export default function ComboManagement() {

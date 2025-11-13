@@ -32,7 +32,7 @@ import {
   IconBuilding,
   IconBuildingStore
 } from '@tabler/icons-react';
-import BlackSpinner from 'ui-component/BlackSpinner';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 const mockRestaurants = [
   { id: 1, name: 'Pizza Palace', model: 'commission' },
@@ -63,7 +63,7 @@ export default function CostBreakdown() {
   }, []);
 
   if (loading) {
-    return <BlackSpinner />;
+    return <ThemeSpinner message="Loading cost breakdown..." />;
   }
 
   const handleBreakdownTypeChange = (type) => {

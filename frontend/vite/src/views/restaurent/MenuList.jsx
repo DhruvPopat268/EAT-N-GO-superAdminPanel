@@ -35,8 +35,6 @@ import {
 import { Edit, Delete, Visibility, CloudUpload } from '@mui/icons-material';
 import { IconBuildingStore, IconSearch, IconChefHat } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
-import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 
