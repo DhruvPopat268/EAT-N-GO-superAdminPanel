@@ -5,6 +5,7 @@ const User = require('../models/User');
 const authMiddleware = async (req, res, next) => {
   try {
     const token = req.cookies.AdminToken;
+    console.log("Auth Middleware Token:", token);
     
     if (!token) {
       return res.status(401).json({

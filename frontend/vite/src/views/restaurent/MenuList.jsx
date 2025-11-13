@@ -41,37 +41,22 @@ import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 const categoryOptions = [
   { id: 'all', name: 'All Categories' },
-  { id: 'veg', name: 'Veg' },
-  { id: 'non-veg', name: 'Non-Veg' },
-  { id: 'mixed', name: 'Mixed' }
+  { id: 'Veg', name: 'Veg' },
+  { id: 'Non-Veg', name: 'Non-Veg' },
+  { id: 'Mixed', name: 'Mixed' }
 ];
 
-const subcategoryOptions = [
-  { id: 'all', name: 'All Subcategories' },
-  { id: 'burger', name: 'Burger' },
-  { id: 'pizza', name: 'Pizza' },
-  { id: 'chinese', name: 'Chinese' },
-  { id: 'punjabi', name: 'Punjabi' },
-  { id: 'south-indian', name: 'South Indian' },
-  { id: 'north-indian', name: 'North Indian' },
-  { id: 'italian', name: 'Italian' },
-  { id: 'mexican', name: 'Mexican' },
-  { id: 'beverages', name: 'Beverages' },
-  { id: 'desserts', name: 'Desserts' },
-  { id: 'appetizers', name: 'Appetizers' },
-  { id: 'biryani', name: 'Biryani' },
-  { id: 'rolls', name: 'Rolls' },
-  { id: 'sandwiches', name: 'Sandwiches' }
-];
+
 
 
 export default function MenuList() {
   const theme = useTheme();
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
   const [selectedCategory, setSelectedCategory] = useState(categoryOptions[0]);
-  const [selectedSubcategory, setSelectedSubcategory] = useState(subcategoryOptions[0]);
+  const [selectedSubcategory, setSelectedSubcategory] = useState({ id: 'all', name: 'All Subcategories', category: 'all' });
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [searchTerm, setSearchTerm] = useState('');
   const [menuItems, setMenuItems] = useState([]);
@@ -88,6 +73,7 @@ export default function MenuList() {
 
   React.useEffect(() => {
     fetchMenuItems();
+    fetchSubcategories();
   }, [selectedRestaurant]);
 
   const fetchRestaurantNames = async () => {
@@ -101,6 +87,36 @@ export default function MenuList() {
       }
     } catch (error) {
       console.error('Error fetching restaurant names:', error);
+    }
+  };
+
+  const fetchSubcategories = async () => {
+    try {
+      let response;
+      if (selectedRestaurant?.restaurantId === 'all') {
+        response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/all`, {
+          credentials: 'include'
+        });
+      } else if (selectedRestaurant?.restaurantId) {
+        response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/get`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ restaurantId: selectedRestaurant.restaurantId })
+        });
+      } else {
+        setSubcategories([]);
+        return;
+      }
+      const result = await response.json();
+      if (result.success) {
+        setSubcategories([{ id: 'all', name: 'All Subcategories', category: 'all' }, ...result.data.map(sub => ({ id: sub._id, name: sub.name, category: sub.category }))]);
+      }
+    } catch (error) {
+      console.error('Error fetching subcategories:', error);
+      setSubcategories([{ id: 'all', name: 'All Subcategories', category: 'all' }]);
     }
   };
 
@@ -150,21 +166,20 @@ export default function MenuList() {
     });
   };
 
-  const handleViewItem = (itemId) => {
-    navigate(`/item-detail/${itemId}`);
+  const handleViewItem = (item) => {
+    setSelectedItem(item);
+    setViewDialogOpen(true);
   };
 
-  const handleEditItem = (itemId) => {
-    const item = filteredItems.find(item => item._id === itemId);
-    setSelectedItem(item);
-    setEditFormData({
-      name: item.name,
-      description: item.description,
-      price: item.attributes[0]?.price || 0,
-      category: categoryOptions.find(cat => cat.id.toLowerCase() === item.category.toLowerCase()),
-      subcategory: { id: item.subcategory._id, name: item.subcategory.name }
+  const handleEditItem = (item) => {
+    // Navigate to add item page with item data for editing
+    navigate('/restaurant/add-menu-item', { 
+      state: { 
+        editMode: true, 
+        itemData: item,
+        restaurantId: item.restaurantId
+      } 
     });
-    setEditDialogOpen(true);
   };
 
   const handleDeleteItem = (itemId) => {
@@ -271,6 +286,7 @@ export default function MenuList() {
                 onChange={(event, newValue) => {
                   setFilterLoading(true);
                   setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
+                  setSelectedSubcategory({ id: 'all', name: 'All Subcategories', category: 'all' });
                   setTimeout(() => setFilterLoading(false), 300);
                 }}
                 renderInput={(params) => (
@@ -300,6 +316,7 @@ export default function MenuList() {
                     onChange={(event, newValue) => {
                       setFilterLoading(true);
                       setSelectedCategory(newValue || categoryOptions[0]);
+                      setSelectedSubcategory({ id: 'all', name: 'All Subcategories', category: 'all' });
                       setTimeout(() => setFilterLoading(false), 300);
                     }}
                     renderInput={(params) => (
@@ -313,12 +330,14 @@ export default function MenuList() {
 
                   <Autocomplete
                     sx={{ minWidth: 200 }}
-                    options={subcategoryOptions}
+                    options={subcategories.filter(sub => 
+                      selectedCategory?.id === 'all' || sub.category === selectedCategory?.id
+                    )}
                     getOptionLabel={(option) => option.name}
                     value={selectedSubcategory}
                     onChange={(event, newValue) => {
                       setFilterLoading(true);
-                      setSelectedSubcategory(newValue || subcategoryOptions[0]);
+                      setSelectedSubcategory(newValue || { id: 'all', name: 'All Subcategories', category: 'all' });
                       setTimeout(() => setFilterLoading(false), 300);
                     }}
                     renderInput={(params) => (
@@ -342,8 +361,8 @@ export default function MenuList() {
                       }}
                     >
                       <MenuItem value="All Status">All Status</MenuItem>
-                      <MenuItem value="active">Active</MenuItem>
-                      <MenuItem value="inactive">Inactive</MenuItem>
+                      <MenuItem value="active">Available</MenuItem>
+                      <MenuItem value="inactive">Unavailable</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -488,7 +507,7 @@ export default function MenuList() {
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <Tooltip title="View Item" arrow>
                               <IconButton
-                                onClick={() => handleViewItem(item._id)}
+                                onClick={() => handleViewItem(item)}
                                 sx={{ 
                                   color: 'info.main',
                                   borderRadius: 1,
@@ -504,7 +523,7 @@ export default function MenuList() {
                             </Tooltip>
                             <Tooltip title="Edit Item" arrow>
                               <IconButton
-                                onClick={() => handleEditItem(item._id)}
+                                onClick={() => handleEditItem(item)}
                                 sx={{ 
                                   color: 'secondary.main',
                                   borderRadius: 1,
@@ -547,73 +566,102 @@ export default function MenuList() {
       </Fade>
 
       {/* View Dialog */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} PaperProps={{ sx: { width: 400, maxWidth: 400 } }}>
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>View Menu Item</DialogTitle>
-        <DialogContent sx={{ px: 3, py: 2, width: '100%' }}>
+        <DialogContent sx={{ px: 3, py: 2 }}>
           {selectedItem && (
             <Box>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
                 <Avatar 
-                  src={selectedItem.image} 
+                  src={selectedItem.images?.[0]} 
                   sx={{ 
                     bgcolor: 'primary.main', 
-                    width: 60, 
-                    height: 60,
+                    width: 100, 
+                    height: 100,
                     borderRadius: 2,
-                    mb: 1
+                    mb: 2
                   }}
                 >
-                  <IconChefHat size={24} />
+                  <IconChefHat size={40} />
                 </Avatar>
-                <Typography variant="h6" fontWeight="bold" textAlign="center">{selectedItem.name}</Typography>
-                <Typography variant="h6" color="primary.main">₹{selectedItem.price}</Typography>
+                <Typography variant="h5" fontWeight="bold" textAlign="center">{selectedItem.name}</Typography>
+                <Typography variant="h6" color="primary.main">₹{selectedItem.attributes?.[0]?.price || 0}</Typography>
               </Box>
               
-              <Stack spacing={2}>
-                <Box>
-                  <Typography variant="body2" fontWeight="bold" color="text.primary">
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <Typography variant="body1" fontWeight="bold" color="text.primary" sx={{ mb: 1 }}>
                     Description
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {selectedItem.description}
+                    {selectedItem.description || 'No description available'}
                   </Typography>
-                </Box>
+                </Grid>
                 
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Chip 
-                    label={categoryOptions.find(cat => cat.id === selectedItem.category)?.name} 
-                    color={selectedItem.category === 'veg' ? 'success' : selectedItem.category === 'non-veg' ? 'error' : 'warning'} 
-                    variant="outlined"
-                    size="small"
-                  />
-                  <Chip 
-                    label={selectedItem.subcategory?.name || 'N/A'} 
-                    color="primary" 
-                    variant="outlined"
-                    size="small"
-                  />
-                </Box>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body1" fontWeight="bold" color="text.primary" sx={{ mb: 1 }}>
+                    Category & Subcategory
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Chip 
+                      label={selectedItem.category} 
+                      color={selectedItem.category?.toLowerCase() === 'veg' ? 'success' : selectedItem.category?.toLowerCase() === 'non-veg' ? 'error' : 'warning'} 
+                      variant="outlined"
+                    />
+                    <Chip 
+                      label={selectedItem.subcategory?.name || 'N/A'} 
+                      color="primary" 
+                      variant="outlined"
+                    />
+                  </Box>
+                </Grid>
                 
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="body1" fontWeight="bold" color="text.primary" sx={{ mb: 1 }}>
+                    Status
+                  </Typography>
                   <Chip 
-                    label={`${selectedItem.attributeValue} ${selectedItem.attributeUnit}`} 
-                    color="secondary" 
-                    variant="outlined"
-                    size="small"
-                  />
-                  <Chip 
-                    label={selectedItem.status} 
-                    color={selectedItem.status === 'active' ? 'success' : 'error'}
+                    label={selectedItem.isAvailable ? 'Available' : 'Unavailable'} 
+                    color={selectedItem.isAvailable ? 'success' : 'error'}
                     variant="filled"
-                    size="small"
                   />
-                </Box>
-              </Stack>
+                </Grid>
+                
+                {selectedItem.attributes && selectedItem.attributes.length > 0 && (
+                  <Grid item xs={12}>
+                    <Typography variant="body1" fontWeight="bold" color="text.primary" sx={{ mb: 1 }}>
+                      Attributes
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {selectedItem.attributes.map((attr, index) => (
+                        <Chip 
+                          key={index}
+                          label={`${attr.name}: ₹${attr.price}`} 
+                          color="secondary" 
+                          variant="outlined"
+                        />
+                      ))}
+                    </Box>
+                  </Grid>
+                )}
+                
+                {selectedRestaurant?.restaurantId === 'all' && (
+                  <Grid item xs={12}>
+                    <Typography variant="body1" fontWeight="bold" color="text.primary" sx={{ mb: 1 }}>
+                      Restaurant
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {selectedItem.restaurantName || 'Unknown Restaurant'}
+                    </Typography>
+                  </Grid>
+                )}
+              </Grid>
             </Box>
           )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setViewDialogOpen(false)} variant="outlined" size="small" fullWidth>Close</Button>
+          <Button onClick={() => setViewDialogOpen(false)} variant="outlined">Close</Button>
+          <Button onClick={() => handleEditItem(selectedItem)} variant="contained">Edit Item</Button>
         </DialogActions>
       </Dialog>
 
@@ -665,7 +713,7 @@ export default function MenuList() {
             </Grid>
             <Grid item xs={12} md={6}>
               <Autocomplete
-                options={subcategoryOptions}
+                options={subcategories}
                 getOptionLabel={(option) => option.name}
                 value={editFormData.subcategory || null}
                 onChange={(event, newValue) => setEditFormData({...editFormData, subcategory: newValue})}

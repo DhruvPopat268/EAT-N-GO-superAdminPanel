@@ -32,51 +32,16 @@ import {
   InputAdornment
 } from '@mui/material';
 import { Edit, Delete, CloudUpload, Add, Remove } from '@mui/icons-material';
+import { CircularProgress } from '@mui/material';
 import { IconPackage, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
+import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
 
 const mockCategories = [
-  { id: 'veg', name: 'Veg' },
-  { id: 'non-veg', name: 'Non-Veg' },
-  { id: 'mixed', name: 'Mixed' }
-];
-
-
-
-const mockAttributes = [
-  { id: 'size', name: 'Size' },
-  { id: 'weight', name: 'Weight' },
-  { id: 'volume', name: 'Volume' },
-  { id: 'pieces', name: 'Pieces' }
-];
-
-const mockAddons = [
-  {
-    id: 1,
-    name: 'Extra Cheese',
-    category: 'veg',
-    subcategory: 'pizza',
-    image: '/cheese.jpg',
-    status: 'active',
-    attributes: [
-      { attribute: 'size', price: 50 },
-      { attribute: 'weight', price: 30 }
-    ],
-    createdAt: '2024-01-15'
-  },
-  {
-    id: 2,
-    name: 'Chicken Patty',
-    category: 'non-veg',
-    subcategory: 'burger',
-    image: '/chicken.jpg',
-    status: 'active',
-    attributes: [
-      { attribute: 'pieces', price: 80 }
-    ],
-    createdAt: '2024-01-16'
-  }
+  { id: 'Veg', name: 'Veg' },
+  { id: 'Non-Veg', name: 'Non-Veg' },
+  { id: 'Mixed', name: 'Mixed' }
 ];
 
 export default function AddonManagement() {
@@ -93,14 +58,20 @@ export default function AddonManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [addonToDelete, setAddonToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    restaurant: null,
     category: null,
     subcategory: null,
     image: null,
     attributes: [{ attribute: null, price: '' }],
     isAvailable: true
   });
+  const [formSubcategories, setFormSubcategories] = useState([]);
+  const [formAttributes, setFormAttributes] = useState([]);
   const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
@@ -110,7 +81,31 @@ export default function AddonManagement() {
 
   useEffect(() => {
     fetchAddons();
+    fetchSubcategories();
   }, [selectedRestaurant]);
+
+  // Update form attributes and subcategory when data is loaded during edit mode
+  useEffect(() => {
+    if (editMode && selectedAddon && formAttributes.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        attributes: selectedAddon.attributes.map(attr => ({
+          attribute: formAttributes.find(a => a.name === attr.name) || null,
+          price: attr.price
+        }))
+      }));
+    }
+  }, [formAttributes, editMode, selectedAddon]);
+
+  // Update subcategory when formSubcategories are loaded during edit mode
+  useEffect(() => {
+    if (editMode && selectedAddon && formSubcategories.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        subcategory: formSubcategories.find(s => s._id === selectedAddon.subcategory._id) || null
+      }));
+    }
+  }, [formSubcategories, editMode, selectedAddon]);
 
   const fetchRestaurants = async () => {
     try {
@@ -124,7 +119,14 @@ export default function AddonManagement() {
 
   const fetchSubcategories = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/all`, { withCredentials: true });
+      let response;
+      if (selectedRestaurant === 'all') {
+        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/all`, { withCredentials: true });
+      } else {
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/get`, {
+          restaurantId: selectedRestaurant
+        }, { withCredentials: true });
+      }
       setSubcategories(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (error) {
       console.error('Error fetching subcategories:', error);
@@ -174,50 +176,98 @@ export default function AddonManagement() {
     setFormData({ ...formData, attributes: updatedAttributes });
   };
 
+  const fetchFormSubcategories = async (restaurantId) => {
+    try {
+      if (!restaurantId) {
+        setFormSubcategories([]);
+        return;
+      }
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/get`, {
+        restaurantId
+      }, { withCredentials: true });
+      setFormSubcategories(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Error fetching form subcategories:', error);
+      setFormSubcategories([]);
+    }
+  };
+
+  const fetchFormAttributes = async (restaurantId) => {
+    try {
+      if (!restaurantId) {
+        setFormAttributes([]);
+        return;
+      }
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/get`, {
+        restaurantId
+      }, { withCredentials: true });
+      setFormAttributes(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Error fetching form attributes:', error);
+      setFormAttributes([]);
+    }
+  };
+
   const handleAddAddon = () => {
     setEditMode(false);
     setFormData({
       name: '',
+      restaurant: null,
       category: null,
       subcategory: null,
       image: null,
       attributes: [{ attribute: null, price: '' }],
       isAvailable: true
     });
+    setFormSubcategories([]);
+    setFormAttributes([]);
     setImagePreview(null);
     setDialogOpen(true);
   };
 
   const handleEditAddon = (addon) => {
+    console.log('Editing addon:', addon);
     setEditMode(true);
     setSelectedAddon(addon);
+    const selectedRestaurantObj = restaurants.find(r => r.restaurantId === addon.restaurantId);
+    
     setFormData({
       name: addon.name,
+      restaurant: selectedRestaurantObj,
       category: mockCategories.find(c => c.id === addon.category),
-      subcategory: subcategories.find(s => s._id === addon.subcategory),
+      subcategory: null, // Will be updated by useEffect when formSubcategories loads
       image: null,
-      attributes: addon.attributes.map(attr => ({
-        attribute: mockAttributes.find(a => a.id === attr.attribute),
-        price: attr.price
-      })),
+      attributes: [{ attribute: null, price: '' }], // Will be updated by useEffect
       isAvailable: addon.isAvailable
     });
+    
+    fetchFormSubcategories(addon.restaurantId);
+    fetchFormAttributes(addon.restaurantId);
     setImagePreview(addon.image);
     setDialogOpen(true);
   };
 
-  const handleDeleteAddon = async (id) => {
-    if (window.confirm('Are you sure you want to delete this addon?')) {
-      try {
-        const response = await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/delete`, {
-          data: { id, restaurantId: selectedRestaurant }
-        }, { withCredentials: true });
-        if (response.data.success) {
-          setAddons(prev => prev.filter(item => item._id !== id));
-        }
-      } catch (error) {
-        console.error('Error deleting addon:', error);
+  const handleDeleteAddon = (addon) => {
+    setAddonToDelete(addon);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      const response = await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/delete`, {
+        data: { id: addonToDelete._id, restaurantId: addonToDelete.restaurantId },
+        withCredentials: true
+      });
+      if (response.data.success) {
+        setAddons(prev => prev.filter(item => item._id !== addonToDelete._id));
       }
+    } catch (error) {
+      console.error('Error deleting addon:', error);
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setAddonToDelete(null);
     }
   };
 
@@ -247,10 +297,10 @@ export default function AddonManagement() {
       const addonData = {
         name: formData.name,
         category: formData.category?.id,
-        subcategory: formData.subcategory?.id,
-        restaurantId: selectedRestaurant,
+        subcategory: formData.subcategory?._id,
+        restaurantId: formData.restaurant?.restaurantId,
         attributes: formData.attributes.map(attr => ({
-          attribute: attr.attribute?.id,
+          name: attr.attribute?.name,
           price: parseInt(attr.price)
         })),
         isAvailable: formData.isAvailable
@@ -295,13 +345,13 @@ export default function AddonManagement() {
       setLoading(false);
     }
   };
-
-  const filteredSubcategories = subcategories.filter(sub =>
-    !formData.category || sub.category === formData.category.id
+  const filteredSubcategories = formSubcategories
+  .filter(sub =>
+    sub.category === mockCategories.find(c => c.id === formData.category?.id)?.name
   );
 
   const availableSubcategories = subcategories.filter(sub =>
-    subcategoryFilter === 'all' || sub.category === categoryFilter
+    categoryFilter === 'all' || sub.category === categoryFilter
   );
 
   const filteredAddons = addons.filter(addon => {
@@ -363,6 +413,7 @@ export default function AddonManagement() {
                 onChange={(e) => {
                   setFilterLoading(true);
                   setSelectedRestaurant(e.target.value);
+                  setSubcategoryFilter('all');
                   setTimeout(() => setFilterLoading(false), 300);
                 }}
               >
@@ -572,7 +623,7 @@ export default function AddonManagement() {
                             </Tooltip>
                             <Tooltip title="Delete Addon" arrow>
                               <IconButton
-                                onClick={() => handleDeleteAddon(addon._id)}
+                                onClick={() => handleDeleteAddon(addon)}
                                 sx={{
                                   color: 'error.main',
                                   borderRadius: 1,
@@ -618,6 +669,21 @@ export default function AddonManagement() {
         </DialogTitle>
         <DialogContent sx={{ pb: 2 }}>
           <Stack spacing={3} sx={{ mt: 1 }}>
+            <Autocomplete
+              fullWidth
+              options={restaurants}
+              getOptionLabel={(option) => option.name}
+              value={formData.restaurant}
+              onChange={(event, newValue) => {
+                setFormData({ ...formData, restaurant: newValue, subcategory: null });
+                fetchFormSubcategories(newValue?.restaurantId);
+                fetchFormAttributes(newValue?.restaurantId);
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Restaurant" />
+              )}
+            />
+
             <TextField
               fullWidth
               label="Addon Name"
@@ -675,7 +741,7 @@ export default function AddonManagement() {
                 <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
                   <Autocomplete
                     sx={{ flex: 1 }}
-                    options={mockAttributes}
+                    options={formAttributes}
                     getOptionLabel={(option) => option.name}
                     value={attr.attribute}
                     onChange={(event, newValue) => {
@@ -787,14 +853,26 @@ export default function AddonManagement() {
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={loading || !formData.name || !formData.category || !formData.subcategory ||
+            disabled={loading || !formData.name || !formData.restaurant || !formData.category || !formData.subcategory ||
               formData.attributes.some(attr => !attr.attribute || !attr.price)}
             sx={{ borderRadius: 2, px: 3 }}
+            startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
           >
-            {loading ? 'Saving...' : (editMode ? 'Update' : 'Create')}
+            {loading ? (editMode ? 'Updating...' : 'Creating...') : (editMode ? 'Update' : 'Create')}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Addon"
+        message="Are you sure you want to delete the addon"
+        itemName={addonToDelete?.name}
+        loading={deleting}
+      />
     </Box>
   );
 }
