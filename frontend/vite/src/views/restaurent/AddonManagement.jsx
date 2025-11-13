@@ -34,6 +34,9 @@ import {
 import { Edit, Delete, CloudUpload, Add, Remove } from '@mui/icons-material';
 import { IconPackage, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
+import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
+import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 const mockCategories = [
   { id: 'veg', name: 'Veg' },
@@ -90,11 +93,12 @@ export default function AddonManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedAddon, setSelectedAddon] = useState(null);
-  const [selectedRestaurant, setSelectedRestaurant] = useState('');
+  const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [subcategoryFilter, setSubcategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: null,
@@ -108,9 +112,7 @@ export default function AddonManagement() {
   }, []);
 
   useEffect(() => {
-    if (selectedRestaurant) {
-      fetchAddons();
-    }
+    fetchAddons();
   }, [selectedRestaurant]);
 
   const fetchRestaurants = async () => {
@@ -124,12 +126,16 @@ export default function AddonManagement() {
   };
 
   const fetchAddons = async () => {
-    if (!selectedRestaurant) return;
     try {
       setLoading(true);
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/list`, {
-        restaurantId: selectedRestaurant
-      }, { withCredentials: true });
+      let response;
+      if (selectedRestaurant === 'all') {
+        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/all`, { withCredentials: true });
+      } else {
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/list`, {
+          restaurantId: selectedRestaurant
+        }, { withCredentials: true });
+      }
       if (response.data.success) {
         setAddons(response.data.data);
       }
@@ -162,8 +168,8 @@ export default function AddonManagement() {
   };
 
   const handleAddAddon = () => {
-    if (!selectedRestaurant) {
-      alert('Please select a restaurant first');
+    if (selectedRestaurant === 'all') {
+      alert('Please select a specific restaurant to add addons');
       return;
     }
     setEditMode(false);
@@ -346,9 +352,13 @@ export default function AddonManagement() {
               <Select
                 value={selectedRestaurant}
                 label="Restaurant"
-                onChange={(e) => setSelectedRestaurant(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setSelectedRestaurant(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
-                <MenuItem value="">Select Restaurant</MenuItem>
+                <MenuItem value="all">All Restaurants</MenuItem>
                 {Array.isArray(restaurants) && restaurants.map((restaurant) => (
                   <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
                     {restaurant.name}
@@ -362,8 +372,10 @@ export default function AddonManagement() {
                 value={categoryFilter}
                 label="Category"
                 onChange={(e) => {
+                  setFilterLoading(true);
                   setCategoryFilter(e.target.value);
                   setSubcategoryFilter('all');
+                  setTimeout(() => setFilterLoading(false), 300);
                 }}
               >
                 <MenuItem value="all">All Categories</MenuItem>
@@ -377,7 +389,11 @@ export default function AddonManagement() {
               <Select
                 value={subcategoryFilter}
                 label="Subcategory"
-                onChange={(e) => setSubcategoryFilter(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setSubcategoryFilter(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
                 <MenuItem value="all">All Subcategories</MenuItem>
                 {availableSubcategories.map(sub => (
@@ -390,7 +406,11 @@ export default function AddonManagement() {
               <Select
                 value={statusFilter}
                 label="Status"
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setStatusFilter(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
                 <MenuItem value="all">All Status</MenuItem>
                 <MenuItem value="active">Available</MenuItem>
@@ -408,6 +428,9 @@ export default function AddonManagement() {
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Addon</TableCell>
+                  {selectedRestaurant === 'all' && (
+                    <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
+                  )}
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subcategory</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Attributes</TableCell>
@@ -417,9 +440,21 @@ export default function AddonManagement() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredAddons.length === 0 ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
+                      <BlackSpinner />
+                    </TableCell>
+                  </TableRow>
+                ) : filterLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
+                      <ThemeSpinner message="Loading addons..." />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredAddons.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconPackage size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -453,6 +488,13 @@ export default function AddonManagement() {
                             </Typography>
                           </Box>
                         </TableCell>
+                        {selectedRestaurant === 'all' && (
+                          <TableCell>
+                            <Typography variant="body2">
+                              {addon.restaurantName || 'Unknown Restaurant'}
+                            </Typography>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Chip
                             label={addon.category}

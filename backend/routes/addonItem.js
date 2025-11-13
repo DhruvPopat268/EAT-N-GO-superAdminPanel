@@ -99,6 +99,30 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+// Get all addon items from all restaurants
+router.get('/admin/all', authMiddleware, async (req, res) => {
+  try {
+    const addonItems = await AddonItem.find({})
+      .populate('restaurantId', 'basicInfo.restaurantName')
+      .populate('subcategory')
+      .sort({ createdAt: -1 });
+    
+    // Transform the data to include restaurantName and restaurantId
+    const transformedAddonItems = addonItems.map(addonItem => {
+      const addonItemObj = addonItem.toObject();
+      return {
+        ...addonItemObj,
+        restaurantName: addonItemObj.restaurantId.basicInfo?.restaurantName || 'Unknown Restaurant',
+        restaurantId: addonItemObj.restaurantId._id
+      };
+    });
+    
+    res.json({ success: true, data: transformedAddonItems });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get all addon items for restaurant
 router.post('/admin/list', authMiddleware, async (req, res) => {
   try {

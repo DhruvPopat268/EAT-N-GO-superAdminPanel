@@ -54,6 +54,7 @@ export default function AddMenuItem() {
     unit: null
   });
   const [uploadFile, setUploadFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchRestaurants();
@@ -424,6 +425,7 @@ export default function AddMenuItem() {
       return;
     }
 
+    setSubmitting(true);
     try {
       const formDataToSend = new FormData();
       
@@ -492,6 +494,8 @@ export default function AddMenuItem() {
     } catch (error) {
       console.error('Error creating item:', error);
       toast.error('Error creating item. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -951,9 +955,9 @@ export default function AddMenuItem() {
                 <CustomDropdown
                   label="Attribute"
                   value={currentAttribute.unit}
-                  options={attributes.map(attr => ({ id: attr._id, name: attr.name }))}
+                  options={attributes.filter(attr => !formData.attributes.some(selected => selected.unit.id === attr._id)).map(attr => ({ id: attr._id, name: attr.name }))}
                   onChange={(option) => setCurrentAttribute(prev => ({ ...prev, unit: option }))}
-                  placeholder={attributes.length > 0 ? "Select attribute" : "No attributes available"}
+                  placeholder={attributes.length === 0 ? "No attributes available" : attributes.filter(attr => !formData.attributes.some(selected => selected.unit.id === attr._id)).length > 0 ? "Select attribute" : "No attributes available"}
                   isOpen={showUnitDropdown}
                   setIsOpen={setShowUnitDropdown}
                 />
@@ -976,7 +980,7 @@ export default function AddMenuItem() {
                 type="button"
                 onClick={addAttribute}
                 disabled={!currentAttribute.value || !currentAttribute.unit}
-                className={`w-full py-2 px-4 rounded-lg font-medium transition-colors mb-4 ${currentAttribute.value && currentAttribute.unit
+                className={`w-full py-2 px-4 rounded-lg font-medium transition-colors mb-4 cursor-pointer ${currentAttribute.value && currentAttribute.unit
                     ? 'bg-green-600 text-white hover:bg-green-700'
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
@@ -1045,9 +1049,17 @@ export default function AddMenuItem() {
         <div className="flex gap-4 mt-8 pt-6 border-t border-gray-200">
           <button
             onClick={handleSubmitIndividual}
-            className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={submitting}
+            className={`flex-1 py-3 px-6 rounded-lg font-medium transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer ${submitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white`}
           >
-            Add Item
+            {submitting ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Creating...
+              </div>
+            ) : (
+              'Add Item'
+            )}
           </button>
           <button
             onClick={() => {
@@ -1069,7 +1081,7 @@ export default function AddMenuItem() {
               setCurrentOption({ label: '', quantity: 0, unit: 'unit', price: 0 });
               setShowCustomizations(false);
             }}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors cursor-pointer"
           >
             Clear
           </button>

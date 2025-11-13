@@ -13,6 +13,7 @@ router.get('/',restaurantAuthMiddleware, async (req, res) => {
     const  restaurantId  = req.restaurant.restaurantId;
     const combos = await Combo.find({ restaurantId })
       .populate('items.itemId', 'name images')
+      .populate('items.attribute', 'name')
       .sort({ createdAt: -1 });
     
     res.json({ success: true, data: combos });
@@ -27,7 +28,8 @@ router.post('/detail',restaurantAuthMiddleware, async (req, res) => {
     const { comboId } = req.body;
     const restaurantId = req.restaurant.restaurantId;
     const combo = await Combo.findOne({ _id: comboId, restaurantId })
-      .populate('items.itemId');
+      .populate('items.itemId')
+      .populate('items.attribute', 'name');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -40,7 +42,7 @@ router.post('/detail',restaurantAuthMiddleware, async (req, res) => {
 });
 
 // Create new combo
-router.post('/add', restaurantAuthMiddleware, upload.array('images', 5), async (req, res) => {
+router.post('/add', restaurantAuthMiddleware, upload.single('image'), async (req, res) => {
   try {
     const data = JSON.parse(req.body.data);
     const restaurantId = req.restaurant.restaurantId;
@@ -65,7 +67,7 @@ router.post('/add', restaurantAuthMiddleware, upload.array('images', 5), async (
       items,
       price,
       category,
-      images: req.files ? req.files.map(file => file.path) : []
+      image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
     });
     
     await combo.save();
@@ -76,7 +78,7 @@ router.post('/add', restaurantAuthMiddleware, upload.array('images', 5), async (
 });
 
 // Update combo
-router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async (req, res) => {
+router.put('/update', restaurantAuthMiddleware, upload.single('image'), async (req, res) => {
   try {
     const data = JSON.parse(req.body.data);
     const { comboId } = data;
@@ -86,15 +88,16 @@ router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async
     delete updateData.comboId;
     delete updateData.restaurantId;
     
-    if (req.files && req.files.length > 0) {
-      updateData.images = req.files.map(file => file.path);
+    if (req.file) {
+      updateData.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
     
     const combo = await Combo.findOneAndUpdate(
       { _id: comboId, restaurantId },
       updateData,
       { new: true }
-    ).populate('items.itemId');
+    ).populate('items.itemId')
+     .populate('items.attribute', 'name');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -146,14 +149,60 @@ router.delete('/delete',restaurantAuthMiddleware, async (req, res) => {
   }
 });
 
+// Get attributes for specific item
+router.post('/item-attributes', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const { itemId } = req.body;
+    const  restaurantId  = req.restaurant.restaurantId;
+
+    const item = await Item.findOne({ _id: itemId, restaurantId })
+      .populate('attributes.attribute', 'name');
+    
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+    
+    const attributes = item.attributes.map(attr => attr.attribute).filter(Boolean);
+    res.json({ success: true, data: attributes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-// Get all combos for a restaurant
+// Get all combos from all restaurants
+router.get('/admin/all', authMiddleware, async (req, res) => {
+  try {
+    const combos = await Combo.find({})
+      .populate('restaurantId', 'basicInfo.restaurantName')
+      .populate('items.itemId', 'name images')
+      .populate('items.attribute', 'name')
+      .sort({ createdAt: -1 });
+    
+    // Transform the data to only include restaurantName and restaurantId
+    const transformedCombos = combos.map(combo => {
+      const comboObj = combo.toObject();
+      return {
+        ...comboObj,
+        restaurantName: comboObj.restaurantId.basicInfo?.restaurantName || 'Unknown Restaurant',
+        restaurantId: comboObj.restaurantId._id
+      };
+    });
+    
+    res.json({ success: true, data: transformedCombos });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get all combos for a specific restaurant
 router.post('/admin',authMiddleware, async (req, res) => {
   try {
     const { restaurantId } = req.body;
     const combos = await Combo.find({ restaurantId })
       .populate('items.itemId', 'name images')
+      .populate('items.attribute', 'name')
       .sort({ createdAt: -1 });
     
     res.json({ success: true, data: combos });
@@ -167,7 +216,8 @@ router.post('/admin/detail',authMiddleware, async (req, res) => {
   try {
     const { comboId, restaurantId } = req.body;
     const combo = await Combo.findOne({ _id: comboId, restaurantId })
-      .populate('items.itemId');
+      .populate('items.itemId')
+      .populate('items.attribute', 'name');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -180,7 +230,7 @@ router.post('/admin/detail',authMiddleware, async (req, res) => {
 });
 
 // Create new combo
-router.post('/admin/add',authMiddleware, upload.array('images', 5), async (req, res) => {
+router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res) => {
   try {
     const data = JSON.parse(req.body.data);
     const { restaurantId, name, description, items, price } = data;
@@ -204,7 +254,7 @@ router.post('/admin/add',authMiddleware, upload.array('images', 5), async (req, 
       items,
       price,
       category,
-      images: req.files ? req.files.map(file => file.path) : []
+      image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
     });
     
     await combo.save();
@@ -215,7 +265,7 @@ router.post('/admin/add',authMiddleware, upload.array('images', 5), async (req, 
 });
 
 // Update combo
-router.put('/admin/update',authMiddleware, upload.array('images', 5), async (req, res) => {
+router.put('/admin/update',authMiddleware, upload.single('image'), async (req, res) => {
   try {
     const data = JSON.parse(req.body.data);
     const { comboId, restaurantId } = data;
@@ -224,15 +274,16 @@ router.put('/admin/update',authMiddleware, upload.array('images', 5), async (req
     delete updateData.comboId;
     delete updateData.restaurantId;
     
-    if (req.files && req.files.length > 0) {
-      updateData.images = req.files.map(file => file.path);
+    if (req.file) {
+      updateData.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     }
     
     const combo = await Combo.findOneAndUpdate(
       { _id: comboId, restaurantId },
       updateData,
       { new: true }
-    ).populate('items.itemId');
+    ).populate('items.itemId')
+     .populate('items.attribute', 'name');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -277,6 +328,25 @@ router.delete('/admin/delete', async (req, res) => {
     }
     
     res.json({ success: true, message: 'Combo deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get attributes for specific item (restaurant route)
+router.post('/restaurant/item-attributes', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const { itemId } = req.body;
+    const restaurantId = req.restaurant.restaurantId;
+    const item = await Item.findOne({ _id: itemId, restaurantId })
+      .populate('attributes.attribute', 'name');
+    
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+    
+    const attributes = item.attributes.map(attr => attr.attribute).filter(Boolean);
+    res.json({ success: true, data: attributes });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

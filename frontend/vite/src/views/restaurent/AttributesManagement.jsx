@@ -34,6 +34,9 @@ import { Edit, Delete } from '@mui/icons-material';
 import { IconAdjustments, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
+import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
+import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 
 
@@ -45,8 +48,9 @@ export default function AttributesManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedAttribute, setSelectedAttribute] = useState(null);
-  const [selectedRestaurant, setSelectedRestaurant] = useState('');
+  const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', restaurantId: '' });
 
@@ -55,9 +59,7 @@ export default function AttributesManagement() {
   }, []);
 
   useEffect(() => {
-    if (selectedRestaurant) {
-      fetchAttributes();
-    }
+    fetchAttributes();
   }, [selectedRestaurant]);
 
   const fetchRestaurants = async () => {
@@ -72,12 +74,16 @@ export default function AttributesManagement() {
   };
 
   const fetchAttributes = async () => {
-    if (!selectedRestaurant) return;
     setLoading(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/get`, {
-        restaurantId: selectedRestaurant
-      }, { withCredentials: true });
+      let response;
+      if (selectedRestaurant === 'all') {
+        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/all`, { withCredentials: true });
+      } else {
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/get`, {
+          restaurantId: selectedRestaurant
+        }, { withCredentials: true });
+      }
       setAttributes(response.data.data || []);
     } catch (error) {
       console.error('Error fetching attributes:', error);
@@ -88,8 +94,8 @@ export default function AttributesManagement() {
   };
 
   const handleAddAttribute = () => {
-    if (!selectedRestaurant) {
-      toast.warning('Please select a restaurant first');
+    if (selectedRestaurant === 'all') {
+      toast.warning('Please select a specific restaurant to add attributes');
       return;
     }
     setEditMode(false);
@@ -207,9 +213,13 @@ export default function AttributesManagement() {
               <Select
                 value={selectedRestaurant}
                 label="Restaurant"
-                onChange={(e) => setSelectedRestaurant(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setSelectedRestaurant(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
-                <MenuItem value="">Select Restaurant</MenuItem>
+                <MenuItem value="all">All Restaurants</MenuItem>
                 {Array.isArray(restaurants) && restaurants.map((restaurant) => (
                   <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
                     {restaurant.name}
@@ -236,15 +246,30 @@ export default function AttributesManagement() {
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>id</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Attribute Name</TableCell>
+                  {selectedRestaurant === 'all' && (
+                    <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
+                  )}
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Created Date</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {attributes.length === 0 ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 6 : 5} sx={{ textAlign: 'center', py: 8 }}>
+                      <BlackSpinner />
+                    </TableCell>
+                  </TableRow>
+                ) : filterLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 6 : 5} sx={{ textAlign: 'center', py: 8 }}>
+                      <ThemeSpinner message="Loading attributes..." />
+                    </TableCell>
+                  </TableRow>
+                ) : attributes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 6 : 5} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconAdjustments size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -266,6 +291,13 @@ export default function AttributesManagement() {
                             {attribute.name}
                           </Typography>
                         </TableCell>
+                        {selectedRestaurant === 'all' && (
+                          <TableCell>
+                            <Typography variant="body2">
+                              {attribute.restaurantName || 'Unknown Restaurant'}
+                            </Typography>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Switch
                             checked={attribute.isAvailable}

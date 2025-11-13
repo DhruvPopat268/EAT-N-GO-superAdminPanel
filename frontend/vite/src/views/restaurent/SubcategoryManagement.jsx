@@ -37,6 +37,9 @@ import { Edit, Delete, CloudUpload } from '@mui/icons-material';
 import { IconCategory, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
+import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
+import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 
 
@@ -48,10 +51,11 @@ export default function SubcategoryManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
-  const [selectedRestaurant, setSelectedRestaurant] = useState('');
+  const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -66,9 +70,7 @@ export default function SubcategoryManagement() {
   }, []);
 
   useEffect(() => {
-    if (selectedRestaurant) {
-      fetchSubcategories();
-    }
+    fetchSubcategories();
   }, [selectedRestaurant]);
 
   const fetchRestaurants = async () => {
@@ -83,12 +85,16 @@ export default function SubcategoryManagement() {
   };
 
   const fetchSubcategories = async () => {
-    if (!selectedRestaurant) return;
     setLoading(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/get`, {
-        restaurantId: selectedRestaurant
-      }, { withCredentials: true });
+      let response;
+      if (selectedRestaurant === 'all') {
+        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/all`, { withCredentials: true });
+      } else {
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/get`, {
+          restaurantId: selectedRestaurant
+        }, { withCredentials: true });
+      }
       setSubcategories(response.data.data || []);
     } catch (error) {
       console.error('Error fetching subcategories:', error);
@@ -99,6 +105,10 @@ export default function SubcategoryManagement() {
   };
 
   const handleAddSubcategory = () => {
+    if (selectedRestaurant === 'all') {
+      toast.warning('Please select a specific restaurant to add subcategories');
+      return;
+    }
     setEditMode(false);
     setFormData({ name: '', category: '', restaurantId: selectedRestaurant, image: null });
     setImagePreview(null);
@@ -240,9 +250,13 @@ export default function SubcategoryManagement() {
               <Select
                 value={selectedRestaurant}
                 label="Restaurant"
-                onChange={(e) => setSelectedRestaurant(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setSelectedRestaurant(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
-                <MenuItem value="">Select Restaurant</MenuItem>
+                <MenuItem value="all">All Restaurants</MenuItem>
                 {Array.isArray(restaurants) && restaurants.map((restaurant) => (
                   <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
                     {restaurant.name}
@@ -255,7 +269,11 @@ export default function SubcategoryManagement() {
               <Select
                 value={categoryFilter}
                 label="Category"
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setCategoryFilter(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
                 <MenuItem value="all">All Categories</MenuItem>
                 <MenuItem value="Veg">Veg</MenuItem>
@@ -268,7 +286,11 @@ export default function SubcategoryManagement() {
               <Select
                 value={statusFilter}
                 label="Status"
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setStatusFilter(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
                 <MenuItem value="all">All Status</MenuItem>
                 <MenuItem value="Available">Available</MenuItem>
@@ -294,6 +316,9 @@ export default function SubcategoryManagement() {
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Subcategory</TableCell>
+                  {selectedRestaurant === 'all' && (
+                    <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
+                  )}
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Created Date</TableCell>
@@ -301,9 +326,21 @@ export default function SubcategoryManagement() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredSubcategories.length === 0 ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 7 : 6} sx={{ textAlign: 'center', py: 8 }}>
+                      <BlackSpinner />
+                    </TableCell>
+                  </TableRow>
+                ) : filterLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 7 : 6} sx={{ textAlign: 'center', py: 8 }}>
+                      <ThemeSpinner message="Loading subcategories..." />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredSubcategories.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 7 : 6} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconCategory size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -340,6 +377,13 @@ export default function SubcategoryManagement() {
                             </Box>
                           </Box>
                         </TableCell>
+                        {selectedRestaurant === 'all' && (
+                          <TableCell>
+                            <Typography variant="body2">
+                              {subcategory.restaurantName || 'Unknown Restaurant'}
+                            </Typography>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Chip
                             label={subcategory.category}

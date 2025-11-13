@@ -34,10 +34,14 @@ import {
   Autocomplete,
   Grid
 } from '@mui/material';
-import { Edit, Delete, CloudUpload, Add, Remove } from '@mui/icons-material';
+import { Edit, Delete, CloudUpload, Add, Remove, Visibility } from '@mui/icons-material';
 import { IconPackage, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
+import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
+import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
+import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 export default function ComboManagement() {
   const theme = useTheme();
@@ -49,10 +53,11 @@ export default function ComboManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedCombo, setSelectedCombo] = useState(null);
-  const [selectedRestaurant, setSelectedRestaurant] = useState('');
+  const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -63,17 +68,21 @@ export default function ComboManagement() {
     image: null
   });
   const [selectedItems, setSelectedItems] = useState([]);
-  const [attributes, setAttributes] = useState([]);
+  const [itemAttributes, setItemAttributes] = useState({}); // Store attributes for each item
   const [imagePreview, setImagePreview] = useState(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewCombo, setViewCombo] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [comboToDelete, setComboToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchRestaurants();
+    fetchCombos(); // Fetch all combos on initial load
   }, []);
 
   useEffect(() => {
-    if (selectedRestaurant) {
-      fetchCombos();
-    }
+    fetchCombos();
   }, [selectedRestaurant]);
 
   const fetchRestaurants = async () => {
@@ -88,12 +97,16 @@ export default function ComboManagement() {
   };
 
   const fetchCombos = async () => {
-    if (!selectedRestaurant) return;
     setLoading(true);
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin`, {
-        restaurantId: selectedRestaurant
-      }, { withCredentials: true });
+      let response;
+      if (selectedRestaurant === 'all') {
+        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/all`, { withCredentials: true });
+      } else {
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin`, {
+          restaurantId: selectedRestaurant
+        }, { withCredentials: true });
+      }
       setCombos(response.data.data || []);
     } catch (error) {
       console.error('Error fetching combos:', error);
@@ -116,16 +129,17 @@ export default function ComboManagement() {
     }
   };
 
-  const fetchAttributes = async (restaurantId) => {
-    if (!restaurantId) return;
+  const fetchItemAttributes = async (itemId, restaurantId) => {
+    if (!itemId || !restaurantId) return [];
     try {
-      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/get`, {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/combos/item-attributes`, {
+        itemId,
         restaurantId
       }, { withCredentials: true });
-      setAttributes(response.data.data || []);
+      return response.data.data || [];
     } catch (error) {
-      console.error('Error fetching attributes:', error);
-      toast.error('Failed to load attributes');
+      console.error('Error fetching item attributes:', error);
+      return [];
     }
   };
 
@@ -133,11 +147,11 @@ export default function ComboManagement() {
     setFormData(prev => ({ ...prev, restaurantId }));
     if (restaurantId) {
       await fetchItems(restaurantId);
-      await fetchAttributes(restaurantId);
     } else {
       setItems([]);
-      setAttributes([]);
     }
+    setSelectedItems([]);
+    setItemAttributes({});
   };
 
 
@@ -157,7 +171,13 @@ export default function ComboManagement() {
     setDialogOpen(true);
   };
 
-  const handleEditCombo = (combo) => {
+  const handleViewCombo = (combo) => {
+    setViewCombo(combo);
+    setViewDialogOpen(true);
+  };
+
+  const handleEditCombo = async (combo) => {
+    console.log('Editing combo:', combo);
     setEditMode(true);
     setSelectedCombo(combo);
     setFormData({
@@ -168,27 +188,66 @@ export default function ComboManagement() {
       restaurantId: combo.restaurantId || selectedRestaurant,
       image: null
     });
-    setSelectedItems(combo.items?.map(item => ({
-      ...item,
-      selectedAttribute: item.attributes?.[0] || null
-    })) || []);
-    setImagePreview(combo.images?.[0]);
+    
+    // Load items for the restaurant if not already loaded
+    if (items.length === 0) {
+      await fetchItems(combo.restaurantId || selectedRestaurant);
+    }
+    
+    // Fetch attributes for all items in the combo
+    const newItemAttributes = {};
+    const selectedItemsData = [];
+    
+    for (const item of combo.items || []) {
+      const itemId = typeof item.itemId === 'string' ? item.itemId : item.itemId?._id;
+      const attrs = await fetchItemAttributes(itemId, combo.restaurantId || selectedRestaurant);
+      newItemAttributes[itemId] = attrs;
+      
+      // Handle different attribute formats
+      let attributeId = null;
+      if (item.attribute) {
+        if (typeof item.attribute === 'string') {
+          attributeId = item.attribute;
+        } else if (item.attribute._id) {
+          attributeId = item.attribute._id;
+        }
+      }
+      
+      selectedItemsData.push({
+        itemId: itemId,
+        name: item.itemId?.name || 'Unknown Item',
+        quantity: item.quantity,
+        selectedAttribute: attributeId
+      });
+    }
+    
+    setItemAttributes(newItemAttributes);
+    setSelectedItems(selectedItemsData);
+    setImagePreview(combo.image);
     setDialogOpen(true);
   };
 
-  const handleDeleteCombo = async (id) => {
-    if (window.confirm('Are you sure you want to delete this combo?')) {
-      try {
-        await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/delete`, {
-          data: { comboId: id, restaurantId: selectedRestaurant },
-          withCredentials: true
-        });
-        setCombos(prev => prev.filter(item => item._id !== id));
-        toast.success('Combo deleted successfully');
-      } catch (error) {
-        console.error('Error deleting combo:', error);
-        toast.error('Failed to delete combo');
-      }
+  const handleDeleteCombo = (combo) => {
+    setComboToDelete(combo);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/delete`, {
+        data: { comboId: comboToDelete._id, restaurantId: comboToDelete.restaurantId },
+        withCredentials: true
+      });
+      setCombos(prev => prev.filter(item => item._id !== comboToDelete._id));
+      toast.success('Combo deleted successfully');
+    } catch (error) {
+      console.error('Error deleting combo:', error);
+      toast.error('Failed to delete combo');
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setComboToDelete(null);
     }
   };
 
@@ -199,7 +258,7 @@ export default function ComboManagement() {
       await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/status`, {
         comboId: id,
         isAvailable: newStatus,
-        restaurantId: selectedRestaurant
+        restaurantId: combo.restaurantId
       }, { withCredentials: true });
       setCombos(prev => prev.map(item =>
         item._id === id ? { ...item, isAvailable: newStatus } : item
@@ -249,30 +308,45 @@ export default function ComboManagement() {
   };
 
   const handleSubmit = async () => {
+    // Validation: Check minimum 2 items
+    if (formData.items.length < 2) {
+      toast.error('To create combo, minimum add 2 items');
+      return;
+    }
+    
     setSubmitting(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('description', formData.description);
-
-
-      formDataToSend.append('price', formData.price);
-      formDataToSend.append('restaurantId', formData.restaurantId);
-      formDataToSend.append('items', JSON.stringify(formData.items));
+      const dataToSend = {
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        restaurantId: formData.restaurantId,
+        items: formData.items
+      };
+      
+      formDataToSend.append('data', JSON.stringify(dataToSend));
 
       if (formData.image) {
-        formDataToSend.append('images', formData.image);
+        formDataToSend.append('image', formData.image);
       }
 
       if (editMode) {
-        formDataToSend.append('comboId', selectedCombo._id);
-        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/update`, formDataToSend, { withCredentials: true });
+        dataToSend.comboId = selectedCombo._id;
+        formDataToSend.set('data', JSON.stringify(dataToSend));
+        const response = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/update`, formDataToSend, { 
+          withCredentials: true,
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         setCombos(prev => prev.map(item =>
           item._id === selectedCombo._id ? response.data.data : item
         ));
         toast.success('Combo updated successfully');
       } else {
-        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/add`, formDataToSend, { withCredentials: true });
+        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/add`, formDataToSend, { 
+          withCredentials: true,
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
         setCombos(prev => [...prev, response.data.data]);
         toast.success('Combo created successfully');
       }
@@ -342,7 +416,7 @@ export default function ComboManagement() {
                 label="Restaurant"
                 onChange={(e) => setSelectedRestaurant(e.target.value)}
               >
-                <MenuItem value="">Select Restaurant</MenuItem>
+                <MenuItem value="all">All Restaurants</MenuItem>
                 {Array.isArray(restaurants) && restaurants.map((restaurant) => (
                   <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
                     {restaurant.name}
@@ -355,7 +429,11 @@ export default function ComboManagement() {
               <Select
                 value={categoryFilter}
                 label="Category"
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setCategoryFilter(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
                 <MenuItem value="all">All Categories</MenuItem>
                 <MenuItem value="Veg">Veg</MenuItem>
@@ -368,7 +446,11 @@ export default function ComboManagement() {
               <Select
                 value={statusFilter}
                 label="Status"
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setFilterLoading(true);
+                  setStatusFilter(e.target.value);
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
               >
                 <MenuItem value="all">All Status</MenuItem>
                 <MenuItem value="Available">Available</MenuItem>
@@ -394,6 +476,9 @@ export default function ComboManagement() {
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Combo</TableCell>
+                  {selectedRestaurant === 'all' && (
+                    <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
+                  )}
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Items</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
@@ -402,9 +487,21 @@ export default function ComboManagement() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredCombos.length === 0 ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
+                      <ThemeSpinner message="Loading combos..." />
+                    </TableCell>
+                  </TableRow>
+                ) : filterLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
+                      <ThemeSpinner message="Loading combos..." />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredCombos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconPackage size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -420,11 +517,11 @@ export default function ComboManagement() {
                   filteredCombos.map((combo, index) => (
                     <Fade in timeout={1200 + index * 100} key={combo._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
-                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>#{index + 1}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Avatar
-                              src={combo.images?.[0]}
+                              src={combo.image}
                               sx={{
                                 bgcolor: 'primary.main',
                                 width: 50,
@@ -444,6 +541,13 @@ export default function ComboManagement() {
                             </Box>
                           </Box>
                         </TableCell>
+                        {selectedRestaurant === 'all' && (
+                          <TableCell>
+                            <Typography variant="body2">
+                              {combo.restaurantName || 'Unknown Restaurant'}
+                            </Typography>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Chip
                             label={combo.category}
@@ -471,6 +575,15 @@ export default function ComboManagement() {
                         </TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1}>
+                            <Tooltip title="View">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleViewCombo(combo)}
+                                sx={{ color: 'info.main' }}
+                              >
+                                <Visibility size={18} />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Edit">
                               <IconButton
                                 size="small"
@@ -483,7 +596,7 @@ export default function ComboManagement() {
                             <Tooltip title="Delete">
                               <IconButton
                                 size="small"
-                                onClick={() => handleDeleteCombo(combo._id)}
+                                onClick={() => handleDeleteCombo(combo)}
                                 sx={{ color: 'error.main' }}
                               >
                                 <Delete size={18} />
@@ -533,7 +646,7 @@ export default function ComboManagement() {
               options={items}
               getOptionLabel={(option) => option.name}
               value={selectedItems.map(si => items.find(i => i._id === si.itemId)).filter(Boolean)}
-              onChange={(event, newValue) => {
+              onChange={async (event, newValue) => {
                 const newSelectedItems = newValue.map(item => {
                   const existing = selectedItems.find(si => si.itemId === item._id);
                   return existing || {
@@ -544,12 +657,23 @@ export default function ComboManagement() {
                   };
                 });
                 setSelectedItems(newSelectedItems);
+                
+                // Fetch attributes for new items
+                const newItemAttributes = { ...itemAttributes };
+                for (const item of newValue) {
+                  if (!newItemAttributes[item._id]) {
+                    const attrs = await fetchItemAttributes(item._id, formData.restaurantId);
+                    newItemAttributes[item._id] = attrs;
+                  }
+                }
+                setItemAttributes(newItemAttributes);
+                
                 setFormData(prev => ({
                   ...prev,
                   items: newSelectedItems.map(si => ({
                     itemId: si.itemId,
                     quantity: si.quantity,
-                    attributes: si.selectedAttribute ? [{ attribute: si.selectedAttribute }] : []
+                    attribute: si.selectedAttribute || null
                   }))
                 }));
               }}
@@ -594,13 +718,15 @@ export default function ComboManagement() {
                                   items: newSelectedItems.map(si => ({
                                     itemId: si.itemId,
                                     quantity: si.quantity,
-                                    attributes: si.selectedAttribute ? [{ attribute: si.selectedAttribute }] : []
+                                    attribute: si.selectedAttribute || null
                                   }))
                                 }));
                               }}
                             >
-                              <MenuItem value="">No Attribute</MenuItem>
-                              {attributes.map(attr => (
+                              {(itemAttributes[item.itemId] || []).length === 0 && (
+                                <MenuItem value="">No Attribute</MenuItem>
+                              )}
+                              {(itemAttributes[item.itemId] || []).map(attr => (
                                 <MenuItem key={attr._id} value={attr._id}>{attr.name}</MenuItem>
                               ))}
                             </Select>
@@ -622,7 +748,7 @@ export default function ComboManagement() {
                                   items: newSelectedItems.map(si => ({
                                     itemId: si.itemId,
                                     quantity: si.quantity,
-                                    attributes: si.selectedAttribute ? [{ attribute: si.selectedAttribute }] : []
+                                    attribute: si.selectedAttribute || null
                                   }))
                                 }));
                               }}>
@@ -638,7 +764,7 @@ export default function ComboManagement() {
                                   items: newSelectedItems.map(si => ({
                                     itemId: si.itemId,
                                     quantity: si.quantity,
-                                    attributes: si.selectedAttribute ? [{ attribute: si.selectedAttribute }] : []
+                                    attribute: si.selectedAttribute || null
                                   }))
                                 }));
                               }}>
@@ -727,6 +853,77 @@ export default function ComboManagement() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* View Dialog */}
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>View Combo Details</DialogTitle>
+        <DialogContent>
+          {viewCombo && (
+            <Stack spacing={3} sx={{ mt: 1 }}>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                {viewCombo.image && (
+                  <Avatar
+                    src={viewCombo.image}
+                    sx={{ width: 80, height: 80, borderRadius: 2 }}
+                  />
+                )}
+                <Box>
+                  <Typography variant="h5" fontWeight="bold">{viewCombo.name}</Typography>
+                  <Typography variant="body1" color="text.secondary">{viewCombo.description}</Typography>
+                  {selectedRestaurant === 'all' && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Restaurant Name: {viewCombo.restaurantName || 'Unknown Restaurant'}
+                    </Typography>
+                  )}
+                  <Chip
+                    label={viewCombo.category}
+                    color={getCategoryColor(viewCombo.category)}
+                    size="small"
+                    sx={{ mt: 1 }}
+                  />
+                </Box>
+              </Box>
+              
+              <Box>
+                <Typography variant="h6" fontWeight="bold" sx={{ mb: 2 }}>Items in Combo:</Typography>
+                <Grid container spacing={2}>
+                  {viewCombo.items?.map((item, index) => (
+                    <Grid item xs={12} md={6} key={index}>
+                      <Box sx={{ border: '1px solid #ddd', borderRadius: 1, p: 2 }}>
+                        <Typography variant="subtitle2" fontWeight="bold">{item.itemId?.name}</Typography>
+                        <Typography variant="body2">Quantity: {item.quantity}</Typography>
+                        {item.attribute && (
+                          <Typography variant="body2">Attribute: {item.attribute?.name}</Typography>
+                        )}
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+              
+              <Box>
+                <Typography variant="h6" fontWeight="bold" color="primary.main">
+                  Total Price: ₹{viewCombo.price}
+                </Typography>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Combo"
+        message="Are you sure you want to delete the combo"
+        itemName={comboToDelete?.name}
+        loading={deleting}
+      />
 
       {toast.toasts.map((toastItem) => (
         <Snackbar

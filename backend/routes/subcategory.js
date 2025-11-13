@@ -138,6 +138,29 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Super Admin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
+// Get all subcategories from all restaurants
+router.get('/admin/all', authMiddleware, async (req, res) => {
+  try {
+    const subcategories = await Subcategory.find({})
+      .populate('restaurantId', 'basicInfo.restaurantName')
+      .sort({ createdAt: -1 });
+    
+    // Transform the data to include restaurantName and restaurantId
+    const transformedSubcategories = subcategories.map(subcategory => {
+      const subcategoryObj = subcategory.toObject();
+      return {
+        ...subcategoryObj,
+        restaurantName: subcategoryObj.restaurantId.basicInfo?.restaurantName || 'Unknown Restaurant',
+        restaurantId: subcategoryObj.restaurantId._id
+      };
+    });
+    
+    res.json({ success: true, data: transformedSubcategories });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get all subcategories for restaurant
 router.post('/admin/get', authMiddleware, async (req, res) => {
   try {

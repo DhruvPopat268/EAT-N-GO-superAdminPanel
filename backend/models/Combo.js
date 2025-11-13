@@ -13,7 +13,7 @@ const comboSchema = new mongoose.Schema(
       trim: true,
     },
     description: String,
-    images: [String],
+    image: String,
     
     // Items included in the combo
     items: [
@@ -27,16 +27,10 @@ const comboSchema = new mongoose.Schema(
           type: Number,
           default: 1,
         },
-        attributes: [
-          {
-            attribute: {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: 'Attribute',
-              required: true,
-            },
-            _id: false,
-          },
-        ],
+        attribute: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Attribute',
+        },
         _id: false,
       },
     ],

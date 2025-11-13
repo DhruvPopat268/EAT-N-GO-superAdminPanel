@@ -35,6 +35,9 @@ import {
 import { Edit, Delete, Visibility, CloudUpload } from '@mui/icons-material';
 import { IconBuildingStore, IconSearch, IconChefHat } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
+import BlackSpinner from '../../ui-component/BlackSpinner.jsx';
+import BlueSpinner from '../../ui-component/BlueSpinner.jsx';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 
 
@@ -68,12 +71,14 @@ export default function MenuList() {
   const theme = useTheme();
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
   const [selectedCategory, setSelectedCategory] = useState(categoryOptions[0]);
   const [selectedSubcategory, setSelectedSubcategory] = useState(subcategoryOptions[0]);
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [searchTerm, setSearchTerm] = useState('');
   const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -84,11 +89,7 @@ export default function MenuList() {
   }, []);
 
   React.useEffect(() => {
-    if (selectedRestaurant) {
-      fetchMenuItems(selectedRestaurant.restaurantId);
-    } else {
-      setMenuItems([]);
-    }
+    fetchMenuItems();
   }, [selectedRestaurant]);
 
   const fetchRestaurantNames = async () => {
@@ -105,22 +106,35 @@ export default function MenuList() {
     }
   };
 
-  const fetchMenuItems = async (restaurantId) => {
+  const fetchMenuItems = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/byRestaurant`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ restaurantId })
-      });
+      setLoading(true);
+      let response;
+      if (selectedRestaurant?.restaurantId === 'all') {
+        response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/all`, {
+          credentials: 'include'
+        });
+      } else if (selectedRestaurant?.restaurantId) {
+        response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/byRestaurant`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ restaurantId: selectedRestaurant.restaurantId })
+        });
+      } else {
+        setMenuItems([]);
+        return;
+      }
       const result = await response.json();
       if (result.success) {
         setMenuItems(result.data);
       }
     } catch (error) {
       console.error('Error fetching menu items:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -192,8 +206,6 @@ export default function MenuList() {
   };
 
   const getFilteredItems = () => {
-    if (!selectedRestaurant) return [];
-    
     let items = menuItems || [];
     
     // Filter by category
@@ -255,10 +267,14 @@ export default function MenuList() {
             <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
               <Autocomplete
                 sx={{ minWidth: 250 }}
-                options={restaurants}
+                options={[{ restaurantId: 'all', name: 'All Restaurants' }, ...restaurants]}
                 getOptionLabel={(option) => option.name}
                 value={selectedRestaurant}
-                onChange={(event, newValue) => setSelectedRestaurant(newValue)}
+                onChange={(event, newValue) => {
+                  setFilterLoading(true);
+                  setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
+                  setTimeout(() => setFilterLoading(false), 300);
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -283,7 +299,11 @@ export default function MenuList() {
                     options={categoryOptions}
                     getOptionLabel={(option) => option.name}
                     value={selectedCategory}
-                    onChange={(event, newValue) => setSelectedCategory(newValue || categoryOptions[0])}
+                    onChange={(event, newValue) => {
+                      setFilterLoading(true);
+                      setSelectedCategory(newValue || categoryOptions[0]);
+                      setTimeout(() => setFilterLoading(false), 300);
+                    }}
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -298,7 +318,11 @@ export default function MenuList() {
                     options={subcategoryOptions}
                     getOptionLabel={(option) => option.name}
                     value={selectedSubcategory}
-                    onChange={(event, newValue) => setSelectedSubcategory(newValue || subcategoryOptions[0])}
+                    onChange={(event, newValue) => {
+                      setFilterLoading(true);
+                      setSelectedSubcategory(newValue || subcategoryOptions[0]);
+                      setTimeout(() => setFilterLoading(false), 300);
+                    }}
                     renderInput={(params) => (
                       <TextField
                         {...params}
@@ -313,7 +337,11 @@ export default function MenuList() {
                     <Select
                       value={selectedStatus}
                       label="Status"
-                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      onChange={(e) => {
+                        setFilterLoading(true);
+                        setSelectedStatus(e.target.value);
+                        setTimeout(() => setFilterLoading(false), 300);
+                      }}
                     >
                       <MenuItem value="All Status">All Status</MenuItem>
                       <MenuItem value="active">Active</MenuItem>
@@ -346,6 +374,9 @@ export default function MenuList() {
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Image</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Item</TableCell>
+                  {selectedRestaurant?.restaurantId === 'all' && (
+                    <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
+                  )}
                   <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subcategory</TableCell>
@@ -355,23 +386,21 @@ export default function MenuList() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {!selectedRestaurant ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} sx={{ textAlign: 'center', py: 8 }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <IconBuildingStore size={48} color={theme.palette.text.secondary} />
-                        <Typography variant="h6" color="text.secondary">
-                          Please select a restaurant first
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Choose a restaurant from the dropdown to view menu items
-                        </Typography>
-                      </Box>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 10 : 9} sx={{ textAlign: 'center', py: 8 }}>
+                      <BlackSpinner />
+                    </TableCell>
+                  </TableRow>
+                ) : filterLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 10 : 9} sx={{ textAlign: 'center', py: 8 }}>
+                      <ThemeSpinner message="Loading menu items..." />
                     </TableCell>
                   </TableRow>
                 ) : filteredItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 10 : 9} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconChefHat size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -380,7 +409,7 @@ export default function MenuList() {
                         <Typography variant="body2" color="text.secondary">
                           {searchTerm || selectedCategory?.id !== 'all' || selectedSubcategory?.id !== 'all' || selectedStatus !== 'All Status'
                             ? 'Try adjusting your filters'
-                            : 'This restaurant has no menu items yet'
+                            : 'No menu items available'
                           }
                         </Typography>
                       </Box>
@@ -409,6 +438,13 @@ export default function MenuList() {
                             {item.name}
                           </Typography>
                         </TableCell>
+                        {selectedRestaurant?.restaurantId === 'all' && (
+                          <TableCell>
+                            <Typography variant="body2">
+                              {item.restaurantName || 'Unknown Restaurant'}
+                            </Typography>
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200 }}>
                             {item.description}
