@@ -42,12 +42,7 @@ const mockCategories = [
   { id: 'mixed', name: 'Mixed' }
 ];
 
-const mockSubcategories = [
-  { id: 'pizza', name: 'Pizza', category: 'veg' },
-  { id: 'burger', name: 'Burger', category: 'non-veg' },
-  { id: 'chinese', name: 'Chinese', category: 'mixed' },
-  { id: 'beverages', name: 'Beverages', category: 'veg' }
-];
+
 
 const mockAttributes = [
   { id: 'size', name: 'Size' },
@@ -88,6 +83,7 @@ export default function AddonManagement() {
   const theme = useTheme();
   const [addons, setAddons] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedAddon, setSelectedAddon] = useState(null);
@@ -102,11 +98,14 @@ export default function AddonManagement() {
     category: null,
     subcategory: null,
     image: null,
-    attributes: [{ attribute: null, price: '' }]
+    attributes: [{ attribute: null, price: '' }],
+    isAvailable: true
   });
+  const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
     fetchRestaurants();
+    fetchSubcategories();
   }, []);
 
   useEffect(() => {
@@ -120,6 +119,16 @@ export default function AddonManagement() {
     } catch (error) {
       console.error('Error fetching restaurants:', error);
       setRestaurants([]);
+    }
+  };
+
+  const fetchSubcategories = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/all`, { withCredentials: true });
+      setSubcategories(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Error fetching subcategories:', error);
+      setSubcategories([]);
     }
   };
 
@@ -166,18 +175,16 @@ export default function AddonManagement() {
   };
 
   const handleAddAddon = () => {
-    if (selectedRestaurant === 'all') {
-      alert('Please select a specific restaurant to add addons');
-      return;
-    }
     setEditMode(false);
     setFormData({
       name: '',
       category: null,
       subcategory: null,
       image: null,
-      attributes: [{ attribute: null, price: '' }]
+      attributes: [{ attribute: null, price: '' }],
+      isAvailable: true
     });
+    setImagePreview(null);
     setDialogOpen(true);
   };
 
@@ -187,13 +194,15 @@ export default function AddonManagement() {
     setFormData({
       name: addon.name,
       category: mockCategories.find(c => c.id === addon.category),
-      subcategory: mockSubcategories.find(s => s.id === addon.subcategory),
+      subcategory: subcategories.find(s => s._id === addon.subcategory),
       image: null,
       attributes: addon.attributes.map(attr => ({
         attribute: mockAttributes.find(a => a.id === attr.attribute),
         price: attr.price
-      }))
+      })),
+      isAvailable: addon.isAvailable
     });
+    setImagePreview(addon.image);
     setDialogOpen(true);
   };
 
@@ -234,7 +243,7 @@ export default function AddonManagement() {
     try {
       setLoading(true);
       const formDataToSend = new FormData();
-      
+
       const addonData = {
         name: formData.name,
         category: formData.category?.id,
@@ -243,7 +252,8 @@ export default function AddonManagement() {
         attributes: formData.attributes.map(attr => ({
           attribute: attr.attribute?.id,
           price: parseInt(attr.price)
-        }))
+        })),
+        isAvailable: formData.isAvailable
       };
 
       if (editMode) {
@@ -251,7 +261,7 @@ export default function AddonManagement() {
       }
 
       formDataToSend.append('data', JSON.stringify(addonData));
-      
+
       if (formData.image) {
         formDataToSend.append('image', formData.image);
       }
@@ -286,11 +296,11 @@ export default function AddonManagement() {
     }
   };
 
-  const filteredSubcategories = mockSubcategories.filter(sub =>
+  const filteredSubcategories = subcategories.filter(sub =>
     !formData.category || sub.category === formData.category.id
   );
 
-  const availableSubcategories = mockSubcategories.filter(sub =>
+  const availableSubcategories = subcategories.filter(sub =>
     subcategoryFilter === 'all' || sub.category === categoryFilter
   );
 
@@ -441,7 +451,7 @@ export default function AddonManagement() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
-                      <BlackSpinner />
+                      <ThemeSpinner message="Loading addons..." />
                     </TableCell>
                   </TableRow>
                 ) : filterLoading ? (
@@ -615,7 +625,7 @@ export default function AddonManagement() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Enter addon name"
             />
-            
+
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Autocomplete
                 sx={{ flex: 1 }}
@@ -644,30 +654,7 @@ export default function AddonManagement() {
               />
             </Box>
 
-            <Box>
-              <Typography variant="body2" fontWeight="bold" sx={{ mb: 2 }}>
-                Addon Image
-              </Typography>
-              <Button
-                variant="outlined"
-                component="label"
-                startIcon={<CloudUpload />}
-                sx={{
-                  borderStyle: 'dashed',
-                  py: 2,
-                  textTransform: 'none',
-                  width: '100%'
-                }}
-              >
-                {formData.image ? formData.image.name : 'Upload Image'}
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={(e) => setFormData({ ...formData, image: e.target.files[0] })}
-                />
-              </Button>
-            </Box>
+
 
             <Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -683,7 +670,7 @@ export default function AddonManagement() {
                   Add Attribute
                 </Button>
               </Box>
-              
+
               {formData.attributes.map((attr, index) => (
                 <Box key={index} sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
                   <Autocomplete
@@ -721,6 +708,72 @@ export default function AddonManagement() {
                 </Box>
               ))}
             </Box>
+
+            <Box>
+              <Typography variant="body2" fontWeight="bold" sx={{ mb: 2 }}>
+                Addon Image
+              </Typography>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<CloudUpload />}
+                sx={{
+                  borderStyle: 'dashed',
+                  py: 2,
+                  textTransform: 'none',
+                  width: '100%'
+                }}
+              >
+                {formData.image ? formData.image.name : 'Upload Image'}
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    setFormData({ ...formData, image: file });
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (e) => setImagePreview(e.target.result);
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                />
+              </Button>
+              {imagePreview && (
+                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '200px',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd'
+                    }}
+                  />
+                  
+                </Box>
+              )}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 2 }}>
+                <Typography variant="body2" fontWeight="bold">
+                  Status:
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Switch
+                    checked={formData.isAvailable}
+                    onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
+                    size="small"
+                  />
+                  <Chip
+                    label={formData.isAvailable ? 'Available' : 'Unavailable'}
+                    color={formData.isAvailable ? 'success' : 'error'}
+                    variant="outlined"
+                    size="small"
+                  />
+                </Box>
+              </Box>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -734,7 +787,7 @@ export default function AddonManagement() {
           <Button
             variant="contained"
             onClick={handleSubmit}
-            disabled={loading || !formData.name || !formData.category || !formData.subcategory || 
+            disabled={loading || !formData.name || !formData.category || !formData.subcategory ||
               formData.attributes.some(attr => !attr.attribute || !attr.price)}
             sx={{ borderRadius: 2, px: 3 }}
           >

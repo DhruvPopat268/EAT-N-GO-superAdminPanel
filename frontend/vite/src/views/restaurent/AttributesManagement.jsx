@@ -256,7 +256,7 @@ export default function AttributesManagement() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={selectedRestaurant === 'all' ? 6 : 5} sx={{ textAlign: 'center', py: 8 }}>
-                      <BlackSpinner />
+                      <ThemeSpinner message="Loading attributes..." />
                     </TableCell>
                   </TableRow>
                 ) : filterLoading ? (

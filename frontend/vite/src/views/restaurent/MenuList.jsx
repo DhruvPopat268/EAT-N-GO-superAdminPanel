@@ -387,7 +387,7 @@ export default function MenuList() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 10 : 9} sx={{ textAlign: 'center', py: 8 }}>
-                      <BlackSpinner />
+                      <ThemeSpinner message="Loading menu items..." />
                     </TableCell>
                   </TableRow>
                 ) : filterLoading ? (

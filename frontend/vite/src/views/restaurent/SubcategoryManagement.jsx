@@ -327,7 +327,7 @@ export default function SubcategoryManagement() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={selectedRestaurant === 'all' ? 7 : 6} sx={{ textAlign: 'center', py: 8 }}>
-                      <BlackSpinner />
+                      <ThemeSpinner message="Loading subcategories..." />
                     </TableCell>
                   </TableRow>
                 ) : filterLoading ? (
