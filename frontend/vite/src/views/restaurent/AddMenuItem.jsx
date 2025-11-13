@@ -3,6 +3,7 @@ import { Upload, Plus, Eye, Download, Building, Menu, Camera, Edit, Trash2 } fro
 import { IconBuildingStore } from '@tabler/icons-react';
 import { Snackbar, Alert } from '@mui/material';
 import { useToast } from '../../utils/toast.jsx';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const attributeUnits = [
   'ml', 'grams', 'pieces', 'kg', 'liters', 'small', 'medium', 'large', 'regular', 'family pack'
@@ -21,6 +22,11 @@ const unitOptions = ['GM', 'ML', 'unit'];
 
 export default function AddMenuItem() {
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const editMode = location.state?.editMode || false;
+  const itemData = location.state?.itemData || null;
+  const editRestaurantId = location.state?.restaurantId || null;
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [restaurantDetails, setRestaurantDetails] = useState(null);
@@ -59,6 +65,57 @@ export default function AddMenuItem() {
   useEffect(() => {
     fetchRestaurants();
   }, []);
+
+  // Handle edit mode initialization
+  useEffect(() => {
+    if (editMode && itemData && restaurants.length > 0) {
+      initializeEditMode();
+    }
+  }, [editMode, itemData, restaurants]);
+
+  // Set category when restaurant details are loaded in edit mode
+  useEffect(() => {
+    if (editMode && itemData && restaurantDetails?.foodCategory) {
+      const categoryOption = restaurantDetails.foodCategory
+        .map(cat => ({ id: cat.toLowerCase(), name: cat }))
+        .find(cat => cat.name.toLowerCase() === itemData.category?.toLowerCase());
+      
+      if (categoryOption) {
+        setFormData(prev => ({ ...prev, category: categoryOption }));
+      }
+    }
+  }, [editMode, itemData, restaurantDetails]);
+
+  // Set subcategory when subcategories are loaded in edit mode
+  useEffect(() => {
+    if (editMode && itemData && subcategories.length > 0) {
+      const subcategoryOption = subcategories.find(sub => 
+        sub.id === itemData.subcategory?._id || sub.name === itemData.subcategory?.name
+      );
+      
+      if (subcategoryOption) {
+        setFormData(prev => ({ ...prev, subcategory: subcategoryOption }));
+      }
+    }
+  }, [editMode, itemData, subcategories]);
+
+  // Set attributes when attributes are loaded in edit mode
+  useEffect(() => {
+    if (editMode && itemData && attributes.length > 0) {
+      const mappedAttributes = itemData.attributes?.map((attr, index) => {
+        const attributeOption = attributes.find(a => a.name === attr.name);
+        return {
+          id: Date.now() + index,
+          value: attr.price?.toString() || '',
+          unit: attributeOption ? { id: attributeOption._id, name: attributeOption.name } : null
+        };
+      }).filter(attr => attr.unit) || [];
+      
+      if (mappedAttributes.length > 0) {
+        setFormData(prev => ({ ...prev, attributes: mappedAttributes }));
+      }
+    }
+  }, [editMode, itemData, attributes]);
 
   useEffect(() => {
     if (selectedRestaurant) {
@@ -139,6 +196,48 @@ export default function AddMenuItem() {
     } catch (error) {
       console.error('Error fetching subcategories:', error);
       toast.error('Failed to load subcategories');
+    }
+  };
+
+  const initializeEditMode = () => {
+    // Find and set the restaurant
+    const restaurant = restaurants.find(r => r.restaurantId === editRestaurantId);
+    if (restaurant) {
+      setSelectedRestaurant(restaurant);
+      setAddMethod('individual');
+      
+      // Handle customizations
+      const mappedCustomizations = itemData.customizations?.map((custom, index) => ({
+        id: Date.now() + index,
+        name: custom.name,
+        options: custom.options?.map((opt, optIndex) => ({
+          id: Date.now() + index + optIndex + 1000,
+          label: opt.label,
+          quantity: opt.quantity || 0,
+          unit: opt.unit || 'unit',
+          price: opt.price || 0
+        })) || []
+      })) || [];
+      
+      // Enable customizations if there are any
+      if (mappedCustomizations.length > 0) {
+        setShowCustomizations(true);
+      }
+      
+      // Set basic form data with item data
+      setFormData({
+        itemName: itemData.name || '',
+        description: itemData.description || '',
+        images: itemData.images || [], // Include existing images
+        attributes: [], // Will be set when attributes are loaded
+        price: itemData.attributes?.[0]?.price?.toString() || '',
+        currency: currencyOptions[0], // Will be updated when restaurant details are loaded
+        category: null, // Will be set when restaurant details are loaded
+        subcategory: null, // Will be set when subcategories are loaded
+        foodTypes: itemData.foodTypes || [],
+        isAvailable: itemData.isAvailable !== undefined ? itemData.isAvailable : true,
+        customizations: mappedCustomizations
+      });
     }
   };
 
@@ -429,13 +528,13 @@ export default function AddMenuItem() {
     try {
       const formDataToSend = new FormData();
       
-      const itemData = {
+      const itemDataToSend = {
         name: formData.itemName,
         description: formData.description,
         category: formData.category?.name,
         subcategory: formData.subcategory?.id,
         attributes: formData.attributes.map(attr => ({
-          attribute: attr.unit.id,
+          name: attr.unit.name,
           price: parseFloat(attr.value)
         })),
         foodTypes: formData.foodTypes,
@@ -453,16 +552,34 @@ export default function AddMenuItem() {
         restaurantId: selectedRestaurant.restaurantId
       };
 
-      formDataToSend.append('data', JSON.stringify(itemData));
+      if (editMode && itemData) {
+        itemDataToSend.itemId = itemData._id;
+      }
+
+      formDataToSend.append('data', JSON.stringify(itemDataToSend));
       
-      if (formData.images.length > 0) {
-        formData.images.forEach(image => {
+      // Separate existing images (URLs) from new images (files)
+      const existingImages = formData.images.filter(image => typeof image === 'string');
+      const newImages = formData.images.filter(image => typeof image !== 'string');
+      
+      // Add existing images as URLs
+      if (existingImages.length > 0) {
+        itemDataToSend.existingImages = existingImages;
+      }
+      
+      // Add new images as files
+      if (newImages.length > 0) {
+        newImages.forEach(image => {
           formDataToSend.append('images', image);
         });
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/create`, {
-        method: 'POST',
+      const apiUrl = editMode 
+        ? `${import.meta.env.VITE_BACKEND_URL}/api/items/admin/update`
+        : `${import.meta.env.VITE_BACKEND_URL}/api/items/admin/create`;
+      
+      const response = await fetch(apiUrl, {
+        method: editMode ? 'PUT' : 'POST',
         credentials: 'include',
         body: formDataToSend
       });
@@ -470,26 +587,30 @@ export default function AddMenuItem() {
       const result = await response.json();
       
       if (result.success) {
-        toast.success('Item created successfully!');
-        setFormData({
-          itemName: '',
-          description: '',
-          images: [],
-          attributes: [],
-          price: '',
-          currency: currencyOptions[0],
-          category: null,
-          subcategory: null,
-          foodTypes: [],
-          isAvailable: true,
-          customizations: []
-        });
-        setCurrentAttribute({ value: '', unit: null });
-        setCurrentCustomization({ name: '', options: [] });
-        setCurrentOption({ label: '', quantity: 0, unit: 'unit', price: 0 });
-        setShowCustomizations(false);
+        toast.success(editMode ? 'Item updated successfully!' : 'Item created successfully!');
+        if (editMode) {
+          navigate('/restaurant/menu-list');
+        } else {
+          setFormData({
+            itemName: '',
+            description: '',
+            images: [],
+            attributes: [],
+            price: '',
+            currency: currencyOptions[0],
+            category: null,
+            subcategory: null,
+            foodTypes: [],
+            isAvailable: true,
+            customizations: []
+          });
+          setCurrentAttribute({ value: '', unit: null });
+          setCurrentCustomization({ name: '', options: [] });
+          setCurrentOption({ label: '', quantity: 0, unit: 'unit', price: 0 });
+          setShowCustomizations(false);
+        }
       } else {
-        toast.error('Error creating item: ' + result.message);
+        toast.error(editMode ? 'Error updating item: ' + result.message : 'Error creating item: ' + result.message);
       }
     } catch (error) {
       console.error('Error creating item:', error);
@@ -505,7 +626,7 @@ export default function AddMenuItem() {
     const totalImages = currentImages + files.length;
     
     if (totalImages > 5) {
-      toast.error(`You can only upload a maximum of 5 images so selects max 5 images`);
+      toast.error(`You can only upload a maximum of 5 images total. Currently have ${currentImages} images.`);
       event.target.value = '';
       return;
     }
@@ -908,7 +1029,9 @@ export default function AddMenuItem() {
                 <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Upload className="w-8 h-8 text-white" />
                 </div>
-                <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
+                <p className="text-gray-600 mb-2">
+                  {editMode ? 'Upload new images (optional)' : 'Click to upload or drag and drop'}
+                </p>
                 <p className="text-sm text-gray-500">Max 5 images</p>
                 <input
                   type="file"
@@ -919,28 +1042,34 @@ export default function AddMenuItem() {
                 />
               </div>
 
-              {/* Image Preview Thumbnails */}
+              {/* All Images Display */}
               {formData.images.length > 0 && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">Selected Images ({formData.images.length}/5)</span>
+                    <span className="text-sm font-medium text-gray-700">
+                      Images ({formData.images.length}/5)
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {formData.images.map((image, index) => (
-                      <div key={index} className="relative w-16 h-16">
-                        <img
-                          src={URL.createObjectURL(image)}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-full object-cover rounded-lg border border-gray-200"
-                        />
-                        <button
-                          onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                    {formData.images.map((image, index) => {
+                      const isExisting = typeof image === 'string';
+                      return (
+                        <div key={index} className="relative w-16 h-16">
+                          <img
+                            src={isExisting ? image : URL.createObjectURL(image)}
+                            alt={`Image ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          >
+                            ×
+                          </button>
+                  
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1055,10 +1184,10 @@ export default function AddMenuItem() {
             {submitting ? (
               <div className="flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Creating...
+                {editMode ? 'Updating...' : 'Creating...'}
               </div>
             ) : (
-              'Add Item'
+              editMode ? 'Update Item' : 'Add Item'
             )}
           </button>
           <button
@@ -1163,13 +1292,23 @@ export default function AddMenuItem() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <Plus className="w-6 h-6 text-white" />
+              {editMode ? <Edit className="w-6 h-6 text-white" /> : <Plus className="w-6 h-6 text-white" />}
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">Add Menu Item</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {editMode ? 'Edit Menu Item' : 'Add Menu Item'}
+            </h1>
           </div>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Add new items to restaurant menu
+            {editMode ? 'Update existing menu item details' : 'Add new items to restaurant menu'}
           </p>
+          {editMode && (
+            <button
+              onClick={() => navigate('/restaurant/menu-list')}
+              className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+            >
+              ← Back to Menu List
+            </button>
+          )}
         </div>
 
         {/* Restaurant Selection */}
