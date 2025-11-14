@@ -36,6 +36,9 @@ import { Edit, Delete, Visibility, CloudUpload } from '@mui/icons-material';
 import { IconBuildingStore, IconSearch, IconChefHat } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
+import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
+import { Snackbar, Alert } from '@mui/material';
+import { useToast } from '../../utils/toast.jsx';
 
 
 
@@ -52,6 +55,7 @@ const categoryOptions = [
 export default function MenuList() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const toast = useToast();
   const [restaurants, setRestaurants] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
@@ -64,8 +68,10 @@ export default function MenuList() {
   const [filterLoading, setFilterLoading] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editFormData, setEditFormData] = useState({});
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   React.useEffect(() => {
     fetchRestaurantNames();
@@ -153,17 +159,13 @@ export default function MenuList() {
   };
 
   const handleStatusToggle = (itemId) => {
-    setMenuItems(prevItems => {
-      const updatedItems = { ...prevItems };
-      Object.keys(updatedItems).forEach(restaurantId => {
-        updatedItems[restaurantId] = updatedItems[restaurantId].map(item => 
-          item.id === itemId 
-            ? { ...item, status: item.status === 'active' ? 'inactive' : 'active' }
-            : item
-        );
-      });
-      return updatedItems;
-    });
+    setMenuItems(prevItems => 
+      prevItems.map(item => 
+        item._id === itemId 
+          ? { ...item, isAvailable: !item.isAvailable }
+          : item
+      )
+    );
   };
 
   const handleViewItem = (item) => {
@@ -182,15 +184,41 @@ export default function MenuList() {
     });
   };
 
-  const handleDeleteItem = (itemId) => {
-    if (window.confirm('Are you sure you want to delete this item?')) {
-      setMenuItems(prevItems => {
-        const updatedItems = { ...prevItems };
-        Object.keys(updatedItems).forEach(restaurantId => {
-          updatedItems[restaurantId] = updatedItems[restaurantId].filter(item => item.id !== itemId);
+  const handleDeleteItem = (item) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteItem = async () => {
+    if (itemToDelete) {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/delete`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            itemId: itemToDelete._id, 
+            restaurantId: itemToDelete.restaurantId 
+          })
         });
-        return updatedItems;
-      });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setMenuItems(prevItems => 
+            prevItems.filter(item => item._id !== itemToDelete._id)
+          );
+          toast.success('Menu item deleted successfully!');
+        } else {
+          toast.error(result.message || 'Failed to delete menu item');
+        }
+      } catch (error) {
+        console.error('Error deleting item:', error);
+        toast.error('Failed to delete menu item');
+      }
+      
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -394,7 +422,7 @@ export default function MenuList() {
                   {selectedRestaurant?.restaurantId === 'all' && (
                     <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
                   )}
-                  <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
+                  
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subcategory</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
@@ -462,11 +490,7 @@ export default function MenuList() {
                             </Typography>
                           </TableCell>
                         )}
-                        <TableCell>
-                          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200 }}>
-                            {item.description}
-                          </Typography>
-                        </TableCell>
+                       
                         <TableCell>
                           <Chip 
                             label={item.category} 
@@ -539,7 +563,7 @@ export default function MenuList() {
                             </Tooltip>
                             <Tooltip title="Delete Item" arrow>
                               <IconButton
-                                onClick={() => handleDeleteItem(item._id)}
+                                onClick={() => handleDeleteItem(item)}
                                 sx={{ 
                                   color: 'error.main',
                                   borderRadius: 1,
@@ -572,18 +596,53 @@ export default function MenuList() {
           {selectedItem && (
             <Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
-                <Avatar 
-                  src={selectedItem.images?.[0]} 
-                  sx={{ 
-                    bgcolor: 'primary.main', 
-                    width: 100, 
-                    height: 100,
-                    borderRadius: 2,
-                    mb: 2
-                  }}
-                >
-                  <IconChefHat size={40} />
-                </Avatar>
+                {selectedItem.images && selectedItem.images.length > 0 ? (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center', mb: 2 }}>
+                    {selectedItem.images.map((image, index) => (
+                      <Box key={index} sx={{ position: 'relative' }}>
+                        <Avatar 
+                          src={image} 
+                          sx={{ 
+                            width: 80, 
+                            height: 80,
+                            borderRadius: 2,
+                            border: index === 0 ? '2px solid' : 'none',
+                            borderColor: 'primary.main'
+                          }}
+                        >
+                          <IconChefHat size={30} />
+                        </Avatar>
+                        {index === 0 && (
+                          <Chip 
+                            label="PRIMARY" 
+                            size="small" 
+                            color="primary" 
+                            sx={{ 
+                              position: 'absolute', 
+                              top: -8, 
+                              left: '50%', 
+                              transform: 'translateX(-50%)',
+                              fontSize: '0.6rem',
+                              height: 16
+                            }} 
+                          />
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  <Avatar 
+                    sx={{ 
+                      bgcolor: 'primary.main', 
+                      width: 100, 
+                      height: 100,
+                      borderRadius: 2,
+                      mb: 2
+                    }}
+                  >
+                    <IconChefHat size={40} />
+                  </Avatar>
+                )}
                 <Typography variant="h5" fontWeight="bold" textAlign="center">{selectedItem.name}</Typography>
                 <Typography variant="h6" color="primary.main">₹{selectedItem.attributes?.[0]?.price || 0}</Typography>
               </Box>
@@ -746,6 +805,39 @@ export default function MenuList() {
           <Button variant="contained" onClick={handleSaveEdit}>Save Changes</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmDeleteItem}
+        title="Delete Menu Item"
+        message="Are you sure you want to delete this menu item"
+        itemName={itemToDelete?.name}
+      />
+      
+      {/* Toast Notifications */}
+      {toast.toasts.map((toastItem) => (
+        <Snackbar
+          key={toastItem.id}
+          open={true}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 2 }}
+        >
+          <Alert
+            severity={toastItem.severity}
+            variant="filled"
+            sx={{
+              borderRadius: 2,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              minWidth: 300,
+              fontWeight: 500
+            }}
+          >
+            {toastItem.message}
+          </Alert>
+        </Snackbar>
+      ))}
     </Box>
   );
 }

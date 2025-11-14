@@ -57,22 +57,34 @@ router.post('/', restaurantAuthMiddleware, upload.array('images', 5), async (req
 router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async (req, res) => {
   try {
     const updateData = JSON.parse(req.body.data || '{}');
-    const { itemId } = updateData;
+    const { itemId, existingImages } = updateData;
     delete updateData.itemId;
+    delete updateData.existingImages;
     
+    // Handle images: combine existing images with new uploaded images
+    let allImages = [];
+    
+    // Add existing images (URLs)
+    if (existingImages && existingImages.length > 0) {
+      allImages = [...existingImages];
+    }
+    
+    // Upload new images and add their URLs
     if (req.files && req.files.length > 0) {
-      const imageUrls = await Promise.all(
+      const newImageUrls = await Promise.all(
         req.files.map(file => uploadToCloudinary(file.buffer, 'item-images'))
       );
-      updateData.images = imageUrls;
+      allImages = [...allImages, ...newImageUrls];
     }
+    
+    // Set the combined images array
+    updateData.images = allImages;
     
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId: req.restaurant.restaurantId },
       updateData,
       { new: true }
     ).populate('subcategory').populate('attributes.attribute');
-    // console.log(item);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
@@ -213,16 +225,29 @@ router.post('/admin/create', authMiddleware, upload.array('images', 5), async (r
 router.put('/admin/update', authMiddleware, upload.array('images', 5), async (req, res) => {
   try {
     const updateData = JSON.parse(req.body.data || '{}');
-    const { itemId, restaurantId } = updateData;
+    const { itemId, restaurantId, existingImages } = updateData;
     delete updateData.itemId;
     delete updateData.restaurantId;
+    delete updateData.existingImages;
     
+    // Handle images: combine existing images with new uploaded images
+    let allImages = [];
+    
+    // Add existing images (URLs)
+    if (existingImages && existingImages.length > 0) {
+      allImages = [...existingImages];
+    }
+    
+    // Upload new images and add their URLs
     if (req.files && req.files.length > 0) {
-      const imageUrls = await Promise.all(
+      const newImageUrls = await Promise.all(
         req.files.map(file => uploadToCloudinary(file.buffer, 'item-images'))
       );
-      updateData.images = imageUrls;
+      allImages = [...allImages, ...newImageUrls];
     }
+    
+    // Set the combined images array
+    updateData.images = allImages;
     
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId },

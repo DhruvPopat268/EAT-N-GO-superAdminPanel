@@ -4,6 +4,7 @@ import { IconBuildingStore } from '@tabler/icons-react';
 import { Snackbar, Alert } from '@mui/material';
 import { useToast } from '../../utils/toast.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
+import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
 
 const attributeUnits = [
   'ml', 'grams', 'pieces', 'kg', 'liters', 'small', 'medium', 'large', 'regular', 'family pack'
@@ -26,7 +27,9 @@ export default function AddMenuItem() {
   const navigate = useNavigate();
   const editMode = location.state?.editMode || false;
   const itemData = location.state?.itemData || null;
+  
   const editRestaurantId = location.state?.restaurantId || null;
+  console.log('Edit Mode:', editMode, 'Item Data:', itemData, 'Restaurant ID:', editRestaurantId);
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [restaurantDetails, setRestaurantDetails] = useState(null);
@@ -61,6 +64,8 @@ export default function AddMenuItem() {
   });
   const [uploadFile, setUploadFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     fetchRestaurants();
@@ -519,8 +524,39 @@ export default function AddMenuItem() {
   };
 
   const handleSubmitIndividual = async () => {
+    // Comprehensive validation
     if (!selectedRestaurant) {
-      toast.warning('Please select a restaurant first');
+      toast.error('Please select a restaurant');
+      return;
+    }
+
+    if (!formData.itemName.trim()) {
+      toast.error('Item name is mandatory');
+      return;
+    }
+
+    if (!formData.description.trim()) {
+      toast.error('Description is mandatory');
+      return;
+    }
+
+    if (!formData.category) {
+      toast.error('Category is mandatory');
+      return;
+    }
+
+    if (formData.attributes.length === 0) {
+      toast.error('At least one attribute is mandatory');
+      return;
+    }
+
+    if (formData.foodTypes.length === 0) {
+      toast.error('At least one food type is mandatory');
+      return;
+    }
+
+    if (formData.images.length === 0) {
+      toast.error('At least one image is mandatory');
       return;
     }
 
@@ -562,10 +598,13 @@ export default function AddMenuItem() {
       const existingImages = formData.images.filter(image => typeof image === 'string');
       const newImages = formData.images.filter(image => typeof image !== 'string');
       
-      // Add existing images as URLs
+      // Add existing images as URLs to the data object
       if (existingImages.length > 0) {
         itemDataToSend.existingImages = existingImages;
       }
+      
+      // Update the data with existing images included
+      formDataToSend.set('data', JSON.stringify(itemDataToSend));
       
       // Add new images as files
       if (newImages.length > 0) {
@@ -644,6 +683,28 @@ export default function AddMenuItem() {
     }));
   };
 
+  const handleDragStart = (e, index) => {
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    const dragIndex = parseInt(e.dataTransfer.getData('text/plain'));
+    
+    if (dragIndex !== dropIndex) {
+      const newImages = [...formData.images];
+      const draggedImage = newImages[dragIndex];
+      newImages.splice(dragIndex, 1);
+      newImages.splice(dropIndex, 0, draggedImage);
+      
+      setFormData(prev => ({ ...prev, images: newImages }));
+    }
+  };
+
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
@@ -668,6 +729,58 @@ export default function AddMenuItem() {
       ...prev,
       attributes: prev.attributes.filter(attr => attr.id !== id)
     }));
+  };
+
+  const editAttribute = (attr) => {
+    setCurrentAttribute({
+      value: attr.value,
+      unit: attr.unit
+    });
+    removeAttribute(attr.id);
+  };
+
+  const handleDeleteConfirmation = (type, target) => {
+    setDeleteTarget({ type, target });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    const { type, target } = deleteTarget;
+    
+    switch (type) {
+      case 'attribute':
+        removeAttribute(target);
+        break;
+      case 'customizationOption':
+        removeCustomizationOption(target);
+        break;
+      case 'customization':
+        removeCustomization(target);
+        break;
+      case 'image':
+        removeImage(target);
+        break;
+    }
+    
+    setDeleteDialogOpen(false);
+    setDeleteTarget(null);
+  };
+
+  const getDeleteMessage = () => {
+    if (!deleteTarget) return '';
+    
+    switch (deleteTarget.type) {
+      case 'attribute':
+        return 'Are you sure you want to delete this attribute';
+      case 'customizationOption':
+        return 'Are you sure you want to delete this customization option';
+      case 'customization':
+        return 'Are you sure you want to delete this customization';
+      case 'image':
+        return 'Are you sure you want to delete this image';
+      default:
+        return 'Are you sure you want to delete this item';
+    }
   };
 
 
@@ -925,7 +1038,7 @@ export default function AddMenuItem() {
                     <button
                       type="button"
                       onClick={addCustomizationOption}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
                     >
                       {editingOptionId ? 'Update Option' : 'Add Option'}
                     </button>
@@ -933,7 +1046,7 @@ export default function AddMenuItem() {
                       <button
                         type="button"
                         onClick={cancelEditOption}
-                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -950,14 +1063,14 @@ export default function AddMenuItem() {
                             <button
                               type="button"
                               onClick={() => editCustomizationOption(option)}
-                              className="text-blue-500 hover:text-blue-700 p-1"
+                              className="text-blue-500 hover:text-blue-700 p-1 cursor-pointer"
                             >
                               <Edit size={16} />
                             </button>
                             <button
                               type="button"
-                              onClick={() => removeCustomizationOption(option.id)}
-                              className="text-red-500 hover:text-red-700 p-1"
+                              onClick={() => handleDeleteConfirmation('customizationOption', option.id)}
+                              className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -973,8 +1086,8 @@ export default function AddMenuItem() {
                     disabled={!currentCustomization.name || currentCustomization.options.length === 0}
                     className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
                       currentCustomization.name && currentCustomization.options.length > 0
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed cursor-pointer'
                     }`}
                   >
                     Add Customization
@@ -991,8 +1104,8 @@ export default function AddMenuItem() {
                           <h5 className="font-medium text-gray-900">{customization.name}</h5>
                           <button
                             type="button"
-                            onClick={() => removeCustomization(customization.id)}
-                            className="text-red-500 hover:text-red-700 p-1"
+                            onClick={() => handleDeleteConfirmation('customization', customization.id)}
+                            className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -1004,7 +1117,7 @@ export default function AddMenuItem() {
                               <button
                                 type="button"
                                 onClick={() => editFinalCustomizationOption(customization.id, option, idx)}
-                                className="text-blue-500 hover:text-blue-700 p-1 ml-2"
+                                className="text-blue-500 hover:text-blue-700 p-1 ml-2 cursor-pointer"
                               >
                                 <Edit size={14} />
                               </button>
@@ -1032,7 +1145,7 @@ export default function AddMenuItem() {
                 <p className="text-gray-600 mb-2">
                   {editMode ? 'Upload new images (optional)' : 'Click to upload or drag and drop'}
                 </p>
-                <p className="text-sm text-gray-500">Max 5 images</p>
+                <p className="text-sm text-gray-500">Max 5 images • First image will be primary</p>
                 <input
                   type="file"
                   accept="image/*"
@@ -1049,24 +1162,38 @@ export default function AddMenuItem() {
                     <span className="text-sm font-medium text-gray-700">
                       Images ({formData.images.length}/5)
                     </span>
+                    <span className="text-xs text-gray-500">
+                      Drag to reorder • First image is primary
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-3">
                     {formData.images.map((image, index) => {
                       const isExisting = typeof image === 'string';
                       return (
-                        <div key={index} className="relative w-16 h-16">
+                        <div 
+                          key={index} 
+                          className={`relative w-16 h-16 cursor-move ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, index)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, index)}
+                        >
                           <img
                             src={isExisting ? image : URL.createObjectURL(image)}
                             alt={`Image ${index + 1}`}
                             className="w-full h-full object-cover rounded-lg border border-gray-200"
                           />
+                          {index === 0 && (
+                            <div className="absolute -top-1 -left-1 bg-blue-500 text-white text-xs px-1 rounded">
+                              PRIMARY
+                            </div>
+                          )}
                           <button
-                            onClick={() => removeImage(index)}
+                            onClick={() => handleDeleteConfirmation('image', index)}
                             className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                           >
                             ×
                           </button>
-                  
                         </div>
                       );
                     })}
@@ -1131,13 +1258,22 @@ export default function AddMenuItem() {
                       <span>
                         {attr.value} {formData.currency.symbol}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => removeAttribute(attr.id)}
-                        className="text-red-500 hover:text-red-700 font-medium text-sm cursor-pointer"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => editAttribute(attr)}
+                          className="text-blue-500 hover:text-blue-700 p-1 cursor-pointer"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteConfirmation('attribute', attr.id)}
+                          className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1373,6 +1509,15 @@ export default function AddMenuItem() {
           </Alert>
         </Snackbar>
       ))}
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Item"
+        message={getDeleteMessage()}
+      />
     </div>
   );
 }
