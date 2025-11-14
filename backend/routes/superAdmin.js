@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const SuperAdmin = require('../models/SuperAdmin');
 const AdminSession = require('../models/AdminSession');
 const { sendUserCredentials } = require('../services/emailService');
 const authMiddleware = require('../middleware/auth');
@@ -12,7 +12,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const user = await User.findOne({ email, isActive: true }).populate('role');
+    const user = await SuperAdmin.findOne({ email, isActive: true }).populate('role');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -51,7 +51,7 @@ router.post('/login', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000
     });
     
-    await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+    await SuperAdmin.findByIdAndUpdate(user._id, { lastLogin: new Date() });
     
     const userResponse = user.toObject();
     delete userResponse.password;
@@ -90,7 +90,7 @@ router.post('/logout', authMiddleware, async (req, res) => {
 // Get all users
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const users = await User.find({ isActive: true })
+    const users = await SuperAdmin.find({ isActive: true })
       .populate('role')
       .select('-password')
       .sort({ createdAt: -1 });
@@ -113,7 +113,7 @@ router.post('/', authMiddleware, async (req, res) => {
     const { password, ...userData } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    const user = new User({
+    const user = new SuperAdmin({
       ...userData,
       password: hashedPassword
     });
@@ -137,7 +137,7 @@ router.post('/', authMiddleware, async (req, res) => {
     
     res.status(201).json({
       success: true,
-      message: 'User created successfully',
+      message: 'SuperAdmin created successfully',
       data: userResponse
     });
   } catch (error) {
@@ -158,7 +158,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       updateData.password = await bcrypt.hash(password, 10);
     }
     
-    const user = await User.findByIdAndUpdate(
+    const user = await SuperAdmin.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
@@ -167,13 +167,13 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'SuperAdmin not found'
       });
     }
     
     res.status(200).json({
       success: true,
-      message: 'User updated successfully',
+      message: 'SuperAdmin updated successfully',
       data: user
     });
   } catch (error) {
@@ -188,16 +188,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
 // Delete user
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await SuperAdmin.findByIdAndDelete(req.params.id);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'SuperAdmin not found'
       });
     }
     res.status(200).json({
       success: true,
-      message: 'User deleted successfully'
+      message: 'SuperAdmin deleted successfully'
     });
   } catch (error) {
     res.status(500).json({

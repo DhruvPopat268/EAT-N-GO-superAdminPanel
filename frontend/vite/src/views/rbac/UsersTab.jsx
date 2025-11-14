@@ -57,7 +57,7 @@ export default function UsersTab() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/superAdmin`, {
         credentials: 'include'
       });
       const result = await response.json();
@@ -112,7 +112,7 @@ export default function UsersTab() {
     setSaving(true);
     try {
       if (editingUser) {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${editingUser._id}`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/superAdmin/${editingUser._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -125,7 +125,7 @@ export default function UsersTab() {
           ));
         }
       } else {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/superAdmin`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -146,7 +146,7 @@ export default function UsersTab() {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/superAdmin/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -247,7 +247,7 @@ export default function UsersTab() {
                       checked={user.isActive}
                       onChange={async (e) => {
                         try {
-                          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/${user._id}`, {
+                          const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/superAdmin/${user._id}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include',

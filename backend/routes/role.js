@@ -6,7 +6,7 @@ const router = express.Router();
 // Get all roles
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const User = require('../models/User');
+    const User = require('../models/SuperAdmin');
     const roles = await Role.find({ isActive: true }).populate('permissions').sort({ createdAt: -1 });
     
     // Add user count for each role

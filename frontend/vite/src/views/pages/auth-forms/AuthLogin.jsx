@@ -53,7 +53,7 @@ export default function AuthLogin() {
     setError('');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users/login`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/superAdmin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

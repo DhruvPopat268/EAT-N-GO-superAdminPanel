@@ -33,13 +33,15 @@ connectToDb();
 app.use('/api/restaurants', require('./routes/restaurant'));
 app.use('/api/permissions', require('./routes/permission'));
 app.use('/api/roles', require('./routes/role'));
-app.use('/api/users', require('./routes/user'));
+app.use('/api/superAdmin', require('./routes/superAdmin'));
 app.use('/api/activity-logs', require('./routes/activityLog'));
 app.use('/api/attributes', require('./routes/attribute'));
 app.use('/api/subcategories', require('./routes/subcategory'));
 app.use('/api/items', require('./routes/item'));
 app.use('/api/addon-items', require('./routes/addonItem'));
 app.use('/api/combos', require('./routes/combo'));
+
+app.use('/api/users', require('./usersRoutes/usersRoutes'));
 
 // Sample file download route
 app.get('/api/sample/menu-items', (req, res) => {

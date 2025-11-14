@@ -1,5 +1,5 @@
 const ActivityLog = require('../models/ActivityLog');
-const User = require('../models/User');
+const User = require('../models/SuperAdmin');
 
 const createLog = async (user, module, subModule, action, description = '', restroName = null) => {
   try {
