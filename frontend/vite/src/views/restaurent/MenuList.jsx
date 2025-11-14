@@ -425,6 +425,7 @@ export default function MenuList() {
                   
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subcategory</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Attributes</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
@@ -508,9 +509,34 @@ export default function MenuList() {
                           />
                         </TableCell>
                         <TableCell>
-                          <Typography variant="h6" fontWeight="bold">
-                            ₹{item.attributes?.[0]?.price || 0}
-                          </Typography>
+                          {item.attributes && item.attributes.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              {item.attributes.map((attr, idx) => (
+                                <Typography key={idx} variant="body2" sx={{ fontWeight: 500 }}>
+                                  {attr.name}
+                                </Typography>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              No attributes
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.attributes && item.attributes.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              {item.attributes.map((attr, idx) => (
+                                <Typography key={idx} variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                  ₹{attr.price}
+                                </Typography>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              -
+                            </Typography>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -785,15 +785,56 @@ export default function AddMenuItem() {
 
 
 
-  const handleSubmitBulk = () => {
-    console.log('Bulk upload submitted:', uploadFile);
-    setUploadFile(null);
+  const handleSubmitBulk = async () => {
+    if (!uploadFile) {
+      toast.error('Please select an Excel file');
+      return;
+    }
+
+    if (!selectedRestaurant) {
+      toast.error('Please select a restaurant');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('restaurantId', selectedRestaurant.restaurantId);
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/bulk-import`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(result.message);
+        if (result.results.errors.length > 0) {
+          // Show detailed errors
+          result.results.errors.forEach(error => {
+            toast.error(`Row ${error.row}: ${error.error}`);
+          });
+        }
+        setUploadFile(null);
+        setAddMethod('');
+      } else {
+        toast.error(result.message || 'Failed to import items');
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error('Failed to upload file. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const downloadSampleFile = () => {
     const link = document.createElement('a');
-    link.href = '/restaurant_menu.xlsx';
-    link.download = 'restaurant_menu_sample.xlsx';
+    link.href = `${import.meta.env.VITE_BACKEND_URL}/api/sample/menu-items`;
+    link.download = 'sample_menu_items.xlsx';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1402,13 +1443,20 @@ export default function AddMenuItem() {
         <div className="flex gap-4">
           <button
             onClick={handleSubmitBulk}
-            disabled={!uploadFile}
-            className={`flex-1 py-3 px-6 rounded-lg font-medium transition-colors ${uploadFile
+            disabled={!uploadFile || submitting}
+            className={`flex-1 py-3 px-6 rounded-lg font-medium transition-colors ${uploadFile && !submitting
               ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
               : 'bg-gray-200 text-gray-500 cursor-not-allowed'
               }`}
           >
-            Upload Menu
+            {submitting ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Uploading...
+              </div>
+            ) : (
+              'Upload Menu'
+            )}
           </button>
           <button
             onClick={() => setAddMethod('')}

@@ -24,6 +24,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
+app.use('/downloads', express.static('public/downloads'));
 
 // Connect to database
 connectToDb();
@@ -39,6 +40,17 @@ app.use('/api/subcategories', require('./routes/subcategory'));
 app.use('/api/items', require('./routes/item'));
 app.use('/api/addon-items', require('./routes/addonItem'));
 app.use('/api/combos', require('./routes/combo'));
+
+// Sample file download route
+app.get('/api/sample/menu-items', (req, res) => {
+  const path = require('path');
+  const filePath = path.join(__dirname, '../frontend/vite/src/assets/files/sample_items (2).xlsx');
+  res.download(filePath, 'sample_menu_items.xlsx', (err) => {
+    if (err) {
+      res.status(404).json({ success: false, message: 'Sample file not found' });
+    }
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
