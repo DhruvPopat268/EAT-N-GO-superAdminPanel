@@ -138,17 +138,19 @@ router.post('/refresh-token', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid refresh token' });
     }
 
-    // Generate only new access token
-    const newAccessToken = jwt.sign({ mobileNo: decoded.mobileNo, userId: decoded.userId }, process.env.JWT_SECRET_ACCESS_TOKEN_USER, { expiresIn: '15m' });
+    // Generate both new access and refresh tokens for security
+    const { accessToken: newAccessToken, refreshToken: newRefreshToken } = generateTokens(decoded.mobileNo, decoded.userId);
     
-    // Update session with new access token only
+    // Update session with both new tokens
     session.accessToken = newAccessToken;
+    session.refreshToken = newRefreshToken;
     await session.save();
 
     res.json({ 
       success: true,
-      message: 'Access token refreshed successfully',
-      accessToken: newAccessToken
+      message: 'Tokens refreshed successfully',
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken
     });
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
