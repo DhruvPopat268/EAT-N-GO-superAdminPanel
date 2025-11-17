@@ -1,254 +1,248 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-  Box,
-  Card,
-  Typography,
-  Chip,
-  Avatar,
-  Stack,
-  Grid,
-  useTheme,
-  Fade,
-  Button,
-  Divider,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  ImageList,
-  ImageListItem
-} from '@mui/material';
-import { ArrowBack, Restaurant } from '@mui/icons-material';
-import { IconChefHat } from '@tabler/icons-react';
-import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
+import { ArrowLeft, Edit, Eye, MapPin, Clock, Star } from 'lucide-react';
+import { useToast } from '../../utils/toast.jsx';
 
 export default function ItemDetail() {
-  const theme = useTheme();
-  const { itemId } = useParams();
+  const { itemId, restaurantId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchItemDetail();
-  }, [itemId]);
+  }, [itemId, restaurantId]);
 
   const fetchItemDetail = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/detail`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ itemId })
+        body: JSON.stringify({ itemId, restaurantId })
       });
+      
       const result = await response.json();
       if (result.success) {
         setItem(result.data);
+      } else {
+        toast.error(result.message || 'Failed to fetch item details');
       }
     } catch (error) {
       console.error('Error fetching item detail:', error);
+      toast.error('Failed to fetch item details');
     } finally {
       setLoading(false);
     }
   };
 
+
+
+  const handleEdit = () => {
+    navigate('/restaurant/add-menu-item', {
+      state: {
+        editMode: true,
+        itemData: item,
+        restaurantId: restaurantId
+      }
+    });
+  };
+
   if (loading) {
-    return <ThemeSpinner message="Loading item details..." />;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading item details...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!item) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6">Item not found</Typography>
-      </Box>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Item not found</p>
+          <button
+            onClick={() => navigate('/restaurant/menu-list')}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Back to Menu List
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Fade in timeout={800}>
-        <Box sx={{ mb: 4 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={() => navigate(-1)}
-              variant="outlined"
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/restaurant/menu-list')}
+              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
             >
-              Back
-            </Button>
-            <IconChefHat size={32} color={theme.palette.primary.main} />
-            <Typography variant="h4" fontWeight="bold" color="text.primary">
-              Item Details
-            </Typography>
-          </Box>
-        </Box>
-      </Fade>
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{item.name}</h1>
+              <p className="text-gray-600">Item Details</p>
+            </div>
+          </div>
+      
+        </div>
 
-      <Grid container spacing={3}>
-        {/* Images Section */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Images</Typography>
-            {item.images && item.images.length > 0 ? (
-              <ImageList cols={2} rowHeight={200} gap={8}>
-                {item.images.map((image, index) => (
-                  <ImageListItem key={index}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left Column - Images & Customizations */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold mb-4">Images</h3>
+              {item.images && item.images.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="relative">
                     <img
-                      src={image}
-                      alt={`${item.name} ${index + 1}`}
-                      loading="lazy"
-                      style={{ borderRadius: 8 }}
+                      src={item.images[0]}
+                      alt={item.name}
+                      className="w-full h-64 object-cover rounded-lg"
                     />
-                  </ImageListItem>
-                ))}
-              </ImageList>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <IconChefHat size={48} color={theme.palette.text.secondary} />
-                <Typography variant="body2" color="text.secondary">
-                  No images available
-                </Typography>
-              </Box>
+                    <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                      Primary
+                    </div>
+                  </div>
+                  {item.images.length > 1 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {item.images.slice(1).map((image, index) => (
+                        <img
+                          key={index}
+                          src={image}
+                          alt={`${item.name} ${index + 2}`}
+                          className="w-full h-20 object-cover rounded-lg"
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Eye size={48} className="mx-auto mb-2 opacity-50" />
+                  <p>No images available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Customizations */}
+            {item.customizations && item.customizations.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold mb-4">Customizations</h3>
+                <div className="space-y-4">
+                  {item.customizations.map((custom, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-medium text-gray-900">{custom.name}</h4>
+                        <span className="text-xs text-gray-500">
+                          Max: {custom.MaxSelection === -1 ? 'Unlimited' : custom.MaxSelection}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {custom.options?.map((option, optIndex) => (
+                          <div key={optIndex} className="flex justify-between items-center text-sm">
+                            <span className="text-gray-700">
+                              {option.label} ({option.quantity} {option.unit})
+                            </span>
+                            <span className="font-medium">
+                              {option.price === 0 ? 'Free' : `${item.currency === 'INR' ? '₹' : '$'}${option.price}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-          </Card>
-        </Grid>
+          </div>
 
-        {/* Basic Info Section */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Basic Information</Typography>
-            <Stack spacing={2}>
-              <Box>
-                <Typography variant="h4" fontWeight="bold">{item.name}</Typography>
-                <Typography variant="h5" color="primary.main" sx={{ mt: 1 }}>
-                  ₹{item.attributes?.[0]?.price || 0}
-                </Typography>
-              </Box>
-              
-              <Box>
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Description
-                </Typography>
-                <Typography variant="body1">{item.description}</Typography>
-              </Box>
+          {/* Right Column - Details */}
+          <div className="space-y-6">
+            {/* Basic Info */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Restaurant</label>
+                  <p className="text-gray-900">{item.restaurantName || 'Unknown Restaurant'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Name</label>
+                  <p className="text-gray-900">{item.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Description</label>
+                  <p className="text-gray-900">{item.description || 'No description available'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Category</label>
+                  <p className="text-gray-900">{item.category}</p>
+                </div>
+                {item.subcategory && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Subcategory</label>
+                    <p className="text-gray-900">{item.subcategory.name}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                    item.isAvailable 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {item.isAvailable ? 'Available' : 'Unavailable'}
+                  </span>
+                </div>
+              </div>
+            </div>
 
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                <Chip 
-                  label={item.category} 
-                  color={item.category.toLowerCase() === 'veg' ? 'success' : item.category.toLowerCase() === 'non-veg' ? 'error' : 'warning'} 
-                  variant="outlined"
-                />
-                <Chip 
-                  label={item.subcategory?.name || 'N/A'} 
-                  color="primary" 
-                  variant="outlined"
-                />
-                <Chip 
-                  label={item.isAvailable ? 'Available' : 'Unavailable'} 
-                  color={item.isAvailable ? 'success' : 'error'}
-                  variant="filled"
-                />
-              </Stack>
-            </Stack>
-          </Card>
-        </Grid>
+            {/* Attributes */}
+            {item.attributes && item.attributes.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold mb-4">Attributes & Pricing</h3>
+                <div className="space-y-3">
+                  {item.attributes.map((attr, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="font-medium">{attr.attribute?.name || 'Unknown'}</span>
+                      <span className="text-lg font-semibold text-blue-600">
+                        {item.currency === 'INR' ? '₹' : '$'}{attr.price}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Food Types Section */}
-        {item.foodTypes && item.foodTypes.length > 0 && (
-          <Grid item xs={12} md={6}>
-            <Card sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Food Types</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {item.foodTypes.map((type, index) => (
-                  <Chip 
-                    key={index}
-                    label={type} 
-                    color="secondary" 
-                    variant="outlined"
-                  />
-                ))}
-              </Stack>
-            </Card>
-          </Grid>
-        )}
-
-        {/* Customizations Section */}
-        {item.customizations && item.customizations.length > 0 && (
-          <Grid item xs={12} md={6}>
-            <Card sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>Customizations</Typography>
-              <Stack spacing={2}>
-                {item.customizations.map((customization, index) => (
-                  <Box key={index}>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                      {customization.name}
-                    </Typography>
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Option</TableCell>
-                            <TableCell>Quantity</TableCell>
-                            <TableCell>Unit</TableCell>
-                            <TableCell>Price</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {customization.options.map((option, optIndex) => (
-                            <TableRow key={optIndex}>
-                              <TableCell>{option.label}</TableCell>
-                              <TableCell>{option.quantity}</TableCell>
-                              <TableCell>{option.unit}</TableCell>
-                              <TableCell>₹{option.price}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                ))}
-              </Stack>
-            </Card>
-          </Grid>
-        )}
-
-        {/* Additional Info */}
-        <Grid item xs={12}>
-          <Card sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Additional Information</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="text.secondary">Currency</Typography>
-                <Typography variant="body1">{item.currency}</Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="text.secondary">Created</Typography>
-                <Typography variant="body1">
-                  {new Date(item.createdAt).toLocaleDateString()}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="text.secondary">Last Updated</Typography>
-                <Typography variant="body1">
-                  {new Date(item.updatedAt).toLocaleDateString()}
-                </Typography>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="body2" color="text.secondary">Item ID</Typography>
-                <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                  {item._id}
-                </Typography>
-              </Grid>
-            </Grid>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+            {/* Food Types */}
+            {item.foodTypes && item.foodTypes.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold mb-4">Food Types</h3>
+                <div className="flex flex-wrap gap-2">
+                  {item.foodTypes.map((type, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
+                    >
+                      {type}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

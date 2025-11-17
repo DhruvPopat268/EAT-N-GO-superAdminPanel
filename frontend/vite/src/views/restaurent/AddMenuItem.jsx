@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, Plus, Eye, Download, Building, Menu, Camera, Edit, Trash2 } from 'lucide-react';
 import { IconBuildingStore } from '@tabler/icons-react';
-import { Snackbar, Alert } from '@mui/material';
+import { Snackbar, Alert, Autocomplete, TextField } from '@mui/material';
 import { useToast } from '../../utils/toast.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
@@ -27,14 +27,14 @@ export default function AddMenuItem() {
   const navigate = useNavigate();
   const editMode = location.state?.editMode || false;
   const itemData = location.state?.itemData || null;
-  
+
   const editRestaurantId = location.state?.restaurantId || null;
-  console.log('Edit Mode:', editMode, 'Item Data:', itemData, 'Restaurant ID:', editRestaurantId);
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [restaurantDetails, setRestaurantDetails] = useState(null);
   const [attributes, setAttributes] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
+  const [addonItems, setAddonItems] = useState([]);
   const [addMethod, setAddMethod] = useState('');
   const [showRestaurantDropdown, setShowRestaurantDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -42,14 +42,16 @@ export default function AddMenuItem() {
   const [showUnitDropdown, setShowUnitDropdown] = useState(false);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showCustomizations, setShowCustomizations] = useState(false);
-  const [currentCustomization, setCurrentCustomization] = useState({ name: '', options: [] });
-  const [currentOption, setCurrentOption] = useState({ label: '', quantity: 0, unit: 'unit', price: 0 });
+  const [currentCustomization, setCurrentCustomization] = useState({ name: '', maxSelection: '', options: [] });
+  const [currentOption, setCurrentOption] = useState({ label: '', quantity: '', unit: 'unit', price: '' });
   const [editingOptionId, setEditingOptionId] = useState(null);
+  const [editingOptionIndex, setEditingOptionIndex] = useState(null);
   const [formData, setFormData] = useState({
     itemName: '',
     description: '',
     images: [],
     attributes: [],
+    addons: [],
     price: '',
     currency: currencyOptions[0],
     category: null,
@@ -84,7 +86,7 @@ export default function AddMenuItem() {
       const categoryOption = restaurantDetails.foodCategory
         .map(cat => ({ id: cat.toLowerCase(), name: cat }))
         .find(cat => cat.name.toLowerCase() === itemData.category?.toLowerCase());
-      
+
       if (categoryOption) {
         setFormData(prev => ({ ...prev, category: categoryOption }));
       }
@@ -94,10 +96,10 @@ export default function AddMenuItem() {
   // Set subcategory when subcategories are loaded in edit mode
   useEffect(() => {
     if (editMode && itemData && subcategories.length > 0) {
-      const subcategoryOption = subcategories.find(sub => 
+      const subcategoryOption = subcategories.find(sub =>
         sub.id === itemData.subcategory?._id || sub.name === itemData.subcategory?.name
       );
-      
+
       if (subcategoryOption) {
         setFormData(prev => ({ ...prev, subcategory: subcategoryOption }));
       }
@@ -115,7 +117,7 @@ export default function AddMenuItem() {
           unit: attributeOption ? { id: attributeOption._id, name: attributeOption.name } : null
         };
       }).filter(attr => attr.unit) || [];
-      
+
       if (mappedAttributes.length > 0) {
         setFormData(prev => ({ ...prev, attributes: mappedAttributes }));
       }
@@ -127,6 +129,7 @@ export default function AddMenuItem() {
       fetchRestaurantDetails();
       fetchAttributes();
       fetchSubcategories();
+      fetchAddonItems();
     }
   }, [selectedRestaurant]);
 
@@ -204,37 +207,57 @@ export default function AddMenuItem() {
     }
   };
 
+  const fetchAddonItems = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ restaurantId: selectedRestaurant.restaurantId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setAddonItems(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching addon items:', error);
+      toast.error('Failed to load addon items');
+    }
+  };
+
   const initializeEditMode = () => {
     // Find and set the restaurant
     const restaurant = restaurants.find(r => r.restaurantId === editRestaurantId);
     if (restaurant) {
       setSelectedRestaurant(restaurant);
       setAddMethod('individual');
-      
+
       // Handle customizations
       const mappedCustomizations = itemData.customizations?.map((custom, index) => ({
         id: Date.now() + index,
         name: custom.name,
+        maxSelection: custom.MaxSelection || '',
         options: custom.options?.map((opt, optIndex) => ({
           id: Date.now() + index + optIndex + 1000,
           label: opt.label,
-          quantity: opt.quantity || 0,
+          quantity: opt.quantity || '',
           unit: opt.unit || 'unit',
-          price: opt.price || 0
+          price: opt.price || ''
         })) || []
       })) || [];
-      
+
       // Enable customizations if there are any
       if (mappedCustomizations.length > 0) {
         setShowCustomizations(true);
       }
-      
+
       // Set basic form data with item data
       setFormData({
         itemName: itemData.name || '',
         description: itemData.description || '',
         images: itemData.images || [], // Include existing images
         attributes: [], // Will be set when attributes are loaded
+        addons: itemData.addons || [],
         price: itemData.attributes?.[0]?.price?.toString() || '',
         currency: currencyOptions[0], // Will be updated when restaurant details are loaded
         category: null, // Will be set when restaurant details are loaded
@@ -336,7 +359,7 @@ export default function AddMenuItem() {
     try {
       const formData = new FormData();
       formData.append('data', JSON.stringify({ restaurantId, ...itemData }));
-      
+
       imageFiles.forEach((file) => {
         formData.append('images', file);
       });
@@ -379,7 +402,11 @@ export default function AddMenuItem() {
       const itemData = {
         itemName: formData.itemName,
         description: formData.description,
-        attributes: formData.attributes,
+        attributes: formData.attributes.map(attr => ({
+          attribute: attr.unit.id,
+          price: parseFloat(attr.value)
+        })),
+        addons: formData.addons,
         price: parseFloat(formData.price),
         currency: formData.currency.id,
         category: formData.category.id,
@@ -390,7 +417,7 @@ export default function AddMenuItem() {
       };
 
       const result = await addItem(selectedRestaurant.restaurantId, itemData, formData.images);
-      
+
       if (result.success) {
         toast.success('Menu item added successfully!');
         // Reset form
@@ -437,14 +464,17 @@ export default function AddMenuItem() {
 
   const addCustomizationOption = () => {
     if (currentOption.label) {
-      if (editingOptionId) {
+      if (editingOptionIndex !== null) {
         // Update existing option
-        setCurrentCustomization(prev => ({
-          ...prev,
-          options: prev.options.map(opt => 
-            opt.id === editingOptionId ? { ...currentOption, id: editingOptionId } : opt
-          )
-        }));
+        setCurrentCustomization(prev => {
+          const newOptions = [...prev.options];
+          newOptions[editingOptionIndex] = { ...currentOption, id: prev.options[editingOptionIndex].id };
+          return {
+            ...prev,
+            options: newOptions
+          };
+        });
+        setEditingOptionIndex(null);
         setEditingOptionId(null);
       } else {
         // Add new option
@@ -453,35 +483,38 @@ export default function AddMenuItem() {
           options: [...prev.options, { ...currentOption, id: Date.now() }]
         }));
       }
-      setCurrentOption({ label: '', quantity: 0, unit: 'unit', price: 0 });
+      setCurrentOption({ label: '', quantity: '', unit: 'unit', price: '' });
     }
   };
 
-  const editCustomizationOption = (option) => {
+  const editCustomizationOption = (option, index) => {
     setCurrentOption({
       label: option.label,
-      quantity: option.quantity,
+      quantity: option.quantity || '',
       unit: option.unit,
-      price: option.price
+      price: option.price || ''
     });
     setEditingOptionId(option.id);
+    setEditingOptionIndex(index);
   };
 
   const cancelEditOption = () => {
-    setCurrentOption({ label: '', quantity: 0, unit: 'unit', price: 0 });
+    setCurrentOption({ label: '', quantity: '', unit: 'unit', price: '' });
     setEditingOptionId(null);
+    setEditingOptionIndex(null);
   };
 
   const editFinalCustomizationOption = (customizationId, option, optionIndex) => {
     // Remove the option from final customizations and put it back in current customization for editing
     const customization = formData.customizations.find(c => c.id === customizationId);
-    
+
     // Set current customization to the one being edited
     setCurrentCustomization({
       name: customization.name,
+      maxSelection: customization.maxSelection || '',
       options: customization.options.filter((_, idx) => idx !== optionIndex)
     });
-    
+
     // Set the option to be edited
     setCurrentOption({
       label: option.label,
@@ -489,14 +522,14 @@ export default function AddMenuItem() {
       unit: option.unit,
       price: option.price
     });
-    
+
     // Remove the customization from final list temporarily
     setFormData(prev => ({
       ...prev,
       customizations: prev.customizations.filter(c => c.id !== customizationId)
     }));
-    
-    setEditingOptionId('editing-final');
+
+    setEditingOptionId(option.id || 'editing-final');
   };
 
   const removeCustomizationOption = (optionId) => {
@@ -512,7 +545,7 @@ export default function AddMenuItem() {
         ...prev,
         customizations: [...prev.customizations, { ...currentCustomization, id: Date.now() }]
       }));
-      setCurrentCustomization({ name: '', options: [] });
+      setCurrentCustomization({ name: '', maxSelection: '', options: [] });
     }
   };
 
@@ -563,19 +596,21 @@ export default function AddMenuItem() {
     setSubmitting(true);
     try {
       const formDataToSend = new FormData();
-      
+
       const itemDataToSend = {
         name: formData.itemName,
         description: formData.description,
         category: formData.category?.name,
         subcategory: formData.subcategory?.id,
         attributes: formData.attributes.map(attr => ({
-          name: attr.unit.name,
+          attribute: attr.unit.id,
           price: parseFloat(attr.value)
         })),
+        addons: formData.addons,
         foodTypes: formData.foodTypes,
         customizations: formData.customizations.map(custom => ({
           name: custom.name,
+          MaxSelection: custom.maxSelection,
           options: custom.options.map(opt => ({
             label: opt.label,
             quantity: opt.quantity,
@@ -593,19 +628,19 @@ export default function AddMenuItem() {
       }
 
       formDataToSend.append('data', JSON.stringify(itemDataToSend));
-      
+
       // Separate existing images (URLs) from new images (files)
       const existingImages = formData.images.filter(image => typeof image === 'string');
       const newImages = formData.images.filter(image => typeof image !== 'string');
-      
+
       // Add existing images as URLs to the data object
       if (existingImages.length > 0) {
         itemDataToSend.existingImages = existingImages;
       }
-      
+
       // Update the data with existing images included
       formDataToSend.set('data', JSON.stringify(itemDataToSend));
-      
+
       // Add new images as files
       if (newImages.length > 0) {
         newImages.forEach(image => {
@@ -613,10 +648,10 @@ export default function AddMenuItem() {
         });
       }
 
-      const apiUrl = editMode 
+      const apiUrl = editMode
         ? `${import.meta.env.VITE_BACKEND_URL}/api/items/admin/update`
         : `${import.meta.env.VITE_BACKEND_URL}/api/items/admin/create`;
-      
+
       const response = await fetch(apiUrl, {
         method: editMode ? 'PUT' : 'POST',
         credentials: 'include',
@@ -624,7 +659,7 @@ export default function AddMenuItem() {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         toast.success(editMode ? 'Item updated successfully!' : 'Item created successfully!');
         if (editMode) {
@@ -635,6 +670,7 @@ export default function AddMenuItem() {
             description: '',
             images: [],
             attributes: [],
+            addons: [],
             price: '',
             currency: currencyOptions[0],
             category: null,
@@ -644,8 +680,8 @@ export default function AddMenuItem() {
             customizations: []
           });
           setCurrentAttribute({ value: '', unit: null });
-          setCurrentCustomization({ name: '', options: [] });
-          setCurrentOption({ label: '', quantity: 0, unit: 'unit', price: 0 });
+          setCurrentCustomization({ name: '', maxSelection: '', options: [] });
+          setCurrentOption({ label: '', quantity: '', unit: 'unit', price: '' });
           setShowCustomizations(false);
         }
       } else {
@@ -663,13 +699,13 @@ export default function AddMenuItem() {
     const files = Array.from(event.target.files);
     const currentImages = formData.images.length;
     const totalImages = currentImages + files.length;
-    
+
     if (totalImages > 5) {
       toast.error(`You can only upload a maximum of 5 images total. Currently have ${currentImages} images.`);
       event.target.value = '';
       return;
     }
-    
+
     setFormData(prev => ({
       ...prev,
       images: [...prev.images, ...files]
@@ -694,13 +730,13 @@ export default function AddMenuItem() {
   const handleDrop = (e, dropIndex) => {
     e.preventDefault();
     const dragIndex = parseInt(e.dataTransfer.getData('text/plain'));
-    
+
     if (dragIndex !== dropIndex) {
       const newImages = [...formData.images];
       const draggedImage = newImages[dragIndex];
       newImages.splice(dragIndex, 1);
       newImages.splice(dropIndex, 0, draggedImage);
-      
+
       setFormData(prev => ({ ...prev, images: newImages }));
     }
   };
@@ -746,7 +782,7 @@ export default function AddMenuItem() {
 
   const confirmDelete = () => {
     const { type, target } = deleteTarget;
-    
+
     switch (type) {
       case 'attribute':
         removeAttribute(target);
@@ -761,14 +797,14 @@ export default function AddMenuItem() {
         removeImage(target);
         break;
     }
-    
+
     setDeleteDialogOpen(false);
     setDeleteTarget(null);
   };
 
   const getDeleteMessage = () => {
     if (!deleteTarget) return '';
-    
+
     switch (deleteTarget.type) {
       case 'attribute':
         return 'Are you sure you want to delete this attribute';
@@ -809,7 +845,7 @@ export default function AddMenuItem() {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         toast.success(result.message);
         if (result.results.errors.length > 0) {
@@ -983,6 +1019,38 @@ export default function AddMenuItem() {
               </div>
             </div>
 
+            {/* Addons */}
+            <div className="mb-6">
+              <Autocomplete
+                multiple
+                options={addonItems}
+                getOptionLabel={(option) => option.name}
+                value={addonItems.filter(addon => formData.addons.includes(addon._id))}
+                onChange={(event, newValue) => {
+                  handleInputChange('addons', newValue.map(addon => addon._id));
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Addons (Optional)"
+                    placeholder="Choose addon items"
+                    variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '8px',
+                        '& fieldset': {
+                          borderColor: '#d1d5db',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#9ca3af',
+                        },
+                      },
+                    }}
+                  />
+                )}
+              />
+            </div>
+
 
 
             {/* Customizations Toggle */}
@@ -990,15 +1058,13 @@ export default function AddMenuItem() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Enable Customizations</span>
                 <div
-                  className={`w-11 h-6 rounded-full cursor-pointer transition-colors ${
-                    showCustomizations ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
+                  className={`w-11 h-6 rounded-full cursor-pointer transition-colors ${showCustomizations ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
                   onClick={() => setShowCustomizations(!showCustomizations)}
                 >
                   <div
-                    className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                      showCustomizations ? 'translate-x-5' : 'translate-x-0.5'
-                    } mt-0.5`}
+                    className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${showCustomizations ? 'translate-x-5' : 'translate-x-0.5'
+                      } mt-0.5`}
                   />
                 </div>
               </div>
@@ -1026,7 +1092,7 @@ export default function AddMenuItem() {
             {showCustomizations && (
               <div className="mb-6">
                 <h4 className="text-md font-medium text-gray-900 mb-4">Customizations</h4>
-                
+
                 {/* Add New Customization */}
                 <div className="border border-gray-200 rounded-lg p-4 mb-4">
                   <div className="mb-3">
@@ -1038,7 +1104,16 @@ export default function AddMenuItem() {
                       onChange={(e) => setCurrentCustomization(prev => ({ ...prev, name: e.target.value }))}
                     />
                   </div>
-                  
+                  <div className="mb-3">
+                    <input
+                      type="number"
+                      placeholder="Max Selection (e.g., 1, 2, -1 for unlimited)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
+                      value={currentCustomization.maxSelection === 0 ? '' : currentCustomization.maxSelection}
+                      onChange={(e) => setCurrentCustomization(prev => ({ ...prev, maxSelection: e.target.value === '' ? 0 : Number(e.target.value) }))}
+                    />
+                  </div>
+
                   {/* Add Options */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <input
@@ -1053,8 +1128,8 @@ export default function AddMenuItem() {
                         type="number"
                         placeholder="Qty"
                         className="flex-1 px-1 py-2 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
-                        value={currentOption.quantity}
-                        onChange={(e) => setCurrentOption(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                        value={currentOption.quantity === 0 ? '' : currentOption.quantity}
+                        onChange={(e) => setCurrentOption(prev => ({ ...prev, quantity: e.target.value === '' ? 0 : Number(e.target.value) }))}
                       />
                       <select
                         className="px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
@@ -1067,14 +1142,14 @@ export default function AddMenuItem() {
                       </select>
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-3 mb-3">
                     <input
                       type="number"
-                      placeholder="Price adjustment"
+                      placeholder="Price"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
-                      value={currentOption.price}
-                      onChange={(e) => setCurrentOption(prev => ({ ...prev, price: Number(e.target.value) }))}
+                      value={currentOption.price === 0 ? '' : currentOption.price}
+                      onChange={(e) => setCurrentOption(prev => ({ ...prev, price: e.target.value === '' ? 0 : Number(e.target.value) }))}
                     />
                     <button
                       type="button"
@@ -1093,17 +1168,17 @@ export default function AddMenuItem() {
                       </button>
                     )}
                   </div>
-                  
+
                   {/* Display Added Options */}
                   {currentCustomization.options.length > 0 && (
                     <div className="space-y-2 mb-3">
-                      {currentCustomization.options.map(option => (
+                      {currentCustomization.options.map((option, index) => (
                         <div key={option.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
                           <span className="text-sm">{option.label} - {option.quantity} {option.unit} - {option.price === 0 ? 'Free' : `${option.price} ${formData.currency.symbol}`}</span>
                           <div className="flex gap-2">
                             <button
                               type="button"
-                              onClick={() => editCustomizationOption(option)}
+                              onClick={() => editCustomizationOption(option, index)}
                               className="text-blue-500 hover:text-blue-700 p-1 cursor-pointer"
                             >
                               <Edit size={16} />
@@ -1120,21 +1195,20 @@ export default function AddMenuItem() {
                       ))}
                     </div>
                   )}
-                  
+
                   <button
                     type="button"
                     onClick={addCustomization}
                     disabled={!currentCustomization.name || currentCustomization.options.length === 0}
-                    className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${
-                      currentCustomization.name && currentCustomization.options.length > 0
+                    className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${currentCustomization.name && currentCustomization.options.length > 0
                         ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
                         : 'bg-gray-200 text-gray-500 cursor-not-allowed cursor-pointer'
-                    }`}
+                      }`}
                   >
                     Add Customization
                   </button>
                 </div>
-                
+
                 {/* Display Added Customizations */}
                 {formData.customizations.length > 0 && (
                   <div className="space-y-3">
@@ -1142,7 +1216,10 @@ export default function AddMenuItem() {
                     {formData.customizations.map(customization => (
                       <div key={customization.id} className="border border-gray-200 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <h5 className="font-medium text-gray-900">{customization.name}</h5>
+                          <div>
+                            <h5 className="font-medium text-gray-900">{customization.name}</h5>
+                            <p className="text-xs text-gray-500">Max Selection: {customization.maxSelection === -1 ? 'Unlimited' : customization.maxSelection || 'Not set'}</p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleDeleteConfirmation('customization', customization.id)}
@@ -1211,8 +1288,8 @@ export default function AddMenuItem() {
                     {formData.images.map((image, index) => {
                       const isExisting = typeof image === 'string';
                       return (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className={`relative w-16 h-16 cursor-move ${index === 0 ? 'ring-2 ring-blue-500' : ''}`}
                           draggable
                           onDragStart={(e) => handleDragStart(e, index)}
@@ -1278,8 +1355,8 @@ export default function AddMenuItem() {
                 onClick={addAttribute}
                 disabled={!currentAttribute.value || !currentAttribute.unit}
                 className={`w-full py-2 px-4 rounded-lg font-medium transition-colors mb-4 cursor-pointer ${currentAttribute.value && currentAttribute.unit
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                   }`}
               >
                 Add Attribute
@@ -1330,20 +1407,18 @@ export default function AddMenuItem() {
               <p className="text-xs text-gray-500 mt-1">Currency is automatically set based on restaurant location</p>
             </div>
 
-                        {/* Available Status Toggle */}
+            {/* Available Status Toggle */}
             <div className="mb-6">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Available</span>
                 <div
-                  className={`w-11 h-6 rounded-full cursor-pointer transition-colors ${
-                    formData.isAvailable ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
+                  className={`w-11 h-6 rounded-full cursor-pointer transition-colors ${formData.isAvailable ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
                   onClick={() => handleInputChange('isAvailable', !formData.isAvailable)}
                 >
                   <div
-                    className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${
-                      formData.isAvailable ? 'translate-x-5' : 'translate-x-0.5'
-                    } mt-0.5`}
+                    className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${formData.isAvailable ? 'translate-x-5' : 'translate-x-0.5'
+                      } mt-0.5`}
                   />
                 </div>
               </div>
@@ -1374,6 +1449,7 @@ export default function AddMenuItem() {
                 description: '',
                 images: [],
                 attributes: [],
+                addons: [],
                 price: '',
                 currency: currencyOptions[0],
                 category: null,
@@ -1383,8 +1459,8 @@ export default function AddMenuItem() {
                 customizations: []
               });
               setCurrentAttribute({ value: '', unit: null });
-              setCurrentCustomization({ name: '', options: [] });
-              setCurrentOption({ label: '', quantity: 0, unit: 'unit', price: 0 });
+              setCurrentCustomization({ name: '', maxSelection: '', options: [] });
+              setCurrentOption({ label: '', quantity: '', unit: 'unit', price: '' });
               setShowCustomizations(false);
             }}
             className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors cursor-pointer"
@@ -1534,7 +1610,7 @@ export default function AddMenuItem() {
           </div>
         )}
       </div>
-      
+
       {/* Toast Notifications */}
       {toast.toasts.map((toastItem) => (
         <Snackbar
@@ -1557,7 +1633,7 @@ export default function AddMenuItem() {
           </Alert>
         </Snackbar>
       ))}
-      
+
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteDialogOpen}

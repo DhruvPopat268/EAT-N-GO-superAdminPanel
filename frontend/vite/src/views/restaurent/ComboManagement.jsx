@@ -37,16 +37,19 @@ import {
 import { Edit, Delete, CloudUpload, Add, Remove, Visibility } from '@mui/icons-material';
 import { IconPackage, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../utils/toast.jsx';
 import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
 export default function ComboManagement() {
   const theme = useTheme();
+  const navigate = useNavigate();
   const toast = useToast();
   const [combos, setCombos] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [items, setItems] = useState([]);
+  const [addonItems, setAddonItems] = useState([]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -61,6 +64,7 @@ export default function ComboManagement() {
     name: '',
     description: '',
     items: [],
+    addons: [],
     price: 0,
     restaurantId: '',
     image: null
@@ -127,6 +131,19 @@ export default function ComboManagement() {
     }
   };
 
+  const fetchAddonItems = async (restaurantId) => {
+    if (!restaurantId) return;
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/list`, {
+        restaurantId
+      }, { withCredentials: true });
+      setAddonItems(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching addon items:', error);
+      toast.error('Failed to load addon items');
+    }
+  };
+
   const fetchItemAttributes = async (itemId, restaurantId) => {
     if (!itemId || !restaurantId) return [];
     try {
@@ -145,8 +162,10 @@ export default function ComboManagement() {
     setFormData(prev => ({ ...prev, restaurantId }));
     if (restaurantId) {
       await fetchItems(restaurantId);
+      await fetchAddonItems(restaurantId);
     } else {
       setItems([]);
+      setAddonItems([]);
     }
     setSelectedItems([]);
     setItemAttributes({});
@@ -160,6 +179,7 @@ export default function ComboManagement() {
       name: '',
       description: '',
       items: [],
+      addons: [],
       price: 0,
       restaurantId: selectedRestaurant,
       image: null
@@ -170,8 +190,8 @@ export default function ComboManagement() {
   };
 
   const handleViewCombo = (combo) => {
-    setViewCombo(combo);
-    setViewDialogOpen(true);
+    // Navigate to combo detail page
+    navigate(`/restaurant/combo-detail/${combo.restaurantId}/${combo._id}`);
   };
 
   const handleEditCombo = async (combo) => {
@@ -182,6 +202,7 @@ export default function ComboManagement() {
       name: combo.name,
       description: combo.description,
       items: combo.items || [],
+      addons: combo.addons || [],
       price: combo.price,
       restaurantId: combo.restaurantId || selectedRestaurant,
       image: null
@@ -190,6 +211,9 @@ export default function ComboManagement() {
     // Load items for the restaurant if not already loaded
     if (items.length === 0) {
       await fetchItems(combo.restaurantId || selectedRestaurant);
+    }
+    if (addonItems.length === 0) {
+      await fetchAddonItems(combo.restaurantId || selectedRestaurant);
     }
     
     // Fetch attributes for all items in the combo
@@ -320,7 +344,8 @@ export default function ComboManagement() {
         description: formData.description,
         price: formData.price,
         restaurantId: formData.restaurantId,
-        items: formData.items
+        items: formData.items,
+        addons: formData.addons
       };
       
       formDataToSend.append('data', JSON.stringify(dataToSend));
@@ -683,7 +708,26 @@ export default function ComboManagement() {
                 />
               )}
             />
-     
+
+            <Autocomplete
+              multiple
+              options={addonItems}
+              getOptionLabel={(option) => option.name}
+              value={addonItems.filter(addon => formData.addons.includes(addon._id))}
+              onChange={(event, newValue) => {
+                setFormData(prev => ({
+                  ...prev,
+                  addons: newValue.map(addon => addon._id)
+                }));
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Addons"
+                  placeholder="Choose addon items for combo"
+                />
+              )}
+            />
             
             {selectedItems.length > 0 && (
               <Box>

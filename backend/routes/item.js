@@ -437,7 +437,7 @@ router.put('/admin/update', authMiddleware, upload.array('images', 5), async (re
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId },
       updateData,
-      { new: true }
+      { new: true , runValidators: true}  // 👈 add this
     ).populate('subcategory').populate('attributes.attribute').populate('addons');
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
@@ -466,12 +466,21 @@ router.post('/admin/detail', authMiddleware, async (req, res) => {
   try {
     const { itemId, restaurantId } = req.body;
     const item = await Item.findOne({ _id: itemId, restaurantId })
+      .populate('restaurantId', 'basicInfo.restaurantName')
       .populate('subcategory', 'name')
       .populate('attributes.attribute', 'name');
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
-    res.json({ success: true, data: item });
+    
+    // Transform the data to include restaurantName
+    const itemObj = item.toObject();
+    const responseData = {
+      ...itemObj,
+      restaurantName: itemObj.restaurantId?.basicInfo?.restaurantName || 'Unknown Restaurant'
+    };
+    
+    res.json({ success: true, data: responseData });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

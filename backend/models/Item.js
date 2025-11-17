@@ -52,7 +52,6 @@ const itemSchema = new mongoose.Schema(
     customizations: [
       {
         name: { type: String, required: true },
-
         MaxSelection: {
           type: Number,
           default: 1,

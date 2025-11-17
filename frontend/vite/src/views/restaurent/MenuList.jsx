@@ -169,8 +169,8 @@ export default function MenuList() {
   };
 
   const handleViewItem = (item) => {
-    setSelectedItem(item);
-    setViewDialogOpen(true);
+    // Navigate to item detail page
+    navigate(`/restaurant/item-detail/${item.restaurantId}/${item._id}`);
   };
 
   const handleEditItem = (item) => {
