@@ -119,7 +119,7 @@ router.get('/profile', verifyToken, async (req, res) => {
   }
 });
 
-// Refresh access token
+// Rotate access token & refresh token
 router.post('/refresh-token', async (req, res) => {
   try {
     const { refreshToken } = req.body;
