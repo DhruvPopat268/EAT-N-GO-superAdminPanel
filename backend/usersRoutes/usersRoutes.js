@@ -151,6 +151,9 @@ router.post('/refresh-token', async (req, res) => {
       accessToken: newAccessToken
     });
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Session expired', code: 'REFRESH_TOKEN_EXPIRED' });
+    }
     res.status(401).json({ success: false, message: 'Invalid refresh token' });
   }
 });
