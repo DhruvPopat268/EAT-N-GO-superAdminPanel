@@ -14,7 +14,7 @@ const comboSchema = new mongoose.Schema(
     },
     description: String,
     image: String,
-    
+
     // Items included in the combo
     items: [
       {
@@ -35,17 +35,25 @@ const comboSchema = new mongoose.Schema(
       },
     ],
 
+    // ⭐ NEW: Addons field
+    addons: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AddonItem',
+      },
+    ],
+
     price: {
       type: Number,
       required: true,
     },
-    
+
     category: {
       type: String,
       enum: ['Veg', 'Non-Veg', 'Mixed'],
       required: true,
     },
-    
+
     currency: {
       type: String,
       default: 'INR',

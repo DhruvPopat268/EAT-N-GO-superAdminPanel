@@ -68,12 +68,14 @@ router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async
 // Update addon item status
 router.patch('/status', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const { id, isAvailable } = req.body;
+    const { id, status } = req.body;
+    console.log(req.body);
     const addonItem = await AddonItem.findOneAndUpdate(
       { _id: id, restaurantId: req.restaurant.restaurantId },
-      { isAvailable },
+      { isAvailable: status },
       { new: true }
     ).populate('subcategory');
+    console.log(addonItem);
     if (!addonItem) {
       return res.status(404).json({ success: false, message: 'Addon item not found' });
     }

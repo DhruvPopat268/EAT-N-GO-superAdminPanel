@@ -274,10 +274,11 @@ export default function AddonManagement() {
   const handleStatusToggle = async (id, currentStatus) => {
     try {
       const newStatus = !currentStatus;
+      const addon = addons.find(item => item._id === id);
       const response = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/status`, {
         id,
         isAvailable: newStatus,
-        restaurantId: selectedRestaurant
+        restaurantId: addon.restaurantId
       }, { withCredentials: true });
       if (response.data.success) {
         setAddons(prev => prev.map(item =>

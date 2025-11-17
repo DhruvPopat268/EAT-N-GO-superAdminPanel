@@ -7,21 +7,25 @@ const itemSchema = new mongoose.Schema(
       ref: 'Restaurant',
       required: true,
     },
+
     category: {
       type: String,
       enum: ['Veg', 'Non-Veg', 'Mixed'],
       required: true,
     },
+
     subcategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Subcategory',
       required: true,
     },
+
     name: {
       type: String,
       required: true,
       trim: true,
     },
+
     description: String,
     images: [String],
 
@@ -47,17 +51,42 @@ const itemSchema = new mongoose.Schema(
     // Customizations (e.g., Breads, Sweets)
     customizations: [
       {
-        name: { type: String, required: true }, // e.g. "Breads"
+        name: { type: String, required: true },
+
+        MaxSelection: {
+          type: Number,
+          default: 1,
+          validate: {
+            validator: function (v) {
+              return v === -1 || v > 0;
+            },
+            message: 'MaxSelection must be -1 or a number greater than 0.',
+          },
+        },
+
         options: [
           {
-            label: { type: String, required: true }, // e.g. "Tawa Roti"
-            quantity: { type: Number, default: 0 }, // e.g. 250
-            unit: { type: String, enum: ['GM', 'ML', 'unit'], default: 'unit' }, // e.g. "GM"
-            price: { type: Number, default: 0 }, // optional price adjustment
+            label: { type: String, required: true },
+            quantity: { type: Number, default: 0 },
+            unit: {
+              type: String,
+              enum: ['GM', 'ML', 'unit'],
+              default: 'unit',
+            },
+            price: { type: Number, default: 0 },
             _id: false,
           },
         ],
+
         _id: false,
+      },
+    ],
+
+    // ⭐ NEW: Addons field
+    addons: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AddonItem',
       },
     ],
 
@@ -65,6 +94,7 @@ const itemSchema = new mongoose.Schema(
       type: String,
       default: 'INR',
     },
+
     isAvailable: {
       type: Boolean,
       default: true,

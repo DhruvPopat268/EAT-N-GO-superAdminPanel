@@ -42,18 +42,19 @@ router.post('/', restaurantAuthMiddleware, upload.array('images', 5), async (req
   try {
     const itemData = JSON.parse(req.body.data || '{}');
     itemData.restaurantId = req.restaurant.restaurantId;
-    
+
     if (req.files && req.files.length > 0) {
       const imageUrls = await Promise.all(
         req.files.map(file => uploadToCloudinary(file.buffer, 'item-images'))
       );
       itemData.images = imageUrls;
     }
-    
+
     const item = new Item(itemData);
     await item.save();
     await item.populate('subcategory');
     await item.populate('attributes.attribute');
+    await item.populate('addons');
     res.status(201).json({ success: true, data: item });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -67,15 +68,15 @@ router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async
     const { itemId, existingImages } = updateData;
     delete updateData.itemId;
     delete updateData.existingImages;
-    
+
     // Handle images: combine existing images with new uploaded images
     let allImages = [];
-    
+
     // Add existing images (URLs)
     if (existingImages && existingImages.length > 0) {
       allImages = [...existingImages];
     }
-    
+
     // Upload new images and add their URLs
     if (req.files && req.files.length > 0) {
       const newImageUrls = await Promise.all(
@@ -83,15 +84,19 @@ router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async
       );
       allImages = [...allImages, ...newImageUrls];
     }
-    
+
     // Set the combined images array
     updateData.images = allImages;
-    
+
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId: req.restaurant.restaurantId },
       updateData,
-      { new: true }
-    ).populate('subcategory').populate('attributes.attribute');
+      { new: true, runValidators: true }  // 👈 add this
+    )
+      .populate('subcategory')
+      .populate('attributes.attribute')
+      .populate('addons');
+
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
@@ -107,7 +112,9 @@ router.post('/detail', restaurantAuthMiddleware, async (req, res) => {
     const { itemId } = req.body;
     const item = await Item.findOne({ _id: itemId, restaurantId: req.restaurant.restaurantId })
       .populate('subcategory', 'name')
-      .populate('attributes.attribute', 'name');
+      .populate('attributes.attribute', 'name')
+      .populate('addons');
+
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
@@ -153,7 +160,7 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 router.post('/bulk-import', restaurantAuthMiddleware, excelUpload.single('file'), async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    
+
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Excel file is required' });
     }
@@ -175,23 +182,23 @@ router.post('/bulk-import', restaurantAuthMiddleware, excelUpload.single('file')
     // Validate required columns
     const requiredColumns = ['name', 'category', 'subcategory', 'description'];
     const attributeColumns = ['attributes', 'attributes (attributeId:price, comma-separated)'];
-    
+
     if (data.length > 0) {
       const availableColumns = Object.keys(data[0]);
       const missingColumns = requiredColumns.filter(col => !availableColumns.includes(col));
       const hasAttributeColumn = attributeColumns.some(col => availableColumns.includes(col));
-      
+
       if (missingColumns.length > 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Missing required columns: ${missingColumns.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Missing required columns: ${missingColumns.join(', ')}`
         });
       }
-      
+
       if (!hasAttributeColumn) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Missing attributes column. Expected one of: ${attributeColumns.join(' or ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Missing attributes column. Expected one of: ${attributeColumns.join(' or ')}`
         });
       }
     }
@@ -200,21 +207,21 @@ router.post('/bulk-import', restaurantAuthMiddleware, excelUpload.single('file')
       const row = data[i];
       try {
         // Validate category against restaurant's allowed food categories
-        const allowedCategories = restaurant.basicInfo.foodCategory === 'Mixed' 
-          ? ['Veg', 'Non-Veg', 'Mixed'] 
+        const allowedCategories = restaurant.basicInfo.foodCategory === 'Mixed'
+          ? ['Veg', 'Non-Veg', 'Mixed']
           : [restaurant.basicInfo.foodCategory];
-        
+
         if (!allowedCategories.includes(row.category)) {
           results.errors.push({ row: i + 2, error: `Category '${row.category}' not allowed for this restaurant. Allowed: ${allowedCategories.join(', ')}` });
           continue;
         }
 
         // Validate subcategory exists for this restaurant
-        const subcategory = await Subcategory.findOne({ 
-          name: row.subcategory, 
-          restaurantId 
+        const subcategory = await Subcategory.findOne({
+          name: row.subcategory,
+          restaurantId
         });
-        
+
         if (!subcategory) {
           results.errors.push({ row: i + 2, error: `Subcategory '${row.subcategory}' not found for this restaurant` });
           continue;
@@ -226,40 +233,40 @@ router.post('/bulk-import', restaurantAuthMiddleware, excelUpload.single('file')
         if (attributeColumn) {
           const attrData = attributeColumn.split(',');
           let hasAttributeError = false;
-          
+
           for (const attr of attrData) {
             if (!attr.trim()) continue;
-            
+
             const parts = attr.split(':');
             if (parts.length !== 2) {
               results.errors.push({ row: i + 2, error: `Invalid attribute format '${attr}'. Use 'name:price'` });
               hasAttributeError = true;
               break;
             }
-            
+
             const [name, price] = parts;
             if (!name.trim()) {
               results.errors.push({ row: i + 2, error: 'Attribute name cannot be empty' });
               hasAttributeError = true;
               break;
             }
-            
+
             if (!price.trim() || isNaN(parseFloat(price))) {
               results.errors.push({ row: i + 2, error: `Invalid price '${price}' for attribute '${name.trim()}'` });
               hasAttributeError = true;
               break;
             }
-            
+
             const attribute = await Attribute.findOne({ name: name.trim(), restaurantId });
             if (!attribute) {
               results.errors.push({ row: i + 2, error: `Attribute '${name.trim()}' not found for this restaurant` });
               hasAttributeError = true;
               break;
             }
-            
+
             attributes.push({ attribute: attribute._id, price: parseFloat(price) });
           }
-          
+
           if (hasAttributeError) continue;
         }
 
@@ -309,10 +316,10 @@ router.post('/bulk-import', restaurantAuthMiddleware, excelUpload.single('file')
       }
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `Import completed. ${results.success.length} items created, ${results.errors.length} errors.`,
-      results 
+      results
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -344,7 +351,7 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
         }))
       };
     });
-    
+
     res.json({ success: true, data: transformedItems });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -380,18 +387,19 @@ router.post('/admin', authMiddleware, async (req, res) => {
 router.post('/admin/create', authMiddleware, upload.array('images', 5), async (req, res) => {
   try {
     const itemData = JSON.parse(req.body.data || '{}');
-    
+
     if (req.files && req.files.length > 0) {
       const imageUrls = await Promise.all(
         req.files.map(file => uploadToCloudinary(file.buffer, 'item-images'))
       );
       itemData.images = imageUrls;
     }
-    
+
     const item = new Item(itemData);
     await item.save();
     await item.populate('subcategory');
     await item.populate('attributes.attribute');
+    await item.populate('addons');
     res.status(201).json({ success: true, data: item });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -406,15 +414,15 @@ router.put('/admin/update', authMiddleware, upload.array('images', 5), async (re
     delete updateData.itemId;
     delete updateData.restaurantId;
     delete updateData.existingImages;
-    
+
     // Handle images: combine existing images with new uploaded images
     let allImages = [];
-    
+
     // Add existing images (URLs)
     if (existingImages && existingImages.length > 0) {
       allImages = [...existingImages];
     }
-    
+
     // Upload new images and add their URLs
     if (req.files && req.files.length > 0) {
       const newImageUrls = await Promise.all(
@@ -422,15 +430,15 @@ router.put('/admin/update', authMiddleware, upload.array('images', 5), async (re
       );
       allImages = [...allImages, ...newImageUrls];
     }
-    
+
     // Set the combined images array
     updateData.images = allImages;
-    
+
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId },
       updateData,
       { new: true }
-    ).populate('subcategory').populate('attributes.attribute');
+    ).populate('subcategory').populate('attributes.attribute').populate('addons');
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
@@ -505,7 +513,7 @@ router.delete('/admin/delete', authMiddleware, async (req, res) => {
 router.post('/admin/bulk-import', authMiddleware, excelUpload.single('file'), async (req, res) => {
   try {
     const { restaurantId } = req.body;
-    
+
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Excel file is required' });
     }
@@ -527,23 +535,23 @@ router.post('/admin/bulk-import', authMiddleware, excelUpload.single('file'), as
     // Validate required columns
     const requiredColumns = ['name', 'category', 'subcategory', 'description'];
     const attributeColumns = ['attributes', 'attributes (attributeId:price, comma-separated)'];
-    
+
     if (data.length > 0) {
       const availableColumns = Object.keys(data[0]);
       const missingColumns = requiredColumns.filter(col => !availableColumns.includes(col));
       const hasAttributeColumn = attributeColumns.some(col => availableColumns.includes(col));
-      
+
       if (missingColumns.length > 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Missing required columns: ${missingColumns.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Missing required columns: ${missingColumns.join(', ')}`
         });
       }
-      
+
       if (!hasAttributeColumn) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Missing attributes column. Expected one of: ${attributeColumns.join(' or ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Missing attributes column. Expected one of: ${attributeColumns.join(' or ')}`
         });
       }
     }
@@ -552,21 +560,21 @@ router.post('/admin/bulk-import', authMiddleware, excelUpload.single('file'), as
       const row = data[i];
       try {
         // Validate category against restaurant's allowed food categories
-        const allowedCategories = restaurant.basicInfo.foodCategory === 'Mixed' 
-          ? ['Veg', 'Non-Veg', 'Mixed'] 
+        const allowedCategories = restaurant.basicInfo.foodCategory === 'Mixed'
+          ? ['Veg', 'Non-Veg', 'Mixed']
           : [restaurant.basicInfo.foodCategory];
-        
+
         if (!allowedCategories.includes(row.category)) {
           results.errors.push({ row: i + 2, error: `Category '${row.category}' not allowed for this restaurant. Allowed: ${allowedCategories.join(', ')}` });
           continue;
         }
 
         // Validate subcategory exists for this restaurant
-        const subcategory = await Subcategory.findOne({ 
-          name: row.subcategory, 
-          restaurantId 
+        const subcategory = await Subcategory.findOne({
+          name: row.subcategory,
+          restaurantId
         });
-        
+
         if (!subcategory) {
           results.errors.push({ row: i + 2, error: `Subcategory '${row.subcategory}' not found for this restaurant` });
           continue;
@@ -578,40 +586,40 @@ router.post('/admin/bulk-import', authMiddleware, excelUpload.single('file'), as
         if (attributeColumn) {
           const attrData = attributeColumn.split(',');
           let hasAttributeError = false;
-          
+
           for (const attr of attrData) {
             if (!attr.trim()) continue;
-            
+
             const parts = attr.split(':');
             if (parts.length !== 2) {
               results.errors.push({ row: i + 2, error: `Invalid attribute format '${attr}'. Use 'name:price'` });
               hasAttributeError = true;
               break;
             }
-            
+
             const [name, price] = parts;
             if (!name.trim()) {
               results.errors.push({ row: i + 2, error: 'Attribute name cannot be empty' });
               hasAttributeError = true;
               break;
             }
-            
+
             if (!price.trim() || isNaN(parseFloat(price))) {
               results.errors.push({ row: i + 2, error: `Invalid price '${price}' for attribute '${name.trim()}'` });
               hasAttributeError = true;
               break;
             }
-            
+
             const attribute = await Attribute.findOne({ name: name.trim(), restaurantId });
             if (!attribute) {
               results.errors.push({ row: i + 2, error: `Attribute '${name.trim()}' not found for this restaurant` });
               hasAttributeError = true;
               break;
             }
-            
+
             attributes.push({ attribute: attribute._id, price: parseFloat(price) });
           }
-          
+
           if (hasAttributeError) continue;
         }
 
@@ -666,10 +674,10 @@ router.post('/admin/bulk-import', authMiddleware, excelUpload.single('file'), as
       }
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: `Import completed. ${results.success.length} items created, ${results.errors.length} errors.`,
-      results 
+      results
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

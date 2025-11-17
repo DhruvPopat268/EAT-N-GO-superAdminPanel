@@ -29,7 +29,8 @@ router.post('/detail',restaurantAuthMiddleware, async (req, res) => {
     const restaurantId = req.restaurant.restaurantId;
     const combo = await Combo.findOne({ _id: comboId, restaurantId })
       .populate('items.itemId')
-      .populate('items.attribute', 'name');
+      .populate('items.attribute', 'name')
+      .populate('addons');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -46,7 +47,7 @@ router.post('/add', restaurantAuthMiddleware, upload.single('image'), async (req
   try {
     const data = JSON.parse(req.body.data);
     const restaurantId = req.restaurant.restaurantId;
-    const { name, description, items, price } = data;
+    const { name, description, items, price, addons } = data;
     
     // Validate items exist
     const itemIds = items.map(item => item.itemId);
@@ -65,6 +66,7 @@ router.post('/add', restaurantAuthMiddleware, upload.single('image'), async (req
       name,
       description,
       items,
+      addons: addons || [],
       price,
       category,
       image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
@@ -97,7 +99,8 @@ router.put('/update', restaurantAuthMiddleware, upload.single('image'), async (r
       updateData,
       { new: true }
     ).populate('items.itemId')
-     .populate('items.attribute', 'name');
+     .populate('items.attribute', 'name')
+     .populate('addons');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -217,7 +220,8 @@ router.post('/admin/detail',authMiddleware, async (req, res) => {
     const { comboId, restaurantId } = req.body;
     const combo = await Combo.findOne({ _id: comboId, restaurantId })
       .populate('items.itemId')
-      .populate('items.attribute', 'name');
+      .populate('items.attribute', 'name')
+      .populate('addons');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -233,7 +237,7 @@ router.post('/admin/detail',authMiddleware, async (req, res) => {
 router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res) => {
   try {
     const data = JSON.parse(req.body.data);
-    const { restaurantId, name, description, items, price } = data;
+    const { restaurantId, name, description, items, price, addons } = data;
     
     // Validate items exist
     const itemIds = items.map(item => item.itemId);
@@ -252,6 +256,7 @@ router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res
       name,
       description,
       items,
+      addons: addons || [],
       price,
       category,
       image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
@@ -283,7 +288,8 @@ router.put('/admin/update',authMiddleware, upload.single('image'), async (req, r
       updateData,
       { new: true }
     ).populate('items.itemId')
-     .populate('items.attribute', 'name');
+     .populate('items.attribute', 'name')
+     .populate('addons');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
