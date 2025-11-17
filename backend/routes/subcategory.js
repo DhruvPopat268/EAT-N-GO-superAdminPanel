@@ -5,6 +5,8 @@ const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const upload = require('../middleware/upload');
 const { uploadToCloudinary } = require('../utils/cloudinary');
 const authMiddleware = require('../middleware/auth');
+const createLog = require('../utils/createLog');
+const Restaurant = require('../models/Restaurant');
 
 // Get all subcategories for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
@@ -192,6 +194,18 @@ router.post('/admin', authMiddleware, upload.single('image'), async (req, res) =
     
     const subcategory = new Subcategory(finalData);
     await subcategory.save();
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Subcategory',
+      'create',
+      `Created subcategory "${subcategory.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      subcategory.name
+    );
+    
     res.status(201).json({ success: true, data: subcategory });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -219,6 +233,17 @@ router.put('/admin/update', authMiddleware, upload.single('image'), async (req, 
     if (!subcategory) {
       return res.status(404).json({ success: false, message: 'Subcategory not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Subcategory',
+      'update',
+      `Updated subcategory "${subcategory.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      subcategory.name
+    );
     
     res.json({ success: true, data: subcategory });
   } catch (error) {
@@ -258,6 +283,17 @@ router.patch('/admin/status', authMiddleware, async (req, res) => {
       )
     ]);
     
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Subcategory',
+      'status_update',
+      `${isAvailable ? 'Enabled' : 'Disabled'} subcategory "${subcategory.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      subcategory.name
+    );
+    
     res.json({ success: true, data: subcategory });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -275,6 +311,18 @@ router.delete('/admin/delete', authMiddleware, async (req, res) => {
     if (!subcategory) {
       return res.status(404).json({ success: false, message: 'Subcategory not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Subcategory',
+      'delete',
+      `Deleted subcategory "${subcategory.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      subcategory.name
+    );
+    
     res.json({ success: true, message: 'Subcategory deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

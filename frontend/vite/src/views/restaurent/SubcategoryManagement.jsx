@@ -38,6 +38,7 @@ import { IconCategory, IconPlus } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
+import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
 
 
 
@@ -62,6 +63,11 @@ export default function SubcategoryManagement() {
     image: null
   });
   const [imagePreview, setImagePreview] = useState(null);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [filterCategories, setFilterCategories] = useState([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [subcategoryToDelete, setSubcategoryToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchRestaurants();
@@ -69,7 +75,26 @@ export default function SubcategoryManagement() {
 
   useEffect(() => {
     fetchSubcategories();
+    fetchFilterCategories();
   }, [selectedRestaurant]);
+
+  const fetchFilterCategories = async () => {
+    if (selectedRestaurant === 'all') {
+      setFilterCategories(['Veg', 'Non-Veg', 'Mixed']);
+      return;
+    }
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/usefullDetails`, {
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
+      if (response.data.success) {
+        setFilterCategories(response.data.data.foodCategory || []);
+      }
+    } catch (error) {
+      console.error('Error fetching filter categories:', error);
+      setFilterCategories([]);
+    }
+  };
 
   const fetchRestaurants = async () => {
     try {
@@ -102,14 +127,31 @@ export default function SubcategoryManagement() {
     }
   };
 
-  const handleAddSubcategory = () => {
-    if (selectedRestaurant === 'all') {
-      toast.warning('Please select a specific restaurant to add subcategories');
+  const fetchRestaurantCategories = async (restaurantId) => {
+    if (!restaurantId || restaurantId === 'all') {
+      setAvailableCategories([]);
       return;
     }
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/usefullDetails`, {
+        restaurantId
+      }, { withCredentials: true });
+      if (response.data.success) {
+        setAvailableCategories(response.data.data.foodCategory || []);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant categories:', error);
+      setAvailableCategories([]);
+    }
+  };
+
+  const handleAddSubcategory = () => {
     setEditMode(false);
     setFormData({ name: '', category: '', restaurantId: selectedRestaurant, image: null });
     setImagePreview(null);
+    if (selectedRestaurant !== 'all') {
+      fetchRestaurantCategories(selectedRestaurant);
+    }
     setDialogOpen(true);
   };
 
@@ -123,21 +165,30 @@ export default function SubcategoryManagement() {
       image: null
     });
     setImagePreview(subcategory.image);
+    fetchRestaurantCategories(subcategory.restaurantId || selectedRestaurant);
     setDialogOpen(true);
   };
 
-  const handleDeleteSubcategory = async (id) => {
-    if (window.confirm('Are you sure you want to delete this subcategory?')) {
-      try {
-        await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/delete`, {
-          data: { id, restaurantId: selectedRestaurant }
-        }, { withCredentials: true });
-        setSubcategories(prev => prev.filter(item => item._id !== id));
-        toast.success('Subcategory deleted successfully');
-      } catch (error) {
-        console.error('Error deleting subcategory:', error);
-        toast.error('Failed to delete subcategory');
-      }
+  const handleDeleteSubcategory = (subcategory) => {
+    setSubcategoryToDelete(subcategory);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/delete`, {
+        data: { id: subcategoryToDelete._id, restaurantId: subcategoryToDelete.restaurantId || selectedRestaurant } , withCredentials: true
+      });
+      setSubcategories(prev => prev.filter(item => item._id !== subcategoryToDelete._id));
+      toast.success('Subcategory deleted successfully');
+    } catch (error) {
+      console.error('Error deleting subcategory:', error);
+      toast.error('Failed to delete subcategory');
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setSubcategoryToDelete(null);
     }
   };
 
@@ -251,6 +302,7 @@ export default function SubcategoryManagement() {
                 onChange={(e) => {
                   setFilterLoading(true);
                   setSelectedRestaurant(e.target.value);
+                  setCategoryFilter('all');
                   setTimeout(() => setFilterLoading(false), 300);
                 }}
               >
@@ -274,9 +326,9 @@ export default function SubcategoryManagement() {
                 }}
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                <MenuItem value="Veg">Veg</MenuItem>
-                <MenuItem value="Non-Veg">Non-Veg</MenuItem>
-                <MenuItem value="Mixed">Mixed</MenuItem>
+                {filterCategories.map((category) => (
+                  <MenuItem key={category} value={category}>{category}</MenuItem>
+                ))}
               </Select>
             </FormControl>
             <FormControl sx={{ minWidth: 150 }}>
@@ -416,7 +468,7 @@ export default function SubcategoryManagement() {
                             <Tooltip title="Delete">
                               <IconButton
                                 size="small"
-                                onClick={() => handleDeleteSubcategory(subcategory._id)}
+                                onClick={() => handleDeleteSubcategory(subcategory)}
                                 sx={{ color: 'error.main' }}
                               >
                                 <Delete size={18} />
@@ -445,7 +497,11 @@ export default function SubcategoryManagement() {
               <Select
                 value={formData.restaurantId}
                 label="Restaurant"
-                onChange={(e) => setFormData(prev => ({ ...prev, restaurantId: e.target.value }))}
+                onChange={(e) => {
+                  const restaurantId = e.target.value;
+                  setFormData(prev => ({ ...prev, restaurantId, category: '' }));
+                  fetchRestaurantCategories(restaurantId);
+                }}
                 disabled={editMode}
               >
                 {Array.isArray(restaurants) && restaurants.map((restaurant) => (
@@ -461,10 +517,11 @@ export default function SubcategoryManagement() {
                 value={formData.category}
                 label="Category"
                 onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                disabled={!formData.restaurantId || availableCategories.length === 0}
               >
-                <MenuItem value="Veg">Veg</MenuItem>
-                <MenuItem value="Non-Veg">Non-Veg</MenuItem>
-                <MenuItem value="Mixed">Mixed</MenuItem>
+                {availableCategories.map((category) => (
+                  <MenuItem key={category} value={category}>{category}</MenuItem>
+                ))}
               </Select>
             </FormControl>
             <TextField
@@ -530,6 +587,16 @@ export default function SubcategoryManagement() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Subcategory"
+        message="Are you sure you want to delete the subcategory"
+        itemName={subcategoryToDelete?.name}
+        loading={deleting}
+      />
 
       {toast.toasts.map((toastItem) => (
         <Snackbar

@@ -73,6 +73,8 @@ export default function AddonManagement() {
   const [formSubcategories, setFormSubcategories] = useState([]);
   const [formAttributes, setFormAttributes] = useState([]);
   const [imagePreview, setImagePreview] = useState(null);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [filterCategories, setFilterCategories] = useState([]);
 
   useEffect(() => {
     fetchRestaurants();
@@ -82,7 +84,27 @@ export default function AddonManagement() {
   useEffect(() => {
     fetchAddons();
     fetchSubcategories();
+    fetchFilterCategories();
   }, [selectedRestaurant]);
+
+  const fetchFilterCategories = async () => {
+    if (selectedRestaurant === 'all') {
+      setFilterCategories(['veg', 'non-veg', 'mixed']);
+      return;
+    }
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/usefullDetails`, {
+        restaurantId: selectedRestaurant
+      }, { withCredentials: true });
+      if (response.data.success) {
+        const categories = response.data.data.foodCategory || [];
+        setFilterCategories(categories.map(cat => cat.toLowerCase()));
+      }
+    } catch (error) {
+      console.error('Error fetching filter categories:', error);
+      setFilterCategories([]);
+    }
+  };
 
   // Update form attributes and subcategory when data is loaded during edit mode
   useEffect(() => {
@@ -208,6 +230,25 @@ export default function AddonManagement() {
     }
   };
 
+  const fetchRestaurantCategories = async (restaurantId) => {
+    if (!restaurantId) {
+      setAvailableCategories([]);
+      return;
+    }
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/usefullDetails`, {
+        restaurantId
+      }, { withCredentials: true });
+      if (response.data.success) {
+        const categories = response.data.data.foodCategory || [];
+        setAvailableCategories(categories.map(cat => ({ id: cat, name: cat })));
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant categories:', error);
+      setAvailableCategories([]);
+    }
+  };
+
   const handleAddAddon = () => {
     setEditMode(false);
     setFormData({
@@ -221,6 +262,7 @@ export default function AddonManagement() {
     });
     setFormSubcategories([]);
     setFormAttributes([]);
+    setAvailableCategories([]);
     setImagePreview(null);
     setDialogOpen(true);
   };
@@ -234,7 +276,7 @@ export default function AddonManagement() {
     setFormData({
       name: addon.name,
       restaurant: selectedRestaurantObj,
-      category: mockCategories.find(c => c.id === addon.category),
+      category: null, // Will be updated when availableCategories loads
       subcategory: null, // Will be updated by useEffect when formSubcategories loads
       image: null,
       attributes: [{ attribute: null, price: '' }], // Will be updated by useEffect
@@ -243,6 +285,7 @@ export default function AddonManagement() {
     
     fetchFormSubcategories(addon.restaurantId);
     fetchFormAttributes(addon.restaurantId);
+    fetchRestaurantCategories(addon.restaurantId);
     setImagePreview(addon.image);
     setDialogOpen(true);
   };
@@ -348,7 +391,7 @@ export default function AddonManagement() {
   };
   const filteredSubcategories = formSubcategories
   .filter(sub =>
-    sub.category === mockCategories.find(c => c.id === formData.category?.id)?.name
+    sub.category === availableCategories.find(c => c.id === formData.category?.id)?.name
   );
 
   const availableSubcategories = subcategories.filter(sub =>
@@ -414,6 +457,7 @@ export default function AddonManagement() {
                 onChange={(e) => {
                   setFilterLoading(true);
                   setSelectedRestaurant(e.target.value);
+                  setCategoryFilter('all');
                   setSubcategoryFilter('all');
                   setTimeout(() => setFilterLoading(false), 300);
                 }}
@@ -439,9 +483,11 @@ export default function AddonManagement() {
                 }}
               >
                 <MenuItem value="all">All Categories</MenuItem>
-                <MenuItem value="veg">Veg</MenuItem>
-                <MenuItem value="non-veg">Non-Veg</MenuItem>
-                <MenuItem value="mixed">Mixed</MenuItem>
+                {filterCategories.map((category) => (
+                  <MenuItem key={category} value={category}>
+                    {category === 'veg' ? 'Veg' : category === 'non-veg' ? 'Non-Veg' : 'Mixed'}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             <FormControl sx={{ minWidth: 200 }}>
@@ -676,9 +722,10 @@ export default function AddonManagement() {
               getOptionLabel={(option) => option.name}
               value={formData.restaurant}
               onChange={(event, newValue) => {
-                setFormData({ ...formData, restaurant: newValue, subcategory: null });
+                setFormData({ ...formData, restaurant: newValue, category: null, subcategory: null });
                 fetchFormSubcategories(newValue?.restaurantId);
                 fetchFormAttributes(newValue?.restaurantId);
+                fetchRestaurantCategories(newValue?.restaurantId);
               }}
               renderInput={(params) => (
                 <TextField {...params} label="Restaurant" />
@@ -696,7 +743,7 @@ export default function AddonManagement() {
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Autocomplete
                 sx={{ flex: 1 }}
-                options={mockCategories}
+                options={availableCategories}
                 getOptionLabel={(option) => option.name}
                 value={formData.category}
                 onChange={(event, newValue) => {
@@ -705,6 +752,7 @@ export default function AddonManagement() {
                 renderInput={(params) => (
                   <TextField {...params} label="Category" />
                 )}
+                disabled={!formData.restaurant || availableCategories.length === 0}
               />
               <Autocomplete
                 sx={{ flex: 1 }}

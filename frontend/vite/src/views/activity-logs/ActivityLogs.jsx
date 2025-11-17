@@ -162,8 +162,10 @@ const ActivityLogs = () => {
               <TableCell>Restaurant</TableCell>
               <TableCell>Module</TableCell>
               <TableCell>Sub Module</TableCell>
-              <TableCell>Action</TableCell>
+              <TableCell>Name</TableCell>
               {/* <TableCell>Description</TableCell> */}
+
+              <TableCell>Action</TableCell>
               <TableCell>Timestamp</TableCell>
             </TableRow>
           </TableHead>
@@ -187,6 +189,9 @@ const ActivityLogs = () => {
                   <TableCell>{log.restroName || '-'}</TableCell>
                   <TableCell>{log.module}</TableCell>
                   <TableCell>{log.subModule}</TableCell>
+                  <TableCell>{log.name || '-'}</TableCell>
+                  {/* <TableCell>{log.description}</TableCell> */}
+
                   <TableCell>
                     <Chip
                       label={log.action}
@@ -194,7 +199,6 @@ const ActivityLogs = () => {
                       size="small"
                     />
                   </TableCell>
-                  {/* <TableCell>{log.description}</TableCell> */}
                   <TableCell>
                     {new Date(log.timestamp).toLocaleString()}
                   </TableCell>

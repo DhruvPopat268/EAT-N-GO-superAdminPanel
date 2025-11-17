@@ -1,7 +1,7 @@
 const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/SuperAdmin');
 
-const createLog = async (user, module, subModule, action, description = '', restroName = null) => {
+const createLog = async (user, module, subModule, action, description = '', restroName = null, name = null) => {
   try {
 
     let userName = user.name;
@@ -20,7 +20,8 @@ const createLog = async (user, module, subModule, action, description = '', rest
       module,
       subModule,
       action,
-      description
+      description,
+      name
     });
 
     const savedLog = await logEntry.save();
