@@ -12,7 +12,7 @@ router.post('/send-otp', async (req, res) => {
     const { mobileNo } = req.body;
 
     if (!mobileNo) {
-      return res.status(400).json({ message: 'Mobile number is required' });
+      return res.status(400).json({ success: false, message: 'Mobile number is required' });
     }
 
     // Delete existing OTP sessions for this mobile
@@ -26,9 +26,9 @@ router.post('/send-otp', async (req, res) => {
 
     await otpSession.save();
 
-    res.json({ message: 'OTP sent successfully' });
+    res.json({ success: true, message: 'OTP sent successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 
@@ -38,7 +38,7 @@ router.post('/verify-otp', async (req, res) => {
     const { mobileNo, otp } = req.body;
 
     if (!mobileNo || !otp) {
-      return res.status(400).json({ message: 'Mobile number and OTP are required' });
+      return res.status(400).json({ success: false, message: 'Mobile number and OTP are required' });
     }
    console.log("mobileNo, otp", mobileNo, otp);
    console.log(await UserOtpSession.find({}));
@@ -46,7 +46,7 @@ router.post('/verify-otp', async (req, res) => {
     const otpSession = await UserOtpSession.findOne({ mobileNo, otp });
     console.log("otpSession", otpSession);
     if (!otpSession) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
     }
 
     // Delete existing user sessions
@@ -74,13 +74,14 @@ router.post('/verify-otp', async (req, res) => {
     await UserOtpSession.deleteOne({ _id: otpSession._id });
 
     res.json({ 
+      success: true,
       message: 'OTP verified successfully',
       accessToken,
       refreshToken,
       mobileNo
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 
@@ -91,22 +92,30 @@ router.get('/profile', verifyToken, async (req, res) => {
     
     if (!user) {
       return res.json({
-        fullName: null,
-        email: null,
-        phone: null,
-        gender: null,
-        currentLocation: null,
-        destinationLocation: null,
-        travelHistory: [],
-        recentSearches: [],
-        favoriteRestaurants: [],
-        orders: []
+        success: true,
+        message: 'User profile retrieved',
+        data: {
+          fullName: null,
+          email: null,
+          phone: null,
+          gender: null,
+          currentLocation: null,
+          destinationLocation: null,
+          travelHistory: [],
+          recentSearches: [],
+          favoriteRestaurants: [],
+          orders: []
+        }
       });
     }
 
-    res.json(user);
+    res.json({
+      success: true,
+      message: 'User profile fatched successfully',
+      data: user
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 
@@ -116,7 +125,7 @@ router.post('/refresh-token', async (req, res) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      return res.status(400).json({ message: 'Refresh token is required' });
+      return res.status(400).json({ success: false, message: 'Refresh token is required' });
     }
 
     // Verify refresh token
@@ -126,7 +135,7 @@ router.post('/refresh-token', async (req, res) => {
     const session = await UserSession.findOne({ userId: decoded.userId, refreshToken });
     
     if (!session) {
-      return res.status(401).json({ message: 'Invalid refresh token' });
+      return res.status(401).json({ success: false, message: 'Invalid refresh token' });
     }
 
     // Generate only new access token
@@ -137,10 +146,12 @@ router.post('/refresh-token', async (req, res) => {
     await session.save();
 
     res.json({ 
+      success: true,
+      message: 'Access token refreshed successfully',
       accessToken: newAccessToken
     });
   } catch (error) {
-    res.status(401).json({ message: 'Invalid refresh token' });
+    res.status(401).json({ success: false, message: 'Invalid refresh token' });
   }
 });
 
@@ -163,13 +174,17 @@ router.put('/profile', verifyToken, async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    res.json({ message: 'Profile updated successfully', user });
+    res.json({ 
+      success: true,
+      message: 'Profile updated successfully', 
+      data: user 
+    });
   } catch (error) {
     console.error('Update profile error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 
