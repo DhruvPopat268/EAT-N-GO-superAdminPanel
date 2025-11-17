@@ -23,6 +23,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Support x-www-form-urlencoded
 app.use(cookieParser());
 app.use('/downloads', express.static('public/downloads'));
 

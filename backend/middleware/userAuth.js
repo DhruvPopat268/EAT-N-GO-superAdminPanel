@@ -1,30 +1,42 @@
 const jwt = require('jsonwebtoken');
 const UserSession = require('../usersModels/userSession');
 
-const generateToken = (mobileNo, userId) => {
-  return jwt.sign({ mobileNo, userId }, process.env.JWT_SECRET_USER , { expiresIn: '30d' });
+const generateTokens = (mobileNo, userId) => {
+  const accessToken = jwt.sign({ mobileNo, userId }, process.env.JWT_SECRET_ACCESS_TOKEN_USER, { expiresIn: '15m' });
+  const refreshToken = jwt.sign({ mobileNo, userId }, process.env.JWT_SECRET_REFRESH_TOKEN_USER, { expiresIn: '30d' });
+  return { accessToken, refreshToken };
 };
 
 const verifyToken = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
-      return res.status(401).json({ message: 'Access denied' });
+      return res.status(401).json({ message: 'Access denied', code: 'NO_TOKEN' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_USER || 'secret');
-    const session = await UserSession.findOne({ mobileNo: decoded.mobileNo, token });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_ACCESS_TOKEN_USER);
+    const session = await UserSession.findOne({ userId: decoded.userId, accessToken: token });
     
     if (!session) {
-      return res.status(401).json({ message: 'Invalid session' });
+      return res.status(401).json({ message: 'Invalid session', code: 'INVALID_SESSION' });
+    }
+
+    // Check if refresh token is still valid
+    try {
+      jwt.verify(session.refreshToken, process.env.JWT_SECRET_REFRESH_TOKEN_USER);
+    } catch (refreshError) {
+      // Refresh token expired - user needs to logout
+      return res.status(401).json({ message: 'Session expired', code: 'REFRESH_TOKEN_EXPIRED' });
     }
 
     req.user = decoded;
-    console.log("Decoded user:", decoded);
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Invalid token' });
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Access token expired', code: 'ACCESS_TOKEN_EXPIRED' });
+    }
+    res.status(401).json({ message: 'Invalid token', code: 'INVALID_TOKEN' });
   }
 };
 
-module.exports = { generateToken, verifyToken };
+module.exports = { generateTokens, verifyToken };

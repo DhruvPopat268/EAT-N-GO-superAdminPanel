@@ -2,11 +2,20 @@ const mongoose = require("mongoose");
 
 const userSessionSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
     mobileNo: {
       type: String,
       required: true,
     },
-    token: {
+    accessToken: {
+      type: String,
+      required: true,
+    },
+    refreshToken: {
       type: String,
       required: true,
     },

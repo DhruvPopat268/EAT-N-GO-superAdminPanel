@@ -3,7 +3,8 @@ const router = express.Router();
 const UserOtpSession = require('../usersModels/userOtpSession');
 const UserSession = require('../usersModels/userSession');
 const User = require('../usersModels/usersModel');
-const { generateToken, verifyToken } = require('../middleware/userAuth');
+const { generateTokens, verifyToken } = require('../middleware/userAuth');
+const jwt = require('jsonwebtoken');
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -48,7 +49,7 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
-    // Delete existing user sessions (one session at a time)
+    // Delete existing user sessions
     await UserSession.deleteMany({ mobileNo });
 
     // Find or create user
@@ -58,11 +59,13 @@ router.post('/verify-otp', async (req, res) => {
       await user.save();
     }
 
-    // Generate new token and create session
-    const token = generateToken(mobileNo, user._id);
+    // Generate tokens and create session
+    const { accessToken, refreshToken } = generateTokens(mobileNo, user._id);
     const userSession = new UserSession({
+      userId: user._id,
       mobileNo,
-      token
+      accessToken,
+      refreshToken
     });
 
     await userSession.save();
@@ -72,7 +75,8 @@ router.post('/verify-otp', async (req, res) => {
 
     res.json({ 
       message: 'OTP verified successfully',
-      token,
+      accessToken,
+      refreshToken,
       mobileNo
     });
   } catch (error) {
@@ -103,6 +107,40 @@ router.get('/profile', verifyToken, async (req, res) => {
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Refresh access token
+router.post('/refresh-token', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ message: 'Refresh token is required' });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET_REFRESH_TOKEN_USER);
+    
+    // Find session with this refresh token
+    const session = await UserSession.findOne({ userId: decoded.userId, refreshToken });
+    
+    if (!session) {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
+
+    // Generate only new access token
+    const newAccessToken = jwt.sign({ mobileNo: decoded.mobileNo, userId: decoded.userId }, process.env.JWT_SECRET_ACCESS_TOKEN_USER, { expiresIn: '15m' });
+    
+    // Update session with new access token only
+    session.accessToken = newAccessToken;
+    await session.save();
+
+    res.json({ 
+      accessToken: newAccessToken
+    });
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid refresh token' });
   }
 });
 
