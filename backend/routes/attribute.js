@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Attribute = require('../models/Attribute');
+const Restaurant = require('../models/Restaurant');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const authMiddleware = require('../middleware/auth');
+const createLog = require('../utils/createLog');
 
 // Get all attributes for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
@@ -123,6 +125,18 @@ router.post('/admin', authMiddleware, async (req, res) => {
     }
     const attribute = new Attribute({ ...attributeData, restaurantId });
     await attribute.save();
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Attribute',
+      'create',
+      `Created attribute "${attribute.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      attribute.name
+    );
+    
     res.status(201).json({ success: true, data: attribute });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -144,6 +158,18 @@ router.put('/admin/update', authMiddleware, async (req, res) => {
     if (!attribute) {
       return res.status(404).json({ success: false, message: 'Attribute not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Attribute',
+      'update',
+      `Updated attribute "${attribute.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      attribute.name
+    );
+    
     res.json({ success: true, data: attribute });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -165,6 +191,18 @@ router.patch('/admin/status', authMiddleware, async (req, res) => {
     if (!attribute) {
       return res.status(404).json({ success: false, message: 'Attribute not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Attribute',
+      'status_update',
+      `${isAvailable ? 'Enabled' : 'Disabled'} attribute "${attribute.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      attribute.name
+    );
+    
     res.json({ success: true, data: attribute });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -178,10 +216,23 @@ router.delete('/admin/delete', authMiddleware, async (req, res) => {
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
     }
-    const attribute = await Attribute.findOneAndDelete({ _id: id, restaurantId });
+    const attribute = await Attribute.findById(id);
     if (!attribute) {
       return res.status(404).json({ success: false, message: 'Attribute not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Attribute',
+      'delete',
+      `Deleted attribute "${attribute.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      attribute.name
+    );
+    
+    await Attribute.findOneAndDelete({ _id: id, restaurantId });
     res.json({ success: true, message: 'Attribute deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

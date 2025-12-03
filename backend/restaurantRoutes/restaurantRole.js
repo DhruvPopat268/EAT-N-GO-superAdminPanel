@@ -1,19 +1,23 @@
 const express = require('express');
-const Role = require('../models/Role');
-const authMiddleware = require('../middleware/auth');
+const RestaurantRole = require('../restaurantModels/RestaurantRole');
+const RestaurantUser = require('../restaurantModels/RestaurantUser');
+const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
+const Restaurant = require('../models/Restaurant');
 const router = express.Router();
 
-// Get all roles
-router.get('/', authMiddleware, async (req, res) => {
+// Get all roles for restaurant
+router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const User = require('../models/SuperAdmin');
-    const roles = await Role.find({ isActive: true }).populate('permissions').sort({ createdAt: -1 });
+    const restaurantId = req.restaurant.restaurantId;
+    const roles = await RestaurantRole.find({ restaurantId, isActive: true })
+      .populate('permissions')
+      .sort({ createdAt: -1 });
     
     // Add user count for each role
     const rolesWithUserCount = await Promise.all(
       roles.map(async (role) => {
-        const userCount = await User.countDocuments({ role: role._id, isActive: true });
+        const userCount = await RestaurantUser.countDocuments({ role: role._id, isActive: true });
         return {
           ...role.toObject(),
           userCount
@@ -35,19 +39,21 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // Create role
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const role = new Role(req.body);
+    const restaurantId = req.restaurant.restaurantId;
+    const role = new RestaurantRole({ ...req.body, restaurantId });
     await role.save();
     await role.populate('permissions');
     
+    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
-      req.user,
-      'Role Management',
+      req.restaurant,
+      'User Management',
       'Role',
       'create',
       `Created role "${role.name}"`,
-      null,
+      restaurant?.basicInfo?.restaurantName,
       role.name
     );
     
@@ -66,13 +72,15 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Update role
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const role = await Role.findByIdAndUpdate(
-      req.params.id,
+    const restaurantId = req.restaurant.restaurantId;
+    const role = await RestaurantRole.findOneAndUpdate(
+      { _id: req.params.id, restaurantId },
       req.body,
       { new: true }
     ).populate('permissions');
+    
     if (!role) {
       return res.status(404).json({
         success: false,
@@ -80,13 +88,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
       });
     }
     
+    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
-      req.user,
-      'Role Management',
+      req.restaurant,
+      'User Management',
       'Role',
       'update',
       `Updated role "${role.name}"`,
-      null,
+      restaurant?.basicInfo?.restaurantName,
       role.name
     );
     
@@ -105,15 +114,18 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // Delete role
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const role = await Role.findById(req.params.id);
+    const restaurantId = req.restaurant.restaurantId;
+    const role = await RestaurantRole.findOne({ _id: req.params.id, restaurantId });
+    
     if (!role) {
       return res.status(404).json({
         success: false,
         message: 'Role not found'
       });
     }
+    
     if (role.isSystem) {
       return res.status(400).json({
         success: false,
@@ -121,17 +133,18 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       });
     }
     
+    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
-      req.user,
-      'Role Management',
+      req.restaurant,
+      'User Management',
       'Role',
       'delete',
       `Deleted role "${role.name}"`,
-      null,
+      restaurant?.basicInfo?.restaurantName,
       role.name
     );
     
-    await Role.findByIdAndDelete(req.params.id);
+    await RestaurantRole.findOneAndDelete({ _id: req.params.id, restaurantId });
     res.status(200).json({
       success: true,
       message: 'Role deleted successfully'

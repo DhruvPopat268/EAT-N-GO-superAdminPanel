@@ -1,13 +1,17 @@
 const express = require('express');
-const Permission = require('../models/Permission');
-const authMiddleware = require('../middleware/auth');
+const RestaurantPermission = require('../restaurantModels/RestaurantPermission');
+const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
+const Restaurant = require('../models/Restaurant');
 const router = express.Router();
 
-// Get all permissions
-router.get('/', authMiddleware, async (req, res) => {
+// Get all permissions for restaurant
+router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const permissions = await Permission.find({ isActive: true }).sort({ createdAt: -1 });
+    const restaurantId = req.restaurant.restaurantId;
+    const permissions = await RestaurantPermission.find({ restaurantId, isActive: true })
+      .sort({ createdAt: -1 });
+    
     res.status(200).json({
       success: true,
       data: permissions
@@ -22,18 +26,20 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // Create permission
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const permission = new Permission(req.body);
+    const restaurantId = req.restaurant.restaurantId;
+    const permission = new RestaurantPermission({ ...req.body, restaurantId });
     await permission.save();
     
+    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
-      req.user,
-      'Role Management',
+      req.restaurant,
+      'User Management',
       'Permission',
       'create',
       `Created permission "${permission.name}"`,
-      null,
+      restaurant?.basicInfo?.restaurantName,
       permission.name
     );
     
@@ -52,13 +58,15 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Update permission
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const permission = await Permission.findByIdAndUpdate(
-      req.params.id,
+    const restaurantId = req.restaurant.restaurantId;
+    const permission = await RestaurantPermission.findOneAndUpdate(
+      { _id: req.params.id, restaurantId },
       req.body,
       { new: true }
     );
+    
     if (!permission) {
       return res.status(404).json({
         success: false,
@@ -66,13 +74,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
       });
     }
     
+    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
-      req.user,
-      'Role Management',
+      req.restaurant,
+      'User Management',
       'Permission',
       'update',
       `Updated permission "${permission.name}"`,
-      null,
+      restaurant?.basicInfo?.restaurantName,
       permission.name
     );
     
@@ -91,9 +100,11 @@ router.put('/:id', authMiddleware, async (req, res) => {
 });
 
 // Delete permission
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const permission = await Permission.findById(req.params.id);
+    const restaurantId = req.restaurant.restaurantId;
+    const permission = await RestaurantPermission.findOne({ _id: req.params.id, restaurantId });
+    
     if (!permission) {
       return res.status(404).json({
         success: false,
@@ -101,17 +112,18 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       });
     }
     
+    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
-      req.user,
-      'Role Management',
+      req.restaurant,
+      'User Management',
       'Permission',
       'delete',
       `Deleted permission "${permission.name}"`,
-      null,
+      restaurant?.basicInfo?.restaurantName,
       permission.name
     );
     
-    await Permission.findByIdAndDelete(req.params.id);
+    await RestaurantPermission.findOneAndDelete({ _id: req.params.id, restaurantId });
     res.status(200).json({
       success: true,
       message: 'Permission deleted successfully'

@@ -8,6 +8,7 @@ const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const upload = require('../middleware/upload');
 const { uploadToCloudinary } = require('../utils/cloudinary');
 const authMiddleware = require('../middleware/auth');
+const createLog = require('../utils/createLog');
 const XLSX = require('xlsx');
 const multer = require('multer');
 
@@ -400,6 +401,18 @@ router.post('/admin/create', authMiddleware, upload.array('images', 5), async (r
     await item.populate('subcategory');
     await item.populate('attributes.attribute');
     await item.populate('addons');
+    
+    const restaurant = await Restaurant.findById(itemData.restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Item',
+      'create',
+      `Created item "${item.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      item.name
+    );
+    
     res.status(201).json({ success: true, data: item });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -442,6 +455,18 @@ router.put('/admin/update', authMiddleware, upload.array('images', 5), async (re
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Item',
+      'update',
+      `Updated item "${item.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      item.name
+    );
+    
     res.json({ success: true, data: item });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -498,6 +523,18 @@ router.patch('/admin/status', authMiddleware, async (req, res) => {
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Item',
+      'status_update',
+      `${isAvailable ? 'Enabled' : 'Disabled'} item "${item.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      item.name
+    );
+    
     res.json({ success: true, data: item });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -508,10 +545,23 @@ router.patch('/admin/status', authMiddleware, async (req, res) => {
 router.delete('/admin/delete', authMiddleware, async (req, res) => {
   try {
     const { itemId, restaurantId } = req.body;
-    const item = await Item.findOneAndDelete({ _id: itemId, restaurantId });
+    const item = await Item.findById(itemId);
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Item',
+      'delete',
+      `Deleted item "${item.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      item.name
+    );
+    
+    await Item.findOneAndDelete({ _id: itemId, restaurantId });
     res.json({ success: true, message: 'Item deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

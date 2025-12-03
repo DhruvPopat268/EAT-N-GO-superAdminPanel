@@ -15,6 +15,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET_SUPERADMIN || 'your-secret-key');
+    console.log('Decoded token:', decoded);
     
     const session = await AdminSession.findOne({ token, email: decoded.email });
     if (!session) {
@@ -33,6 +34,8 @@ const authMiddleware = async (req, res, next) => {
     }
 
     req.user = user;
+    console.log('Auth successful for userId:', req.user);
+    
     req.token = token;
     next();
   } catch (error) {

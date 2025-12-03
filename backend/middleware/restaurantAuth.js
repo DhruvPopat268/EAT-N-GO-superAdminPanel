@@ -1,27 +1,17 @@
 const jwt = require('jsonwebtoken');
 const RestaurantSession = require('../models/RestaurantSession');
+const Restaurent = require('../models/Restaurant');
 
 const restaurantAuthMiddleware = async (req, res, next) => {
   try {
     let token = req.cookies.RestaurantToken || (req.headers.authorization && req.headers.authorization.replace('Bearer ', ''));
     
-    // console.log('RestaurantToken:', token);
-    
-    // if (!token) {
-    //   return res.status(401).json({
-    //     success: false,
-    //     message: 'Access denied. No token provided.'
-    //   });
-    // }
-
     const decoded = jwt.verify(token, process.env.JWT_SECRET_RESTAURENT || 'your-secret-key');
-    // console.log('Decoded token:', decoded);
-    
+   
     const session = await RestaurantSession.findOne({ token });
-    // console.log('Session found:', session ? 'Yes' : 'No');
-    
+   
     if (!session) {
-      // console.log('No session found for token');
+      
       return res.status(401).json({
         success: false,
         message: 'Invalid session - no session found for this token'
@@ -29,6 +19,18 @@ const restaurantAuthMiddleware = async (req, res, next) => {
     }
 
     req.restaurant = decoded;
+    
+    const restaurant = await Restaurent.findById(decoded.restaurantId);
+
+    if (!restaurant) {
+      return res.status(401).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    req.restaurantDetails = restaurant;
+
     next();
   } catch (error) {
     console.error('Restaurant auth middleware error:', error.message);

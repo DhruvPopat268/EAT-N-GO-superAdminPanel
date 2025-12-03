@@ -5,6 +5,7 @@ const SuperAdmin = require('../models/SuperAdmin');
 const AdminSession = require('../models/AdminSession');
 const { sendUserCredentials } = require('../services/emailService');
 const authMiddleware = require('../middleware/auth');
+const createLog = require('../utils/createLog');
 const router = express.Router();
 
 // Login user
@@ -132,6 +133,16 @@ router.post('/', authMiddleware, async (req, res) => {
       console.error('Failed to send credentials email:', emailError);
     }
     
+    await createLog(
+      req.user,
+      'Role Management',
+      'User',
+      'create',
+      `Created super admin "${user.name}"`,
+      null,
+      user.name
+    );
+    
     const userResponse = user.toObject();
     delete userResponse.password;
     
@@ -171,6 +182,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
       });
     }
     
+    await createLog(
+      req.user,
+      'Role Management',
+      'User',
+      'update',
+      `Updated super admin "${user.name}"`,
+      null,
+      user.name
+    );
+    
     res.status(200).json({
       success: true,
       message: 'SuperAdmin updated successfully',
@@ -188,13 +209,25 @@ router.put('/:id', authMiddleware, async (req, res) => {
 // Delete user
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const user = await SuperAdmin.findByIdAndDelete(req.params.id);
+    const user = await SuperAdmin.findById(req.params.id);
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'SuperAdmin not found'
       });
     }
+    
+    await createLog(
+      req.user,
+      'Role Management',
+      'User',
+      'delete',
+      `Deleted user "${user.name}"`,
+      null,
+      user.name
+    );
+    
+    await SuperAdmin.findByIdAndDelete(req.params.id);
     res.status(200).json({
       success: true,
       message: 'SuperAdmin deleted successfully'

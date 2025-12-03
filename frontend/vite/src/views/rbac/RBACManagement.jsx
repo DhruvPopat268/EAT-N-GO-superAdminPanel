@@ -47,7 +47,7 @@ export default function RBACManagement() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <IconUserShield size={32} color={theme.palette.primary.main} />
             <Typography variant="h4" fontWeight="bold" color="text.primary">
-              RBAC Management
+              Role Management
             </Typography>
           </Box>
           <Typography variant="body1" color="text.secondary">

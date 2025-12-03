@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Combo = require('../models/Combo');
 const Item = require('../models/Item');
+const Restaurant = require('../models/Restaurant');
 const upload = require('../middleware/upload');
 const authMiddleware = require('../middleware/auth');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
+const createLog = require('../utils/createLog');
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Restaurent <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -263,6 +265,18 @@ router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res
     });
     
     await combo.save();
+    
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Combo',
+      'create',
+      `Created combo "${combo.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      combo.name
+    );
+    
     res.json({ success: true, data: combo, message: 'Combo created successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -295,6 +309,17 @@ router.put('/admin/update',authMiddleware, upload.single('image'), async (req, r
       return res.status(404).json({ success: false, message: 'Combo not found' });
     }
     
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Combo',
+      'update',
+      `Updated combo "${combo.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      combo.name
+    );
+    
     res.json({ success: true, data: combo, message: 'Combo updated successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -316,6 +341,17 @@ router.patch('/admin/status',authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Combo not found' });
     }
     
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Combo',
+      'status_update',
+      `${isAvailable ? 'Enabled' : 'Disabled'} combo "${combo.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      combo.name
+    );
+    
     res.json({ success: true, data: combo, message: 'Combo status updated' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -323,16 +359,27 @@ router.patch('/admin/status',authMiddleware, async (req, res) => {
 });
 
 // Delete combo
-router.delete('/admin/delete', async (req, res) => {
+router.delete('/admin/delete', authMiddleware, async (req, res) => {
   try {
     const { comboId, restaurantId } = req.body;
     
-    const combo = await Combo.findOneAndDelete({ _id: comboId, restaurantId });
-    
+    const combo = await Combo.findById(comboId);
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
     }
     
+    const restaurant = await Restaurant.findById(restaurantId);
+    await createLog(
+      req.user,
+      'Menu Management',
+      'Combo',
+      'delete',
+      `Deleted combo "${combo.name}"`,
+      restaurant?.basicInfo?.restaurantName,
+      combo.name
+    );
+    
+    await Combo.findOneAndDelete({ _id: comboId, restaurantId });
     res.json({ success: true, message: 'Combo deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

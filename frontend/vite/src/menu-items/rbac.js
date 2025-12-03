@@ -4,7 +4,7 @@ const icons = { IconUserShield };
 
 const rbac = {
   id: 'rbac',
-  title: 'RBAC Management',
+  title: 'Role Management',
   type: 'group',
   children: [
     {
