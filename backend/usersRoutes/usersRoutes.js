@@ -4,6 +4,7 @@ const UserOtpSession = require('../usersModels/userOtpSession');
 const UserSession = require('../usersModels/userSession');
 const User = require('../usersModels/usersModel');
 const { generateTokens, verifyToken } = require('../middleware/userAuth');
+const { getRestaurantsAlongRoute } = require('../utils/routeUtils');
 const jwt = require('jsonwebtoken');
 
 // Send OTP
@@ -189,6 +190,64 @@ router.put('/profile', verifyToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Get restaurants along route
+router.post('/restaurants-along-route', verifyToken, async (req, res) => {
+  try {
+    const { currentLocation, destinationLocation, bufferRadius = 500 } = req.body;
+
+    if (!currentLocation || !destinationLocation) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Current location and destination location are required' 
+      });
+    }
+
+    if (!currentLocation.lat || !currentLocation.lng || !destinationLocation.lat || !destinationLocation.lng) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Latitude and longitude are required for both locations' 
+      });
+    }
+
+    const Restaurant = require('../models/Restaurant');
+    const allRestaurants = await Restaurant.find({ status: 'approved' });
+
+    const filteredRestaurants = getRestaurantsAlongRoute(
+      allRestaurants, 
+      currentLocation, 
+      destinationLocation, 
+      bufferRadius
+    ).map(restaurant => ({
+      _id: restaurant._id,
+      basicInfo: {
+        restaurantName: restaurant.basicInfo.restaurantName,
+        foodCategory: restaurant.basicInfo.foodCategory,
+        cuisineTypes: restaurant.basicInfo.cuisineTypes
+      },
+      contactDetails: {
+        address: restaurant.contactDetails.address,
+        city: restaurant.contactDetails.city,
+        state: restaurant.contactDetails.state,
+        latitude: restaurant.contactDetails.latitude,
+        longitude: restaurant.contactDetails.longitude
+      },
+    }));
+
+    res.json({
+      success: true,
+      message: 'Restaurants along route retrieved successfully',
+      data: {
+        totalRestaurants: allRestaurants.length,
+        filteredRestaurants: filteredRestaurants.length,
+        bufferRadius,
+        restaurants: filteredRestaurants
+      }
+    });
+  } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
