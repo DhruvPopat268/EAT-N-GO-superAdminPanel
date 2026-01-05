@@ -180,11 +180,7 @@ export default function OnboardingRequests() {
     'Contact Details': [
       'email',
       'phone',
-      'address',
-      'city',
-      'state',
-      'country',
-      'pincode'
+      'addressInfo'
     ],
     'Business Details': [
       'licenseNumber',
@@ -211,11 +207,7 @@ export default function OnboardingRequests() {
       cuisineTypes: 'Cuisine Types',
       email: 'Email Address',
       phone: 'Phone Number',
-      address: 'Address',
-      city: 'City',
-      state: 'State',
-      country: 'Country',
-      pincode: 'Pincode',
+      addressInfo: 'Address Information (Full Address, City, State, Country, Pincode)',
       licenseNumber: 'License Number',
       gstNumber: 'GST Number',
       bankAccount: 'Bank Account',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -81,6 +81,8 @@ export default function AddRestaurant() {
     state: '',
     country: '',
     pincode: '',
+    latitude: '',
+    longitude: '',
     licenseNumber: '',
     gstNumber: '',
     bankAccount: '',
@@ -96,6 +98,14 @@ export default function AddRestaurant() {
     restaurantImages: []
   });
 
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
+  const autocompleteRef = useRef(null);
+  const inputRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -106,6 +116,168 @@ export default function AddRestaurant() {
     }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  useEffect(() => {
+    const loadGoogleMaps = () => {
+      if (window.google && window.google.maps) {
+        return;
+      }
+      
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
+      script.async = true;
+      document.head.appendChild(script);
+    };
+
+    loadGoogleMaps();
+  }, []);
+
+  useEffect(() => {
+    if (activeStep === 1 && inputRef.current && window.google && window.google.maps) {
+      const timer = setTimeout(() => {
+        if (inputRef.current && !autocompleteRef.current) {
+          autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+            types: ['establishment', 'geocode']
+          });
+          
+          autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [activeStep]);
+
+  useEffect(() => {
+    if (activeStep === 1 && window.google && window.google.maps && formData.latitude && formData.longitude) {
+      const timer = setTimeout(() => {
+        initializeMap();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [activeStep, formData.latitude, formData.longitude]);
+
+  const initializeMap = () => {
+    if (!mapRef.current || !window.google) return;
+
+    const map = new window.google.maps.Map(mapRef.current, {
+      center: { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) },
+      zoom: 15,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false
+    });
+
+    // Create draggable marker
+    const marker = new window.google.maps.Marker({
+      position: { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) },
+      map: map,
+      draggable: true,
+      title: 'Drag to adjust location'
+    });
+
+    markerRef.current = marker;
+
+    // Update coordinates when marker is dragged
+    marker.addListener('dragend', () => {
+      const position = marker.getPosition();
+      updateLocationFromCoordinates(position.lat(), position.lng());
+    });
+
+    // Allow clicking on map to move marker
+    map.addListener('click', (event) => {
+      const clickedLocation = event.latLng;
+      marker.setPosition(clickedLocation);
+      updateLocationFromCoordinates(clickedLocation.lat(), clickedLocation.lng());
+    });
+  };
+
+  const updateLocationFromCoordinates = async (lat, lng) => {
+    const geocoder = new window.google.maps.Geocoder();
+    
+    try {
+      const response = await new Promise((resolve, reject) => {
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            resolve(results[0]);
+          } else {
+            reject(new Error('Geocoding failed'));
+          }
+        });
+      });
+
+      let city = '', state = '', country = '', pincode = '';
+      
+      response.address_components?.forEach(component => {
+        const types = component.types;
+        if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+          city = component.long_name;
+        } else if (types.includes('administrative_area_level_1')) {
+          state = component.long_name;
+        } else if (types.includes('country')) {
+          country = component.long_name;
+        } else if (types.includes('postal_code')) {
+          pincode = component.long_name;
+        }
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        address: response.formatted_address,
+        city,
+        state,
+        country,
+        pincode,
+        latitude: lat.toString(),
+        longitude: lng.toString()
+      }));
+
+      setLocationQuery(response.formatted_address);
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      // Still update coordinates even if reverse geocoding fails
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat.toString(),
+        longitude: lng.toString()
+      }));
+    }
+  };
+
+  const handlePlaceSelect = () => {
+    const place = autocompleteRef.current.getPlace();
+    
+    if (place.geometry) {
+      let city = '', state = '', country = '', pincode = '';
+      
+      place.address_components?.forEach(component => {
+        const types = component.types;
+        if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+          city = component.long_name;
+        } else if (types.includes('administrative_area_level_1')) {
+          state = component.long_name;
+        } else if (types.includes('country')) {
+          country = component.long_name;
+        } else if (types.includes('postal_code')) {
+          pincode = component.long_name;
+        }
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        address: place.formatted_address || place.name,
+        city,
+        state,
+        country,
+        pincode,
+        latitude: place.geometry.location.lat().toString(),
+        longitude: place.geometry.location.lng().toString()
+      }));
+      
+      setLocationQuery(place.formatted_address || place.name);
     }
   };
 
@@ -426,54 +598,55 @@ export default function AddRestaurant() {
               </Card>
 
               <Stack spacing={4}>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  {/* <Email sx={{ color: 'primary.main', mt: 2 }} /> */}
-                  <TextField
-                    fullWidth
-                    label="Email Address"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange('email')}
-                    error={!!errors.email}
-                    helperText={errors.email}
-                    required
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 3,
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  {/* <Phone sx={{ color: 'primary.main', mt: 2 }} /> */}
-                  <TextField
-                    fullWidth
-                    label="Phone Number"
-                    value={formData.phone}
-                    onChange={handleInputChange('phone')}
-                    error={!!errors.phone}
-                    helperText={errors.phone}
-                    required
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 3,
-                        fontSize: '1.1rem'
-                      }
-                    }}
-                  />
-                </Box>
+                <TextField
+                  fullWidth
+                  label="Email Address"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange('email')}
+                  error={!!errors.email}
+                  helperText={errors.email}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
 
                 <TextField
                   fullWidth
-                  label="Complete Address"
-                  multiline
-                  rows={3}
-                  value={formData.address}
-                  onChange={handleInputChange('address')}
+                  label="Phone Number"
+                  value={formData.phone}
+                  onChange={handleInputChange('phone')}
+                  error={!!errors.phone}
+                  helperText={errors.phone}
+                  required
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Search Location"
+                  inputRef={inputRef}
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  onFocus={() => {
+                    if (window.google && window.google.maps && inputRef.current && !autocompleteRef.current) {
+                      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+                        types: ['establishment', 'geocode']
+                      });
+                      autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+                    }
+                  }}
                   error={!!errors.address}
-                  helperText={errors.address}
+                  helperText={errors.address || "Start typing to search for your restaurant location"}
                   required
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -484,86 +657,59 @@ export default function AddRestaurant() {
                 />
 
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
-                  <FormControl fullWidth required error={!!errors.city}>
-                    <InputLabel sx={{ fontSize: '1.1rem' }}>City</InputLabel>
-                    <Select
-                      value={formData.city}
-                      onChange={handleInputChange('city')}
-                      label="City"
-                      sx={{
+                  <TextField
+                    fullWidth
+                    label="City"
+                    value={formData.city}
+                    onChange={handleInputChange('city')}
+                    error={!!errors.city}
+                    helperText={errors.city}
+                    required
+                    disabled
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
                         borderRadius: 3,
                         fontSize: '1.1rem',
-                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
-                      }}
-                    >
-                      <MenuItem value="Mumbai">Mumbai</MenuItem>
-                      <MenuItem value="Delhi">Delhi</MenuItem>
-                      <MenuItem value="Bangalore">Bangalore</MenuItem>
-                      <MenuItem value="Chennai">Chennai</MenuItem>
-                      <MenuItem value="Kolkata">Kolkata</MenuItem>
-                      <MenuItem value="Hyderabad">Hyderabad</MenuItem>
-                      <MenuItem value="Pune">Pune</MenuItem>
-                      <MenuItem value="Ahmedabad">Ahmedabad</MenuItem>
-                      <MenuItem value="Jaipur">Jaipur</MenuItem>
-                      <MenuItem value="Surat">Surat</MenuItem>
-                    </Select>
-                    {errors.city && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.city}</Typography>}
-                  </FormControl>
+                        bgcolor: 'grey.50'
+                      }
+                    }}
+                  />
 
-                  <FormControl fullWidth required error={!!errors.state}>
-                    <InputLabel sx={{ fontSize: '1.1rem' }}>State</InputLabel>
-                    <Select
-                      value={formData.state}
-                      onChange={handleInputChange('state')}
-                      label="State"
-                      sx={{
+                  <TextField
+                    fullWidth
+                    label="State"
+                    value={formData.state}
+                    onChange={handleInputChange('state')}
+                    error={!!errors.state}
+                    helperText={errors.state}
+                    required
+                    disabled
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
                         borderRadius: 3,
                         fontSize: '1.1rem',
-                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
-                      }}
-                    >
-                      <MenuItem value="Maharashtra">Maharashtra</MenuItem>
-                      <MenuItem value="Delhi">Delhi</MenuItem>
-                      <MenuItem value="Karnataka">Karnataka</MenuItem>
-                      <MenuItem value="Tamil Nadu">Tamil Nadu</MenuItem>
-                      <MenuItem value="West Bengal">West Bengal</MenuItem>
-                      <MenuItem value="Telangana">Telangana</MenuItem>
-                      <MenuItem value="Gujarat">Gujarat</MenuItem>
-                      <MenuItem value="Rajasthan">Rajasthan</MenuItem>
-                      <MenuItem value="Uttar Pradesh">Uttar Pradesh</MenuItem>
-                      <MenuItem value="Madhya Pradesh">Madhya Pradesh</MenuItem>
-                    </Select>
-                    {errors.state && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.state}</Typography>}
-                  </FormControl>
+                        bgcolor: 'grey.50'
+                      }
+                    }}
+                  />
 
-                  <FormControl fullWidth required error={!!errors.country}>
-                    <InputLabel sx={{ fontSize: '1.1rem' }}>Country</InputLabel>
-                    <Select
-                      value={formData.country}
-                      onChange={handleInputChange('country')}
-                      label="Country"
-                      sx={{
+                  <TextField
+                    fullWidth
+                    label="Country"
+                    value={formData.country}
+                    onChange={handleInputChange('country')}
+                    error={!!errors.country}
+                    helperText={errors.country}
+                    required
+                    disabled
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
                         borderRadius: 3,
                         fontSize: '1.1rem',
-                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
-                      }}
-                    >
-                      <MenuItem value="India">India</MenuItem>
-                      <MenuItem value="United States">United States</MenuItem>
-                      <MenuItem value="United Kingdom">United Kingdom</MenuItem>
-                      <MenuItem value="Canada">Canada</MenuItem>
-                      <MenuItem value="Australia">Australia</MenuItem>
-                      <MenuItem value="Germany">Germany</MenuItem>
-                      <MenuItem value="France">France</MenuItem>
-                      <MenuItem value="Japan">Japan</MenuItem>
-                      <MenuItem value="Singapore">Singapore</MenuItem>
-                      <MenuItem value="UAE">UAE</MenuItem>
-                    </Select>
-                    {errors.country && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>{errors.country}</Typography>}
-                  </FormControl>
+                        bgcolor: 'grey.50'
+                      }
+                    }}
+                  />
                 </Box>
 
                 <TextField
@@ -574,13 +720,40 @@ export default function AddRestaurant() {
                   error={!!errors.pincode}
                   helperText={errors.pincode}
                   required
+                  disabled
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
-                      fontSize: '1.1rem'
+                      fontSize: '1.1rem',
+                      bgcolor: 'grey.50'
                     }
                   }}
                 />
+
+                {(formData.latitude && formData.longitude) ? (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                      Restaurant Location
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Click on the map or drag the marker to adjust your exact location
+                    </Typography>
+                    <Box
+                      ref={mapRef}
+                      sx={{
+                        width: '100%',
+                        height: 300,
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        border: '1px solid #e0e0e0'
+                      }}
+                    />
+                    <Box sx={{ mt: 2, display: 'flex', gap: 2, fontSize: '0.875rem', color: 'text.secondary' }}>
+                      <Typography variant="caption">Lat: {parseFloat(formData.latitude).toFixed(6)}</Typography>
+                      <Typography variant="caption">Lng: {parseFloat(formData.longitude).toFixed(6)}</Typography>
+                    </Box>
+                  </Box>
+                ) : null}
               </Stack>
             </Box>
           </Fade>
