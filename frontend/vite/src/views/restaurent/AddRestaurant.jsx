@@ -98,8 +98,7 @@ export default function AddRestaurant() {
     restaurantImages: []
   });
 
-  const [locationSuggestions, setLocationSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+
   const [locationQuery, setLocationQuery] = useState('');
   const autocompleteRef = useRef(null);
   const inputRef = useRef(null);
