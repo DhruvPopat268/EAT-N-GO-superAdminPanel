@@ -174,7 +174,7 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
       if (['restaurantName', 'ownerName', 'foodCategory', 'cuisineTypes'].includes(key)) {
         if (!finalUpdateData.basicInfo) finalUpdateData.basicInfo = {};
         finalUpdateData.basicInfo[key] = value;
-      } else if (['email', 'phone', 'address', 'city', 'state', 'country', 'pincode'].includes(key)) {
+      } else if (['email', 'phone', 'address', 'city', 'state', 'country', 'pincode', 'latitude', 'longitude'].includes(key)) {
         if (!finalUpdateData.contactDetails) finalUpdateData.contactDetails = {};
         finalUpdateData.contactDetails[key] = value;
       } else if (['licenseNumber', 'gstNumber', 'bankAccount', 'ifscCode', 'description'].includes(key)) {
@@ -547,7 +547,9 @@ router.post(
           city: restaurantData.city,
           state: restaurantData.state,
           country: restaurantData.country,
-          pincode: restaurantData.pincode
+          pincode: restaurantData.pincode,
+          latitude: restaurantData.latitude,
+          longitude: restaurantData.longitude
         },
         businessDetails: {
           licenseNumber: restaurantData.licenseNumber,
