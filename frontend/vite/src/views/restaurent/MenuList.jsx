@@ -158,9 +158,13 @@ export default function MenuList() {
     }
   };
 
-  const handleStatusToggle = async (itemId) => {
+  const updateItemToggle = async (itemId, payload, propertyKey, successMessage) => {
     const item = menuItems.find(item => item._id === itemId);
-    const newStatus = !item.isAvailable;
+    
+    if (!item) {
+      toast.error('Item not found');
+      return;
+    }
     
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/status`, {
@@ -170,7 +174,7 @@ export default function MenuList() {
         body: JSON.stringify({ 
           itemId: itemId,
           restaurantId: item.restaurantId,
-          isAvailable: newStatus
+          ...payload
         })
       });
       
@@ -180,11 +184,11 @@ export default function MenuList() {
         setMenuItems(prevItems => 
           prevItems.map(item => 
             item._id === itemId 
-              ? { ...item, isAvailable: newStatus }
+              ? { ...item, [propertyKey]: payload[propertyKey] }
               : item
           )
         );
-        toast.success(`Item ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+        toast.success(successMessage);
       } else {
         toast.error(result.message || 'Failed to update status');
       }
@@ -194,40 +198,30 @@ export default function MenuList() {
     }
   };
 
+  const handleStatusToggle = async (itemId) => {
+    const item = menuItems.find(item => item._id === itemId);
+    if (!item) return;
+    
+    const newStatus = !item.isAvailable;
+    await updateItemToggle(
+      itemId, 
+      { isAvailable: newStatus }, 
+      'isAvailable', 
+      `Item ${newStatus ? 'activated' : 'deactivated'} successfully!`
+    );
+  };
+
   const handlePopularToggle = async (itemId) => {
     const item = menuItems.find(item => item._id === itemId);
-    const newPopularStatus = !item.isPopular;
+    if (!item) return;
     
-    try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          itemId: itemId,
-          restaurantId: item.restaurantId,
-          isPopular: newPopularStatus
-        })
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setMenuItems(prevItems => 
-          prevItems.map(item => 
-            item._id === itemId 
-              ? { ...item, isPopular: newPopularStatus }
-              : item
-          )
-        );
-        toast.success(`Item ${newPopularStatus ? 'marked as popular' : 'unmarked as popular'} successfully!`);
-      } else {
-        toast.error(result.message || 'Failed to update popular status');
-      }
-    } catch (error) {
-      console.error('Error updating popular status:', error);
-      toast.error('Failed to update popular status');
-    }
+    const newPopularStatus = !item.isPopular;
+    await updateItemToggle(
+      itemId, 
+      { isPopular: newPopularStatus }, 
+      'isPopular', 
+      `Item ${newPopularStatus ? 'marked as popular' : 'unmarked as popular'} successfully!`
+    );
   };
 
   const handleViewItem = (item) => {
