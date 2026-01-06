@@ -162,40 +162,36 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
       }
     }
 
-    // Map flat fields to nested structure
-    const finalUpdateData = {
+    // Use $set with dot notation to update only specific fields
+    const setData = {
       status: 'pending',
       rejectionReason: null,
       rejectedFormFields: []
     };
 
-    // Map fields to correct nested structure
+    // Map fields using dot notation to preserve existing nested fields
     Object.entries(updateData).forEach(([key, value]) => {
-      if (['restaurantName', 'ownerName', 'foodCategory', 'cuisineTypes'].includes(key)) {
-        if (!finalUpdateData.basicInfo) finalUpdateData.basicInfo = {};
-        finalUpdateData.basicInfo[key] = value;
+      if (['restaurantName', 'ownerName', 'foodCategory', 'cuisineTypes', 'operatingHours'].includes(key)) {
+        setData[`basicInfo.${key}`] = value;
       } else if (['email', 'phone', 'address', 'city', 'state', 'country', 'pincode', 'latitude', 'longitude'].includes(key)) {
-        if (!finalUpdateData.contactDetails) finalUpdateData.contactDetails = {};
-        finalUpdateData.contactDetails[key] = value;
+        setData[`contactDetails.${key}`] = value;
       } else if (['licenseNumber', 'gstNumber', 'bankAccount', 'ifscCode', 'description'].includes(key)) {
-        if (!finalUpdateData.businessDetails) finalUpdateData.businessDetails = {};
-        finalUpdateData.businessDetails[key] = value;
+        setData[`businessDetails.${key}`] = value;
       }
     });
 
-    // Handle documents
-    if (Object.keys(documents).length > 0 || restaurantImages.length > 0) {
-      finalUpdateData.documents = { ...restaurant.documents, ...documents };
-      if (restaurantImages.length > 0) {
-        finalUpdateData.documents.restaurantImages = restaurantImages;
-      }
+    // Handle documents with dot notation
+    Object.entries(documents).forEach(([key, value]) => {
+      setData[`documents.${key}`] = value;
+    });
+    
+    if (restaurantImages.length > 0) {
+      setData['documents.restaurantImages'] = restaurantImages;
     }
-
-    // console.log('Final update data:', JSON.stringify(finalUpdateData, null, 2));
 
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
-      finalUpdateData,
+      { $set: setData },
       { new: true }
     );
 
@@ -290,11 +286,16 @@ router.patch('/updateData', restaurantAuthMiddleware, upload.array('restaurantIm
 
     // Collect existing image URLs from form data
     const existingImages = [];
-    Object.keys(req.body).forEach(key => {
-      if (key.startsWith('restaurantImages_existing_') && req.body[key].startsWith('http')) {
-        existingImages.push(req.body[key]);
-      }
-    });
+    let primaryImage = null;
+    
+    if (req.body.primaryImage && req.body.primaryImage.startsWith('http')) {
+      primaryImage = req.body.primaryImage;
+    }
+    
+    if (req.body.restaurantImages) {
+      const images = Array.isArray(req.body.restaurantImages) ? req.body.restaurantImages : [req.body.restaurantImages];
+      existingImages.push(...images.filter(img => typeof img === 'string' && img.startsWith('http')));
+    }
 
     // Upload new restaurant images if provided
     let newUploadedImages = [];
@@ -304,11 +305,26 @@ router.patch('/updateData', restaurantAuthMiddleware, upload.array('restaurantIm
       );
     }
 
+    // Set primary image priority: explicit > existing > newly uploaded
+    if (!primaryImage) {
+      if (existingImages.length > 0) {
+        primaryImage = existingImages[0];
+        existingImages.shift(); // Remove first existing image from gallery
+      } else if (newUploadedImages.length > 0) {
+        primaryImage = newUploadedImages[0];
+        newUploadedImages = newUploadedImages.slice(1);
+      }
+    }
+
     // Combine existing and new images
     const allImages = [...existingImages, ...newUploadedImages];
 
-    if (allImages.length > 0) {
-      updateData.documents = { ...existingRestaurant.documents, restaurantImages: allImages };
+    if (primaryImage || allImages.length > 0) {
+      updateData.documents = { 
+        ...existingRestaurant.documents, 
+        ...(primaryImage && { primaryImage }),
+        restaurantImages: allImages 
+      };
     }
 
     const restaurant = await Restaurant.findByIdAndUpdate(
