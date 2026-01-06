@@ -158,14 +158,76 @@ export default function MenuList() {
     }
   };
 
-  const handleStatusToggle = (itemId) => {
-    setMenuItems(prevItems => 
-      prevItems.map(item => 
-        item._id === itemId 
-          ? { ...item, isAvailable: !item.isAvailable }
-          : item
-      )
-    );
+  const handleStatusToggle = async (itemId) => {
+    const item = menuItems.find(item => item._id === itemId);
+    const newStatus = !item.isAvailable;
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          itemId: itemId,
+          restaurantId: item.restaurantId,
+          isAvailable: newStatus
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setMenuItems(prevItems => 
+          prevItems.map(item => 
+            item._id === itemId 
+              ? { ...item, isAvailable: newStatus }
+              : item
+          )
+        );
+        toast.success(`Item ${newStatus ? 'activated' : 'deactivated'} successfully!`);
+      } else {
+        toast.error(result.message || 'Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handlePopularToggle = async (itemId) => {
+    const item = menuItems.find(item => item._id === itemId);
+    const newPopularStatus = !item.isPopular;
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/items/admin/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          itemId: itemId,
+          restaurantId: item.restaurantId,
+          isPopular: newPopularStatus
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setMenuItems(prevItems => 
+          prevItems.map(item => 
+            item._id === itemId 
+              ? { ...item, isPopular: newPopularStatus }
+              : item
+          )
+        );
+        toast.success(`Item ${newPopularStatus ? 'marked as popular' : 'unmarked as popular'} successfully!`);
+      } else {
+        toast.error(result.message || 'Failed to update popular status');
+      }
+    } catch (error) {
+      console.error('Error updating popular status:', error);
+      toast.error('Failed to update popular status');
+    }
   };
 
   const handleViewItem = (item) => {
@@ -428,25 +490,26 @@ export default function MenuList() {
                   <TableCell sx={{ fontWeight: 700 }}>Attributes</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Popular</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 10 : 9} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading menu items..." />
                     </TableCell>
                   </TableRow>
                 ) : filterLoading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 10 : 9} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading menu items..." />
                     </TableCell>
                   </TableRow>
                 ) : filteredItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 10 : 9} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconChefHat size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -548,6 +611,22 @@ export default function MenuList() {
                             <Chip 
                               label={item.isAvailable ? 'Available' : 'Unavailable'} 
                               color={item.isAvailable ? 'success' : 'error'}
+                              variant="outlined"
+                              size="small"
+                            />
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Switch
+                              checked={item.isPopular || false}
+                              onChange={() => handlePopularToggle(item._id)}
+                              size="small"
+                              color="warning"
+                            />
+                            <Chip 
+                              label={item.isPopular ? 'Popular' : 'Regular'} 
+                              color={item.isPopular ? 'warning' : 'default'}
                               variant="outlined"
                               size="small"
                             />

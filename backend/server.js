@@ -42,6 +42,7 @@ app.use('/api/items', require('./routes/item'));
 app.use('/api/addon-items', require('./routes/addonItem'));
 app.use('/api/combos', require('./routes/combo'));
 app.use('/api/users', require('./usersRoutes/usersRoutes'));
+app.use('/api/users/items', require('./usersRoutes/itemRoute'));
 
 // Sample file download route
 app.get('/api/sample/menu-items', (req, res) => {

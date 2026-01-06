@@ -2,8 +2,8 @@ const jwt = require('jsonwebtoken');
 const UserSession = require('../usersModels/userSession');
 
 const generateTokens = (mobileNo, userId) => {
-  const accessToken = jwt.sign({ mobileNo, userId }, process.env.JWT_SECRET_ACCESS_TOKEN_USER, { expiresIn: '15m' });
-  const refreshToken = jwt.sign({ mobileNo, userId }, process.env.JWT_SECRET_REFRESH_TOKEN_USER, { expiresIn: '30d' });
+  const accessToken = jwt.sign({ mobileNo, userId }, process.env.JWT_SECRET_ACCESS_TOKEN_USER, { expiresIn: process.env.JWT_ACCESS_TOKEN_USER_EXPIRY });
+  const refreshToken = jwt.sign({ mobileNo, userId }, process.env.JWT_SECRET_REFRESH_TOKEN_USER, { expiresIn: process.env.JWT_REFRESH_TOKEN_USER_EXPIRY });
   return { accessToken, refreshToken };
 };
 

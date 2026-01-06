@@ -128,10 +128,14 @@ router.post('/detail', restaurantAuthMiddleware, async (req, res) => {
 // Update item status
 router.patch('/status', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const { itemId, isAvailable } = req.body;
+    const { itemId, isAvailable, isPopular } = req.body;
+    const updateData = {};
+    if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
+    if (isPopular !== undefined) updateData.isPopular = isPopular;
+    
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId: req.restaurant.restaurantId },
-      { isAvailable },
+      updateData,
       { new: true }
     );
     if (!item) {
@@ -306,7 +310,8 @@ router.post('/bulk-import', restaurantAuthMiddleware, excelUpload.single('file')
           foodTypes,
           customizations,
           currency: row.currency || 'INR',
-          isAvailable: row.isAvailable !== 'false'
+          isAvailable: row.isAvailable !== 'false',
+          isPopular: row.isPopular === 'true'
         };
 
         const item = new Item(itemData);
@@ -514,10 +519,14 @@ router.post('/admin/detail', authMiddleware, async (req, res) => {
 // Update item status
 router.patch('/admin/status', authMiddleware, async (req, res) => {
   try {
-    const { itemId, isAvailable, restaurantId } = req.body;
+    const { itemId, isAvailable, isPopular, restaurantId } = req.body;
+    const updateData = {};
+    if (isAvailable !== undefined) updateData.isAvailable = isAvailable;
+    if (isPopular !== undefined) updateData.isPopular = isPopular;
+    
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId },
-      { isAvailable },
+      updateData,
       { new: true }
     );
     if (!item) {
@@ -525,12 +534,15 @@ router.patch('/admin/status', authMiddleware, async (req, res) => {
     }
     
     const restaurant = await Restaurant.findById(restaurantId);
+    const statusType = isAvailable !== undefined ? 'availability' : 'popularity';
+    const statusValue = isAvailable !== undefined ? (isAvailable ? 'Enabled' : 'Disabled') : (isPopular ? 'Marked as popular' : 'Unmarked as popular');
+    
     await createLog(
       req.user,
       'Menu Management',
       'Item',
       'status_update',
-      `${isAvailable ? 'Enabled' : 'Disabled'} item "${item.name}"`,
+      `${statusValue} item "${item.name}"`,
       restaurant?.basicInfo?.restaurantName,
       item.name
     );
@@ -717,7 +729,8 @@ router.post('/admin/bulk-import', authMiddleware, excelUpload.single('file'), as
           foodTypes,
           customizations,
           currency: row.currency || 'INR',
-          isAvailable: row.isAvailable !== 'false'
+          isAvailable: row.isAvailable !== 'false',
+          isPopular: row.isPopular === 'true'
         };
 
         console.log('Excel row data:', row);
