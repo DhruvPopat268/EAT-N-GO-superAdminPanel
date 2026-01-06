@@ -7,7 +7,11 @@ const restaurantSchema = new mongoose.Schema({
     ownerName: { type: String, required: true },
     foodCategory: { type: String, enum: ['Veg', 'Non-Veg', 'Mixed'], required: true },
     cuisineTypes: [{ type: String, required: true }],
-    otherCuisine: { type: String }
+    otherCuisine: { type: String },
+    operatingHours: {
+      openTime: { type: String }, // Format: "09:00"
+      closeTime: { type: String } // Format: "22:00"
+    }
   },
 
   // Contact Details
@@ -39,8 +43,10 @@ const restaurantSchema = new mongoose.Schema({
     panCard: { type: String },
     bankStatement: { type: String },
     foodLicense: { type: String },
+    primaryImage: { type: String },
     restaurantImages: [{ type: String }]
   },
+
 
   // Login Credentials
   tempPassword: { type: String, required: true },

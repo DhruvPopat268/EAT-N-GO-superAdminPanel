@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
     "https://eat-n-go-super-admin-panel.vercel.app",
     "https://eat-n-go-restaurent.vercel.app",
     "https://eat-n-go-restaurent-registration-fo.vercel.app",
@@ -38,7 +41,6 @@ app.use('/api/subcategories', require('./routes/subcategory'));
 app.use('/api/items', require('./routes/item'));
 app.use('/api/addon-items', require('./routes/addonItem'));
 app.use('/api/combos', require('./routes/combo'));
-
 app.use('/api/users', require('./usersRoutes/usersRoutes'));
 
 // Sample file download route
