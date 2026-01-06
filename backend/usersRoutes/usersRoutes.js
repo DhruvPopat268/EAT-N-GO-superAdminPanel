@@ -7,6 +7,7 @@ const { generateTokens, verifyToken } = require('../middleware/userAuth');
 const { getRestaurantsAlongRoute } = require('../utils/routeUtils');
 const jwt = require('jsonwebtoken');
 const itemRoutes = require('./itemRoute');
+const restaurentRoutes = require('./restaurentRoutes');
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -255,5 +256,8 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
 
 // Use item routes
 router.use('/items', itemRoutes);
+
+// Use restaurant routes
+router.use('/restaurents', restaurentRoutes);
 
 module.exports = router;

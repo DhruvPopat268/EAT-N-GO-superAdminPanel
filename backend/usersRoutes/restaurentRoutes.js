@@ -1,0 +1,83 @@
+const express = require('express');
+const router = express.Router();
+const Restaurant = require('../models/Restaurant');
+const { verifyToken } = require('../middleware/userAuth');
+
+// Get restaurant basic info and contact details
+router.post('/details', verifyToken, async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Restaurant ID is required' 
+      });
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId, 'basicInfo contactDetails documents.primaryImage');
+
+    if (!restaurant) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Restaurant not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Restaurant details retrieved successfully',
+      data: {
+        basicInfo: restaurant.basicInfo,
+        contactDetails: restaurant.contactDetails,
+        primaryImage: restaurant.documents?.primaryImage || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+// Get restaurant images
+router.post('/images', verifyToken, async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Restaurant ID is required' 
+      });
+    }
+
+    const restaurant = await Restaurant.findById(restaurantId, 'documents.restaurantImages documents.primaryImage');
+
+    if (!restaurant) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Restaurant not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Restaurant images retrieved successfully',
+      data: {
+        restaurantImages: restaurant.documents?.restaurantImages || [],
+        primaryImage: restaurant.documents?.primaryImage || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
+module.exports = router;
