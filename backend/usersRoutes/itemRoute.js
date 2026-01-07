@@ -94,6 +94,37 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
   }
 });
 
+// Search items
+router.get('/search', verifyToken, async (req, res) => {
+  try {
+    const { query, restaurantId } = req.query;
+
+    if (!query || !restaurantId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Search query and Restaurant ID are required' 
+      });
+    }
+
+    const items = await Item.find({ 
+      restaurantId,
+      name: { $regex: query, $options: 'i' }
+    });
+
+    res.json({
+      success: true,
+      message: 'Items searched successfully',
+      data: items
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
 // Get available subcategories
 router.post('/subcategories', verifyToken, async (req, res) => {
   try {
