@@ -80,4 +80,35 @@ router.post('/images', verifyToken, async (req, res) => {
   }
 });
 
+// Search restaurants
+router.get('/search', verifyToken, async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Search query is required' 
+      });
+    }
+
+    const restaurants = await Restaurant.find({ 
+      'basicInfo.restaurantName': { $regex: query, $options: 'i' },
+      status: 'approved'
+    }, 'basicInfo contactDetails documents.primaryImage');
+
+    res.json({
+      success: true,
+      message: 'Restaurants searched successfully',
+      data: restaurants
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error', 
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
