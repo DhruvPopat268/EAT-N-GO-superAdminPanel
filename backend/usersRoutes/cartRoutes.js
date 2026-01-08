@@ -6,6 +6,7 @@ const Attribute = require('../models/Attribute');
 const AddonItem = require('../models/AddonItem');
 const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
+const { calculateCartTotals, isRestaurantOpen } = require('../utils/cartHelpers');
 
 // Get user cart
 router.get('/', verifyToken, async (req, res) => {
@@ -63,84 +64,8 @@ router.get('/', verifyToken, async (req, res) => {
     }
 
     const cartObj = cart.toObject();
-    let cartTotal = 0;
-
-    cartObj.items = cartObj.items.map(item => {
-      let itemPrice = 0;
-      let customizationTotal = 0;
-      let addonsTotal = 0;
-
-      /* ---------------- Item Attribute Price ---------------- */
-      if (item.selectedAttribute && item.itemId?.attributes) {
-        const attr = item.itemId.attributes.find(
-          a => a.attribute.toString() === item.selectedAttribute._id.toString()
-        );
-        itemPrice = attr?.price || 0;
-      }
-
-      /* ---------------- Customizations ---------------- */
-      if (item.selectedCustomizations?.length && item.itemId?.customizations) {
-        item.selectedCustomizations.forEach(customization => {
-          const itemCustomization = item.itemId.customizations.find(
-            c => c._id.toString() === customization.customizationId
-          );
-
-          if (itemCustomization) {
-            customization.selectedOptions.forEach(option => {
-              const opt = itemCustomization.options.find(
-                o => o._id.toString() === option.optionId
-              );
-              if (opt) {
-                customizationTotal += opt.price * option.quantity;
-              }
-            });
-          }
-        });
-      }
-
-      const itemTotal = (itemPrice + customizationTotal) * item.quantity;
-      cartTotal += itemTotal;
-
-      /* ---------------- Addons ---------------- */
-      let processedAddons = [];
-      if (item.selectedAddons?.length) {
-        processedAddons = item.selectedAddons.map(selectedAddon => {
-          let addonTotal = 0;
-
-          if (
-            selectedAddon.addonId &&
-            selectedAddon.addonId.attributes &&
-            selectedAddon.selectedAttribute
-          ) {
-            const addonAttr = selectedAddon.addonId.attributes.find(
-              attr =>
-                attr.attribute._id.toString() ===
-                selectedAddon.selectedAttribute._id.toString()
-            );
-
-            if (addonAttr) {
-              addonTotal =
-                (addonAttr.price || 0) * (selectedAddon.quantity || 1);
-              addonsTotal += addonTotal;
-              cartTotal += addonTotal;
-            }
-          }
-
-          return {
-            ...selectedAddon,
-            addonTotal
-          };
-        });
-      }
-
-      return {
-        ...item,
-        itemTotal,
-        customizationTotal,
-        addonsTotal,
-        selectedAddons: processedAddons
-      };
-    });
+    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
+    cartObj.items = processedItems;
 
     res.json({
       success: true,
@@ -200,7 +125,7 @@ router.post('/add', verifyToken, async (req, res) => {
 
     const { openTime, closeTime } = restaurant.basicInfo?.operatingHours || {};
     if (openTime && closeTime) {
-      if (currentTime < openTime || currentTime > closeTime) {
+      if (!isRestaurantOpen(openTime, closeTime, currentTime)) {
         return res.status(400).json({
           success: false,
           message: `Restaurant is closed. Operating hours: ${openTime} - ${closeTime}`
@@ -209,7 +134,11 @@ router.post('/add', verifyToken, async (req, res) => {
     }
 
     /* -------------------- Item Checks -------------------- */
-    const item = await Item.findOne({ _id: itemId, restaurantId });
+    const item = await Item.findOne({ _id: itemId, restaurantId })
+      .populate({
+        path: 'addons',
+        select: 'attributes'
+      });
     if (!item) {
       return res.status(404).json({
         success: false,
@@ -239,14 +168,26 @@ router.post('/add', verifyToken, async (req, res) => {
     /* -------------------- Addon Validation -------------------- */
     if (selectedAddons?.length) {
       for (const selectedAddon of selectedAddons) {
-        const addonExists = item.addons.some(
-          addon => addon.toString() === selectedAddon.addonId
+        const addon = item.addons.find(
+          addon => addon._id.toString() === selectedAddon.addonId
         );
-        if (!addonExists) {
+        if (!addon) {
           return res.status(400).json({
             success: false,
             message: 'Selected addon does not belong to this item'
           });
+        }
+        
+        if (selectedAddon.selectedAttribute) {
+          const attributeExists = addon.attributes?.some(
+            attr => attr.attribute.toString() === selectedAddon.selectedAttribute
+          );
+          if (!attributeExists) {
+            return res.status(400).json({
+              success: false,
+              message: 'Selected attribute does not belong to the addon'
+            });
+          }
         }
       }
     }
@@ -318,76 +259,8 @@ router.post('/add', verifyToken, async (req, res) => {
 
     /* -------------------- Calculate Totals -------------------- */
     const cartObj = populatedCart.toObject();
-    let cartTotal = 0;
-
-    cartObj.items = cartObj.items.map(item => {
-      let itemPrice = 0;
-      let customizationTotal = 0;
-      let addonsTotal = 0;
-
-      // Item attribute price
-      if (item.selectedAttribute && item.itemId?.attributes) {
-        const attr = item.itemId.attributes.find(
-          a => a.attribute.toString() === item.selectedAttribute._id.toString()
-        );
-        itemPrice = attr?.price || 0;
-      }
-
-      // Customizations
-      if (item.selectedCustomizations?.length && item.itemId?.customizations) {
-        item.selectedCustomizations.forEach(customization => {
-          const itemCustomization = item.itemId.customizations.find(
-            c => c._id.toString() === customization.customizationId
-          );
-
-          if (itemCustomization) {
-            customization.selectedOptions.forEach(option => {
-              const opt = itemCustomization.options.find(
-                o => o._id.toString() === option.optionId
-              );
-              if (opt) {
-                customizationTotal += opt.price * option.quantity;
-              }
-            });
-          }
-        });
-      }
-
-      const itemTotal = (itemPrice + customizationTotal) * item.quantity;
-      cartTotal += itemTotal;
-
-      // Addons (OUTSIDE selectedAddons)
-      if (item.selectedAddons?.length) {
-        item.selectedAddons.forEach(selectedAddon => {
-          if (
-            selectedAddon.addonId &&
-            selectedAddon.addonId.attributes &&
-            selectedAddon.selectedAttribute
-          ) {
-            const addonAttr = selectedAddon.addonId.attributes.find(
-              attr =>
-                attr.attribute._id.toString() ===
-                selectedAddon.selectedAttribute._id.toString()
-            );
-
-            if (addonAttr) {
-              const addonPrice =
-                (addonAttr.price || 0) * (selectedAddon.quantity || 1);
-              addonsTotal += addonPrice;
-              cartTotal += addonPrice;
-            }
-          }
-        });
-      }
-
-      return {
-        ...item,
-        itemTotal,
-        customizationTotal,
-        addonsTotal,
-        selectedAddons: item.selectedAddons
-      };
-    });
+    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
+    cartObj.items = processedItems;
 
     /* -------------------- Response -------------------- */
     res.json({
@@ -412,12 +285,12 @@ router.post('/add', verifyToken, async (req, res) => {
 router.put('/update', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { restaurantId, itemId, quantity } = req.body;
+    const { restaurantId, cartItemId, quantity } = req.body;
 
-    if (!restaurantId || !itemId || quantity === undefined) {
+    if (!restaurantId || !cartItemId || quantity === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'Restaurant ID, Item ID, and quantity are required'
+        message: 'Restaurant ID, Cart Item ID, and quantity are required'
       });
     }
 
@@ -430,7 +303,7 @@ router.put('/update', verifyToken, async (req, res) => {
       });
     }
 
-    const itemIndex = cart.items.findIndex(item => item.itemId.toString() === itemId);
+    const itemIndex = cart.items.findIndex(item => item._id.toString() === cartItemId);
 
     if (itemIndex === -1) {
       return res.status(404).json({
@@ -470,12 +343,12 @@ router.put('/update', verifyToken, async (req, res) => {
 router.delete('/remove', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { restaurantId, itemId } = req.body;
+    const { restaurantId, cartItemId } = req.body;
 
-    if (!restaurantId || !itemId) {
+    if (!restaurantId || !cartItemId) {
       return res.status(400).json({
         success: false,
-        message: 'Restaurant ID and Item ID are required'
+        message: 'Restaurant ID and Cart Item ID are required'
       });
     }
 
@@ -488,7 +361,7 @@ router.delete('/remove', verifyToken, async (req, res) => {
       });
     }
 
-    const itemIndex = cart.items.findIndex(item => item.itemId.toString() === itemId);
+    const itemIndex = cart.items.findIndex(item => item._id.toString() === cartItemId);
 
     if (itemIndex === -1) {
       return res.status(404).json({

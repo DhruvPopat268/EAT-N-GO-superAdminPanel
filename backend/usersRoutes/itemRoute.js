@@ -5,6 +5,10 @@ const Subcategory = require('../models/Subcategory');
 const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
 
+const escapeRegex = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 // Get popular items for a restaurant
 router.post('/popular-items', verifyToken, async (req, res) => {
   try {
@@ -125,9 +129,10 @@ router.get('/search', verifyToken, async (req, res) => {
       });
     }
 
+    const escapedQuery = escapeRegex(query);
     const items = await Item.find({
       restaurantId,
-      name: { $regex: query, $options: 'i' }
+      name: { $regex: escapedQuery, $options: 'i' }
     });
 
     res.json({
