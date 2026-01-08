@@ -100,7 +100,7 @@ router.post('/add', verifyToken, async (req, res) => {
       selectedAddons = []
     } = req.body;
 
-    if (!restaurantId || !itemId || quantity == null) {
+    if (!restaurantId || !itemId || quantity == null || typeof quantity !== 'number' || quantity < 1) {
       return res.status(400).json({
         success: false,
         message: 'Restaurant ID, Item ID, and quantity are required'
