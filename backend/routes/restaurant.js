@@ -387,17 +387,22 @@ router.post('/admin/usefullDetails', authMiddleware, async (req, res) => {
   }
 });
 
-// Get distinct restaurant names from items
+// Get approved restaurant names
 router.get('/restaurantNames', authMiddleware, async (req, res) => {
   try {
-    const restaurants = await Item.aggregate([
-      { $group: { _id: '$restaurantId' } },
-      { $lookup: { from: 'restaurants', localField: '_id', foreignField: '_id', as: 'restaurant' } },
-      { $unwind: '$restaurant' },
-      { $project: { restaurantId: '$restaurant._id', name: '$restaurant.basicInfo.restaurantName' } },
-      { $sort: { name: 1 } }
-    ]);
-    res.json({ success: true, data: restaurants });
+    const restaurants = await Restaurant.find(
+      { status: 'approved' },
+      { _id: 1, 'basicInfo.restaurantName': 1 }
+    )
+    .sort({ 'basicInfo.restaurantName': 1 })
+    .lean();
+    
+    const formattedRestaurants = restaurants.map(restaurant => ({
+      restaurantId: restaurant._id,
+      name: restaurant.basicInfo.restaurantName
+    }));
+    
+    res.json({ success: true, data: formattedRestaurants });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

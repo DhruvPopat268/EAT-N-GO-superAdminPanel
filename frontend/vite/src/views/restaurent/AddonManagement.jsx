@@ -112,7 +112,7 @@ export default function AddonManagement() {
       setFormData(prev => ({
         ...prev,
         attributes: selectedAddon.attributes.map(attr => ({
-          attribute: formAttributes.find(a => a.name === attr.name) || null,
+          attribute: formAttributes.find(a => a._id === attr.attribute) || null,
           price: attr.price
         }))
       }));
@@ -344,7 +344,7 @@ export default function AddonManagement() {
         subcategory: formData.subcategory?._id,
         restaurantId: formData.restaurant?.restaurantId,
         attributes: formData.attributes.map(attr => ({
-          name: attr.attribute?.name,
+          attribute: attr.attribute?._id,
           price: parseInt(attr.price)
         })),
         isAvailable: formData.isAvailable

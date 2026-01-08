@@ -568,11 +568,6 @@ export default function AddMenuItem() {
       return;
     }
 
-    if (!formData.description.trim()) {
-      toast.error('Description is mandatory');
-      return;
-    }
-
     if (!formData.category) {
       toast.error('Category is mandatory');
       return;
@@ -580,11 +575,6 @@ export default function AddMenuItem() {
 
     if (formData.attributes.length === 0) {
       toast.error('At least one attribute is mandatory');
-      return;
-    }
-
-    if (formData.foodTypes.length === 0) {
-      toast.error('At least one food type is mandatory');
       return;
     }
 
