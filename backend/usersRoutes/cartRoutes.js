@@ -15,7 +15,21 @@ router.get('/', verifyToken, async (req, res) => {
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.itemId',
-        model: 'Item'
+        model: 'Item',
+        select:
+          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          {
+            path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'addons',
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes'
+          }
+        ]
       })
       .populate({
         path: 'items.selectedAttribute',
@@ -25,6 +39,7 @@ router.get('/', verifyToken, async (req, res) => {
       .populate({
         path: 'items.selectedAddons.addonId',
         model: 'AddonItem',
+        select: 'category name description images currency isAvailable attributes',
         populate: {
           path: 'attributes.attribute',
           model: 'Attribute'
@@ -36,73 +51,107 @@ router.get('/', verifyToken, async (req, res) => {
         select: 'name'
       });
 
-    let cartTotal = 0;
-    if (cart && cart.items.length > 0) {
-      cart.items = cart.items.map(item => {
-        let itemPrice = 0;
-
-        // Get base price from selected attribute
-        if (item.selectedAttribute && item.itemId.attributes) {
-          const attr = item.itemId.attributes.find(a => a.attribute.toString() === item.selectedAttribute._id.toString());
-          itemPrice = attr ? attr.price : 0;
+    if (!cart || !cart.items.length) {
+      return res.json({
+        success: true,
+        message: 'Cart is empty',
+        data: {
+          cart: { items: [] },
+          cartTotal: 0
         }
-
-        // Add customization prices to item price (Case C)
-        if (item.selectedCustomizations && item.itemId.customizations) {
-          item.selectedCustomizations.forEach(customization => {
-            const itemCustomization = item.itemId.customizations.find(c => c._id.toString() === customization.customizationId);
-            if (itemCustomization) {
-              customization.selectedOptions.forEach(selectedOption => {
-                const option = itemCustomization.options.find(o => o._id.toString() === selectedOption.optionId);
-                if (option) {
-                  itemPrice += option.price * selectedOption.quantity;
-                }
-              });
-            }
-          });
-        }
-
-        const itemTotal = itemPrice * item.quantity;
-        cartTotal += itemTotal;
-
-        // Calculate addon totals separately (Case B & C)
-        let processedAddons = [];
-        if (item.selectedAddons?.length) {
-          processedAddons = item.selectedAddons.map(selectedAddon => {
-            let addonTotal = 0;
-            if (selectedAddon.addonId && selectedAddon.addonId.attributes && selectedAddon.selectedAttribute) {
-              const addonAttr = selectedAddon.addonId.attributes.find(attr =>
-                attr.attribute.toString() === selectedAddon.selectedAttribute._id.toString()
-              );
-              if (addonAttr) {
-                addonTotal = (addonAttr.price || 0) * (selectedAddon.quantity || 1);
-                cartTotal += addonTotal;
-              }
-            }
-            return {
-              ...selectedAddon,
-              addonTotal
-            };
-          });
-        }
-
-        return {
-          ...item.toObject(),
-          itemTotal,
-          selectedAddons: processedAddons
-        };
       });
     }
+
+    const cartObj = cart.toObject();
+    let cartTotal = 0;
+
+    cartObj.items = cartObj.items.map(item => {
+      let itemPrice = 0;
+      let customizationTotal = 0;
+      let addonsTotal = 0;
+
+      /* ---------------- Item Attribute Price ---------------- */
+      if (item.selectedAttribute && item.itemId?.attributes) {
+        const attr = item.itemId.attributes.find(
+          a => a.attribute.toString() === item.selectedAttribute._id.toString()
+        );
+        itemPrice = attr?.price || 0;
+      }
+
+      /* ---------------- Customizations ---------------- */
+      if (item.selectedCustomizations?.length && item.itemId?.customizations) {
+        item.selectedCustomizations.forEach(customization => {
+          const itemCustomization = item.itemId.customizations.find(
+            c => c._id.toString() === customization.customizationId
+          );
+
+          if (itemCustomization) {
+            customization.selectedOptions.forEach(option => {
+              const opt = itemCustomization.options.find(
+                o => o._id.toString() === option.optionId
+              );
+              if (opt) {
+                customizationTotal += opt.price * option.quantity;
+              }
+            });
+          }
+        });
+      }
+
+      const itemTotal = (itemPrice + customizationTotal) * item.quantity;
+      cartTotal += itemTotal;
+
+      /* ---------------- Addons ---------------- */
+      let processedAddons = [];
+      if (item.selectedAddons?.length) {
+        processedAddons = item.selectedAddons.map(selectedAddon => {
+          let addonTotal = 0;
+
+          if (
+            selectedAddon.addonId &&
+            selectedAddon.addonId.attributes &&
+            selectedAddon.selectedAttribute
+          ) {
+            const addonAttr = selectedAddon.addonId.attributes.find(
+              attr =>
+                attr.attribute._id.toString() ===
+                selectedAddon.selectedAttribute._id.toString()
+            );
+
+            if (addonAttr) {
+              addonTotal =
+                (addonAttr.price || 0) * (selectedAddon.quantity || 1);
+              addonsTotal += addonTotal;
+              cartTotal += addonTotal;
+            }
+          }
+
+          return {
+            ...selectedAddon,
+            addonTotal
+          };
+        });
+      }
+
+      return {
+        ...item,
+        itemTotal,
+        customizationTotal,
+        addonsTotal,
+        selectedAddons: processedAddons
+      };
+    });
 
     res.json({
       success: true,
       message: 'Cart retrieved successfully',
       data: {
-        cart: cart || { items: [] },
+        cart: cartObj,
         cartTotal
       }
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -126,7 +175,7 @@ router.post('/add', verifyToken, async (req, res) => {
       selectedAddons = []
     } = req.body;
 
-    if (!restaurantId || !itemId || quantity === undefined || quantity === null) {
+    if (!restaurantId || !itemId || quantity == null) {
       return res.status(400).json({
         success: false,
         message: 'Restaurant ID, Item ID, and quantity are required'
@@ -214,7 +263,6 @@ router.post('/add', verifyToken, async (req, res) => {
 
     /* -------------------- Cart Create / Update -------------------- */
     let cart = await Cart.findOne({ userId, restaurantId });
-
     if (!cart) {
       cart = new Cart({ userId, restaurantId, items: [] });
     }
@@ -238,39 +286,33 @@ router.post('/add', verifyToken, async (req, res) => {
       })
       .populate({
         path: 'items.itemId',
-        model: 'Item',
         select:
           'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
         populate: [
           {
             path: 'subcategory',
-            model: 'Subcategory',
             select: 'name'
           },
           {
             path: 'addons',
-            model: 'AddonItem',
             select: 'category name description images currency isAvailable attributes'
           }
         ]
       })
       .populate({
         path: 'items.selectedAttribute',
-        model: 'Attribute',
         select: 'name'
       })
       .populate({
         path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
         select: 'category name description images currency isAvailable attributes',
         populate: {
           path: 'attributes.attribute',
-          model: 'Attribute'
+          select: 'name'
         }
       })
       .populate({
         path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
         select: 'name'
       });
 
@@ -280,16 +322,18 @@ router.post('/add', verifyToken, async (req, res) => {
 
     cartObj.items = cartObj.items.map(item => {
       let itemPrice = 0;
+      let customizationTotal = 0;
+      let addonsTotal = 0;
 
       // Item attribute price
       if (item.selectedAttribute && item.itemId?.attributes) {
         const attr = item.itemId.attributes.find(
           a => a.attribute.toString() === item.selectedAttribute._id.toString()
         );
-        itemPrice += attr?.price || 0;
+        itemPrice = attr?.price || 0;
       }
 
-      // Customizations price
+      // Customizations
       if (item.selectedCustomizations?.length && item.itemId?.customizations) {
         item.selectedCustomizations.forEach(customization => {
           const itemCustomization = item.itemId.customizations.find(
@@ -302,22 +346,19 @@ router.post('/add', verifyToken, async (req, res) => {
                 o => o._id.toString() === option.optionId
               );
               if (opt) {
-                itemPrice += opt.price * option.quantity;
+                customizationTotal += opt.price * option.quantity;
               }
             });
           }
         });
       }
 
-      const itemTotal = itemPrice * item.quantity;
+      const itemTotal = (itemPrice + customizationTotal) * item.quantity;
       cartTotal += itemTotal;
 
-      // Addons
-      let processedAddons = [];
+      // Addons (OUTSIDE selectedAddons)
       if (item.selectedAddons?.length) {
-        processedAddons = item.selectedAddons.map(selectedAddon => {
-          let addonTotal = 0;
-
+        item.selectedAddons.forEach(selectedAddon => {
           if (
             selectedAddon.addonId &&
             selectedAddon.addonId.attributes &&
@@ -330,23 +371,21 @@ router.post('/add', verifyToken, async (req, res) => {
             );
 
             if (addonAttr) {
-              addonTotal =
+              const addonPrice =
                 (addonAttr.price || 0) * (selectedAddon.quantity || 1);
-              cartTotal += addonTotal;
+              addonsTotal += addonPrice;
+              cartTotal += addonPrice;
             }
           }
-
-          return {
-            ...selectedAddon,
-            addonTotal
-          };
         });
       }
 
       return {
         ...item,
         itemTotal,
-        selectedAddons: processedAddons
+        customizationTotal,
+        addonsTotal,
+        selectedAddons: item.selectedAddons
       };
     });
 
