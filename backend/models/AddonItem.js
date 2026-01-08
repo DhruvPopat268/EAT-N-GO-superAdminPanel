@@ -26,7 +26,11 @@ const addonItemSchema = new mongoose.Schema(
     image: String,
     attributes: [
       {
-        name: String,
+        attribute: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Attribute',
+          required: true,
+        },
         price: { type: Number, default: 0 },
         _id: false,
       },

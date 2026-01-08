@@ -5,22 +5,36 @@ const Subcategory = require('../models/Subcategory');
 const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
 
+const escapeRegex = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 // Get popular items for a restaurant
 router.post('/popular-items', verifyToken, async (req, res) => {
   try {
     const { restaurantId } = req.body;
 
     if (!restaurantId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Restaurant ID is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant ID is required'
       });
     }
 
-    const popularItems = await Item.find({ 
-      restaurantId, 
-      isPopular: true 
-    });
+    const popularItems = await Item.find({
+      restaurantId,
+      isPopular: true
+    })
+      .populate({
+        path: 'attributes.attribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'addons',
+        model: 'AddonItem'
+      })
+      .sort({ createdAt: -1 })
 
     res.json({
       success: true,
@@ -28,10 +42,10 @@ router.post('/popular-items', verifyToken, async (req, res) => {
       data: popularItems
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -42,9 +56,9 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
     const { subcategoryId, category, restaurantId } = req.query;
 
     if (!subcategoryId || !restaurantId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Subcategory ID and Restaurant ID are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Subcategory ID and Restaurant ID are required'
       });
     }
 
@@ -52,26 +66,35 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
     if (category) {
       const allowedCategories = ['Veg', 'Non-Veg', 'Mixed'];
       if (!allowedCategories.includes(category)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Invalid category' 
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid category'
         });
       }
-      
+
       const subcategory = await Subcategory.findById(subcategoryId);
       if (!subcategory || subcategory.category !== category) {
-        return res.json({ 
-          success: true, 
+        return res.json({
+          success: true,
           message: 'Items retrieved successfully',
           data: []
         });
       }
     }
 
-    const items = await Item.find({ 
+    const items = await Item.find({
       subcategory: subcategoryId,
       restaurantId: restaurantId
-    });
+    })
+      .populate({
+        path: 'attributes.attribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'addons',
+        model: 'AddonItem'
+      })
 
     // Get restaurant primary image
     const restaurant = await Restaurant.findById(restaurantId, 'documents.primaryImage');
@@ -86,10 +109,10 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -100,15 +123,16 @@ router.get('/search', verifyToken, async (req, res) => {
     const { query, restaurantId } = req.query;
 
     if (!query || !restaurantId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Search query and Restaurant ID are required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Search query and Restaurant ID are required'
       });
     }
 
-    const items = await Item.find({ 
+    const escapedQuery = escapeRegex(query);
+    const items = await Item.find({
       restaurantId,
-      name: { $regex: query, $options: 'i' }
+      name: { $regex: escapedQuery, $options: 'i' }
     });
 
     res.json({
@@ -117,10 +141,10 @@ router.get('/search', verifyToken, async (req, res) => {
       data: items
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -131,15 +155,15 @@ router.post('/subcategories', verifyToken, async (req, res) => {
     const { restaurantId } = req.body;
 
     if (!restaurantId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Restaurant ID is required' 
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant ID is required'
       });
     }
 
-    const subcategories = await Subcategory.find({ 
+    const subcategories = await Subcategory.find({
       restaurantId: restaurantId,
-      isAvailable: true 
+      isAvailable: true
     });
 
     res.json({
@@ -148,10 +172,10 @@ router.post('/subcategories', verifyToken, async (req, res) => {
       data: subcategories
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error', 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
     });
   }
 });

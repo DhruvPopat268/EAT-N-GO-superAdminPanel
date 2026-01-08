@@ -45,6 +45,7 @@ const itemSchema = new mongoose.Schema(
       {
         type: String,
         enum: ['Regular', 'Jain', 'Swaminarayan'],
+        default: 'Regular',
       },
     ],
 
@@ -73,11 +74,10 @@ const itemSchema = new mongoose.Schema(
               default: 'unit',
             },
             price: { type: Number, default: 0 },
-            _id: false,
           },
         ],
 
-        _id: false,
+        
       },
     ],
 
