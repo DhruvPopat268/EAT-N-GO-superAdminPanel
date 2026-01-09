@@ -92,10 +92,6 @@ export default function AttributesManagement() {
   };
 
   const handleAddAttribute = () => {
-    if (selectedRestaurant === 'all') {
-      toast.warning('Please select a specific restaurant to add attributes');
-      return;
-    }
     setEditMode(false);
     setFormData({ name: '', restaurantId: selectedRestaurant });
     setDialogOpen(true);
@@ -104,9 +100,9 @@ export default function AttributesManagement() {
   const handleEditAttribute = (attribute) => {
     setEditMode(true);
     setSelectedAttribute(attribute);
-    setFormData({ 
-      name: attribute.name, 
-      restaurantId: attribute.restaurantId || selectedRestaurant 
+    setFormData({
+      name: attribute.name,
+      restaurantId: attribute.restaurantId || selectedRestaurant
     });
     setDialogOpen(true);
   };
@@ -230,9 +226,9 @@ export default function AttributesManagement() {
       </Fade>
 
       <Fade in timeout={1000}>
-        <Card 
-          sx={{ 
-            borderRadius: 3, 
+        <Card
+          sx={{
+            borderRadius: 3,
             border: '1px solid rgba(0,0,0,0.06)',
             overflow: 'hidden',
             background: 'white'
@@ -341,9 +337,9 @@ export default function AttributesManagement() {
       </Fade>
 
       {/* Add/Edit Dialog */}
-      <Dialog 
-        open={dialogOpen} 
-        onClose={() => setDialogOpen(false)} 
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
         PaperProps={{
           sx: {
             borderRadius: 3,
@@ -368,6 +364,9 @@ export default function AttributesManagement() {
                 onChange={(e) => setFormData(prev => ({ ...prev, restaurantId: e.target.value }))}
                 disabled={editMode}
               >
+                <MenuItem value="" disabled>
+                  Select Restaurant
+                </MenuItem>
                 {Array.isArray(restaurants) && restaurants.map((restaurant) => (
                   <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
                     {restaurant.name}
@@ -379,21 +378,21 @@ export default function AttributesManagement() {
               fullWidth
               label="Attribute Name"
               value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Enter attribute name"
             />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
+          <Button
             onClick={() => setDialogOpen(false)}
             variant="outlined"
             sx={{ borderRadius: 2 }}
           >
             Cancel
           </Button>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             onClick={handleSubmit}
             disabled={!formData.name || !formData.restaurantId || submitting}
             startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : null}
@@ -403,7 +402,7 @@ export default function AttributesManagement() {
           </Button>
         </DialogActions>
       </Dialog>
-      
+
       {toast.toasts.map((toastItem) => (
         <Snackbar
           key={toastItem.id}
