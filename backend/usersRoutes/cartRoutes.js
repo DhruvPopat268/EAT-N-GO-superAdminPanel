@@ -231,16 +231,6 @@ router.post('/add', verifyToken, async (req, res) => {
       }
     }
 
-    /* -------------------- Cart Validation -------------------- */
-    const existingCart = await Cart.findOne({ userId });
-    if (existingCart && existingCart.restaurantId.toString() !== restaurantId) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'You can only add items from one restaurant at a time. Please clear your current cart first.'
-      });
-    }
-
     /* -------------------- Cart Create / Update -------------------- */
     let cart = await Cart.findOne({ userId, restaurantId });
     if (!cart) {
