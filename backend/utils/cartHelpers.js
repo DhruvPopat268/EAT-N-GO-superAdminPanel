@@ -35,9 +35,6 @@ const calculateCartTotals = (cartItems) => {
       });
     }
 
-    const itemTotal = (itemPrice + customizationTotal) * itemObj.quantity;
-    cartTotal += itemTotal;
-
     // Addons
     let processedAddons = [];
     if (itemObj.selectedAddons?.length) {
@@ -58,7 +55,6 @@ const calculateCartTotals = (cartItems) => {
           if (addonAttr) {
             addonTotal = (addonAttr.price || 0) * (selectedAddon.quantity || 1);
             addonsTotal += addonTotal;
-            cartTotal += addonTotal;
           }
         }
 
@@ -68,6 +64,9 @@ const calculateCartTotals = (cartItems) => {
         };
       });
     }
+
+    const itemTotal = (itemPrice + customizationTotal + addonsTotal) * itemObj.quantity;
+    cartTotal += itemTotal;
 
     return {
       ...itemObj,

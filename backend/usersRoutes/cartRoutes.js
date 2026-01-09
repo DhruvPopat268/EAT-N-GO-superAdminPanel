@@ -118,6 +118,7 @@ router.post('/add', verifyToken, async (req, res) => {
     if (existingCart && existingCart.restaurantId.toString() !== restaurantId) {
       return res.status(400).json({
         success: false,
+        code: 'CART_RESTAURANT_MISMATCH',
         message:
           'You can only add items from one restaurant at a time. Please clear your current cart first.'
       });
@@ -138,6 +139,7 @@ router.post('/add', verifyToken, async (req, res) => {
       if (!isRestaurantOpen(openTime, closeTime, currentTime)) {
         return res.status(400).json({
           success: false,
+          code: 'RESTAURANT_CLOSED',
           message: `Restaurant is closed. Operating hours: ${openTime} - ${closeTime}`
         });
       }
@@ -640,10 +642,13 @@ router.put('/update', verifyToken, async (req, res) => {
       selectedAddons = []
     } = req.body;
 
-    if (!restaurantId || !cartItemId || quantity == null || typeof quantity !== 'number') {
+    // Parse quantity from string to number (handles "+1", "-1", "0")
+    const quantityChange = quantity ? Number(quantity) : 0;
+
+    if (!restaurantId || !cartItemId || isNaN(quantityChange)) {
       return res.status(400).json({
         success: false,
-        message: 'Restaurant ID, Cart Item ID, and quantity are required'
+        message: 'Restaurant ID, Cart Item ID, and valid quantity are required'
       });
     }
 
@@ -665,8 +670,11 @@ router.put('/update', verifyToken, async (req, res) => {
 
     const cartItem = cart.items[itemIndex];
 
-    // Remove item if quantity is 0
-    if (quantity === 0) {
+    // Update main item quantity based on increment/decrement
+    cartItem.quantity += quantityChange;
+
+    // Remove item if quantity becomes 0 or negative
+    if (cartItem.quantity <= 0) {
       cart.items.splice(itemIndex, 1);
       await cart.save();
       
@@ -701,9 +709,6 @@ router.put('/update', verifyToken, async (req, res) => {
         data: { cart: cartObj, cartTotal }
       });
     }
-
-    // Update main item quantity
-    cartItem.quantity = quantity;
 
     // Update customization option quantities and remove zero quantities
     if (selectedCustomizations?.length) {
@@ -760,6 +765,7 @@ router.put('/update', verifyToken, async (req, res) => {
     // Update addon quantities and remove zero quantities
     if (selectedAddons?.length) {
       selectedAddons.forEach(newAddon => {
+        const addonQuantityChange = newAddon.quantity ? Number(newAddon.quantity) : 0;
         const existingAddonIndex = cartItem.selectedAddons?.findIndex(
           a => a.addonId.toString() === newAddon.addonId &&
                (a.selectedAttribute?.toString() || null) === (newAddon.selectedAttribute || null)
@@ -767,18 +773,17 @@ router.put('/update', verifyToken, async (req, res) => {
         
         if (existingAddonIndex !== -1) {
           // Update existing addon
-          if ((newAddon.quantity || 0) === 0) {
+          cartItem.selectedAddons[existingAddonIndex].quantity += addonQuantityChange;
+          if (cartItem.selectedAddons[existingAddonIndex].quantity <= 0) {
             cartItem.selectedAddons.splice(existingAddonIndex, 1);
-          } else {
-            cartItem.selectedAddons[existingAddonIndex].quantity = newAddon.quantity || 1;
           }
-        } else if ((newAddon.quantity || 0) > 0) {
+        } else if (addonQuantityChange > 0) {
           // Add new addon if quantity > 0
           if (!cartItem.selectedAddons) cartItem.selectedAddons = [];
           cartItem.selectedAddons.push({
             addonId: newAddon.addonId,
             selectedAttribute: newAddon.selectedAttribute,
-            quantity: newAddon.quantity || 1
+            quantity: addonQuantityChange
           });
         }
       });
