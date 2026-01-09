@@ -113,6 +113,16 @@ router.post('/add', verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
 
+    /* -------------------- Cart Validation -------------------- */
+    const existingCart = await Cart.findOne({ userId });
+    if (existingCart && existingCart.restaurantId.toString() !== restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'You can only add items from one restaurant at a time. Please clear your current cart first.'
+      });
+    }
+
     if (restaurant.status !== 'approved') {
       return res.status(400).json({ success: false, message: 'Restaurant is not approved' });
     }
