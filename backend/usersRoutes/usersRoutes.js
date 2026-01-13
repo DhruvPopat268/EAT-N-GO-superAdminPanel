@@ -217,6 +217,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
     }
 
     const Restaurant = require('../models/Restaurant');
+    const { calculateDistance } = require('../utils/routeUtils');
     const allRestaurants = await Restaurant.find({ status: 'approved' });
 
     const filteredRestaurants = getRestaurantsAlongRoute(
@@ -224,31 +225,36 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       currentLocation, 
       destinationLocation, 
       bufferRadius
-    ).map(restaurant => ({
-      _id: restaurant._id,
-      basicInfo: {
-        restaurantName: restaurant.basicInfo.restaurantName,
-        foodCategory: restaurant.basicInfo.foodCategory,
-        cuisineTypes: restaurant.basicInfo.cuisineTypes
-      },
-      contactDetails: {
-        address: restaurant.contactDetails.address,
-        city: restaurant.contactDetails.city,
-        state: restaurant.contactDetails.state,
-        latitude: restaurant.contactDetails.latitude,
-        longitude: restaurant.contactDetails.longitude
-      },
-    }));
+    ).map(restaurant => {
+      const restLat = parseFloat(restaurant.contactDetails.latitude);
+      const restLng = parseFloat(restaurant.contactDetails.longitude);
+      const distanceInMeters = calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
+      const distanceInKm = (distanceInMeters / 1000).toFixed(2);
+      
+      return {
+        _id: restaurant._id,
+        basicInfo: {
+          restaurantName: restaurant.basicInfo.restaurantName,
+          foodCategory: restaurant.basicInfo.foodCategory,
+          cuisineTypes: restaurant.basicInfo.cuisineTypes,
+          operatingHours: restaurant.basicInfo.operatingHours
+        },
+        contactDetails: {
+          address: restaurant.contactDetails.address,
+          city: restaurant.contactDetails.city,
+          state: restaurant.contactDetails.state,
+          latitude: restaurant.contactDetails.latitude,
+          longitude: restaurant.contactDetails.longitude
+        },
+        primaryImage: restaurant.documents?.primaryImage || null,
+        distanceFromCurrentLocation: `${distanceInKm} km`
+      };
+    });
 
     res.json({
       success: true,
       message: 'Restaurants along route retrieved successfully',
-      data: {
-        totalRestaurants: allRestaurants.length,
-        filteredRestaurants: filteredRestaurants.length,
-        bufferRadius,
-        restaurants: filteredRestaurants
-      }
+      data: filteredRestaurants
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });

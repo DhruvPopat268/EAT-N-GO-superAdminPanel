@@ -96,17 +96,10 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
         model: 'AddonItem'
       })
 
-    // Get restaurant primary image
-    const restaurant = await Restaurant.findById(restaurantId, 'documents.primaryImage');
-    const primaryImage = restaurant?.documents?.primaryImage || null;
-
     res.json({
       success: true,
       message: 'Items retrieved successfully',
-      data: {
-        items,
-        primaryImage
-      }
+      data: items
     });
   } catch (error) {
     res.status(500).json({
