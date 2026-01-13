@@ -66,8 +66,6 @@ export default function AddRestaurant() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionData, setSubmissionData] = useState(null);
 
-  console.log("submissionData:", submissionData);
-
   const [formData, setFormData] = useState({
     restaurantName: '',
     ownerName: '',

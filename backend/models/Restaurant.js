@@ -8,6 +8,7 @@ const restaurantSchema = new mongoose.Schema({
     foodCategory: { type: String, enum: ['Veg', 'Non-Veg', 'Mixed'], required: true },
     cuisineTypes: [{ type: String, required: true }],
     otherCuisine: { type: String },
+    facilities: [{ type: String }],
     operatingHours: {
       openTime: { type: String }, // Format: "09:00"
       closeTime: { type: String } // Format: "22:00"

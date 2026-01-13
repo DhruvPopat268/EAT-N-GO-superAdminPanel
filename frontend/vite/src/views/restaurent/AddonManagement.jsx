@@ -112,7 +112,7 @@ export default function AddonManagement() {
       setFormData(prev => ({
         ...prev,
         attributes: selectedAddon.attributes.map(attr => ({
-          attribute: formAttributes.find(a => a._id === attr.attribute) || null,
+          attribute: formAttributes.find(a => a._id === attr.attribute._id) || null,
           price: attr.price
         }))
       }));
@@ -128,6 +128,16 @@ export default function AddonManagement() {
       }));
     }
   }, [formSubcategories, editMode, selectedAddon]);
+
+  // Update category when availableCategories are loaded during edit mode
+  useEffect(() => {
+    if (editMode && selectedAddon && availableCategories.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        category: availableCategories.find(c => c.id === selectedAddon.category) || null
+      }));
+    }
+  }, [availableCategories, editMode, selectedAddon]);
 
   const fetchRestaurants = async () => {
     try {
@@ -375,9 +385,7 @@ export default function AddonManagement() {
 
       if (response.data.success) {
         if (editMode) {
-          setAddons(prev => prev.map(item =>
-            item._id === selectedAddon._id ? response.data.data : item
-          ));
+          fetchAddons(); // Refresh the addon list after edit
         } else {
           setAddons(prev => [...prev, response.data.data]);
         }
@@ -621,7 +629,7 @@ export default function AddonManagement() {
                           <Stack spacing={1}>
                             {addon.attributes?.map((attr, i) => (
                               <Typography key={i} variant="body2" sx={{ mb: 0.5 }}>
-                                {attr.name}
+                                {attr.attribute?.name || 'N/A'}
                               </Typography>
                             ))}
                           </Stack>

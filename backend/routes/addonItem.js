@@ -11,7 +11,17 @@ const createLog = require('../utils/createLog');
 // Get all addon items for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const addonItems = await AddonItem.find({ restaurantId: req.restaurant.restaurantId }).populate('subcategory').sort({ createdAt: -1 });
+    const addonItems = await AddonItem.find({ restaurantId: req.restaurant.restaurantId })
+    .populate([
+      {
+        path: 'subcategory',
+        select: 'category name isAvailable',
+      },
+      {
+        path: 'attributes.attribute',
+        select: 'name ',
+      }
+    ]).sort({ createdAt: -1 });
     res.json({ success: true, data: addonItems });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -108,7 +118,16 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
   try {
     const addonItems = await AddonItem.find({})
       .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate('subcategory')
+      .populate([
+      {
+        path: 'subcategory',
+        select: 'category name isAvailable',
+      },
+      {
+        path: 'attributes.attribute',
+        select: 'name ',
+      }
+    ])
       .sort({ createdAt: -1 });
     
     // Transform the data to include restaurantName and restaurantId
