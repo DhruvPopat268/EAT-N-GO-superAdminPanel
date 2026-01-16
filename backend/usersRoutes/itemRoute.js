@@ -25,6 +25,11 @@ router.post('/popular-items', verifyToken, async (req, res) => {
       restaurantId,
       isPopular: true
     })
+    .populate({
+      path:'subcategory',
+      model:'Subcategory',
+      select:'name'
+    })
       .populate({
         path: 'attributes.attribute',
         model: 'Attribute',
@@ -91,6 +96,11 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
       subcategory: subcategoryId,
       restaurantId: restaurantId
     })
+    .populate({
+      path:'subcategory',
+      model:'Subcategory',
+      select:'name'
+    })
       .populate({
         path: 'attributes.attribute',
         model: 'Attribute',
@@ -136,6 +146,11 @@ router.get('/search', verifyToken, async (req, res) => {
     const items = await Item.find({
       restaurantId,
       name: { $regex: escapedQuery, $options: 'i' }
+    })
+    .populate({
+      path:'subcategory',
+      model:'Subcategory',
+      select:'name'
     })
     .populate({
         path: 'attributes.attribute',
