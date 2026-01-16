@@ -512,6 +512,11 @@ router.post('/admin/detail', authMiddleware, async (req, res) => {
   try {
     const { itemId, restaurantId } = req.body;
     const item = await Item.findOne({ _id: itemId, restaurantId })
+    .populate({
+      path:'restaurantId',
+      model:'Restaurant',
+      select:'basicInfo.restaurantName'
+    })
       .populate({
         path:'subcategory',
         model:'Subcategory',
