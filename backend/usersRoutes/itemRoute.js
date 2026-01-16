@@ -32,7 +32,12 @@ router.post('/popular-items', verifyToken, async (req, res) => {
       })
       .populate({
         path: 'addons',
-        model: 'AddonItem'
+        model: 'AddonItem',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute',
+          select: 'name'
+        }
       })
       .sort({ createdAt: -1 })
 
@@ -93,7 +98,12 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
       })
       .populate({
         path: 'addons',
-        model: 'AddonItem'
+        model: 'AddonItem',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute',
+          select: 'name'
+        }
       })
 
     res.json({
@@ -126,7 +136,21 @@ router.get('/search', verifyToken, async (req, res) => {
     const items = await Item.find({
       restaurantId,
       name: { $regex: escapedQuery, $options: 'i' }
-    });
+    })
+    .populate({
+        path: 'attributes.attribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'addons',
+        model: 'AddonItem',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute',
+          select: 'name'
+        }
+      })
 
     res.json({
       success: true,
