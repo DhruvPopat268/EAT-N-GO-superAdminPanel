@@ -240,6 +240,44 @@ export default function ItemDetail() {
                 </div>
               </div>
             )}
+
+            {/* Addons */}
+            {item.addons && item.addons.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+                <h3 className="text-lg font-semibold mb-4">Available Addons</h3>
+                <div className="space-y-4">
+                  {item.addons.map((addon) => (
+                    <div key={addon._id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        {addon.image && (
+                          <img
+                            src={addon.image}
+                            alt={addon.name}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900">{addon.name}</h4>
+                          {addon.description && (
+                            <p className="text-sm text-gray-600 mt-1">{addon.description}</p>
+                          )}
+                          <div className="mt-2 space-y-1">
+                            {addon.attributes?.map((attr, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-sm">
+                                <span className="text-gray-700">{attr.attribute?.name}</span>
+                                <span className="font-medium text-blue-600">
+                                  {addon.currency === 'INR' ? '₹' : '$'}{attr.price}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

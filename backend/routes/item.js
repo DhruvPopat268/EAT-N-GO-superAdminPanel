@@ -112,9 +112,25 @@ router.post('/detail', restaurantAuthMiddleware, async (req, res) => {
   try {
     const { itemId } = req.body;
     const item = await Item.findOne({ _id: itemId, restaurantId: req.restaurant.restaurantId })
-      .populate('subcategory', 'name')
-      .populate('attributes.attribute', 'name')
-      .populate('addons');
+      .populate({
+        path:'subcategory',
+        model:'Subcategory',
+        select:'name'
+      })
+      .populate({
+        path: 'attributes.attribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'addons',
+        model: 'AddonItem',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute',
+          select: 'name'
+        }
+      })
 
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
@@ -496,9 +512,25 @@ router.post('/admin/detail', authMiddleware, async (req, res) => {
   try {
     const { itemId, restaurantId } = req.body;
     const item = await Item.findOne({ _id: itemId, restaurantId })
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate('subcategory', 'name')
-      .populate('attributes.attribute', 'name');
+      .populate({
+        path:'subcategory',
+        model:'Subcategory',
+        select:'name'
+      })
+      .populate({
+        path: 'attributes.attribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'addons',
+        model: 'AddonItem',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute',
+          select: 'name'
+        }
+      })
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
