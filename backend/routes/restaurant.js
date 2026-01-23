@@ -11,6 +11,8 @@ const createLog = require('../utils/createLog');
 const { sendUserCredentials } = require('../services/emailService');
 const router = express.Router();
 const Item = require('../models/Item');
+const orderRequestRoutes = require('../restaurantRoutes/orderRequestRoutes');
+const orderRoutes = require('../restaurantRoutes/orderRoutes');
 
 const uploadToCloudinary = (buffer, folder) => {
   return new Promise((resolve, reject) => {
@@ -61,8 +63,8 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { restaurantId: restaurant._id, email: restaurant.contactDetails.email },
-      process.env.JWT_SECRET_RESTAURENT || 'your-secret-key',
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET_RESTAURENT,
+      { expiresIn: process.env.JWT_ACCESS_TOKEN_RESTAURANT_EXPIRY }
     );
 
     // Create new session
@@ -784,5 +786,11 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     });
   }
 });
+
+// Use order request routes
+router.use('/order-requests', orderRequestRoutes);
+
+// Use order routes
+router.use('/orders', orderRoutes);
 
 module.exports = router;
