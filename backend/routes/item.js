@@ -17,10 +17,19 @@ const excelUpload = multer({ storage: multer.memoryStorage() });
 // Get all items for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Item.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const totalPages = Math.ceil(totalCount / limit);
+
     const items = await Item.find({ restaurantId: req.restaurant.restaurantId })
       .populate('subcategory', 'name')
       .populate('attributes.attribute', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     // Transform attributes array
     const formattedItems = items.map(item => ({
@@ -32,7 +41,16 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
       })),
     }));
 
-    res.json({ success: true, data: formattedItems });
+    res.json({
+      success: true,
+      data: formattedItems,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

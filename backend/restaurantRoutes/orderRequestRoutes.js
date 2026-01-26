@@ -9,6 +9,12 @@ const { processOrdersWithTotals } = require('../utils/orderHelpers');
 router.get('/all', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await OrderRequest.countDocuments({ restaurantId });
+    const totalPages = Math.ceil(totalCount / limit);
 
     const orderRequests = await OrderRequest.find({ restaurantId })
       .populate('userId', 'fullName phone')
@@ -49,14 +55,22 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const processedOrderRequests = await processOrdersWithTotals(orderRequests);
 
     res.json({
       success: true,
       message: 'All order requests retrieved successfully',
-      data: processedOrderRequests
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -67,6 +81,12 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
 router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await OrderRequest.countDocuments({ restaurantId, status: 'pending' });
+    const totalPages = Math.ceil(totalCount / limit);
 
     const orderRequests = await OrderRequest.find({ 
       restaurantId, 
@@ -110,14 +130,22 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const processedOrderRequests = await processOrdersWithTotals(orderRequests);
 
     res.json({
       success: true,
       message: 'Pending order requests retrieved successfully',
-      data: processedOrderRequests
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -128,6 +156,12 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
 router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await OrderRequest.countDocuments({ restaurantId, status: 'confirmed' });
+    const totalPages = Math.ceil(totalCount / limit);
 
     const orderRequests = await OrderRequest.find({ 
       restaurantId, 
@@ -171,14 +205,22 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const processedOrderRequests = await processOrdersWithTotals(orderRequests);
 
     res.json({
       success: true,
       message: 'Confirmed order requests retrieved successfully',
-      data: processedOrderRequests
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -189,6 +231,12 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
 router.get('/rejected', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await OrderRequest.countDocuments({ restaurantId, status: 'rejected' });
+    const totalPages = Math.ceil(totalCount / limit);
 
     const orderRequests = await OrderRequest.find({ 
       restaurantId, 
@@ -232,14 +280,22 @@ router.get('/rejected', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const processedOrderRequests = await processOrdersWithTotals(orderRequests);
 
     res.json({
       success: true,
       message: 'Rejected order requests retrieved successfully',
-      data: processedOrderRequests
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -250,6 +306,12 @@ router.get('/rejected', restaurantAuthMiddleware, async (req, res) => {
 router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await OrderRequest.countDocuments({ restaurantId, status: 'waiting' });
+    const totalPages = Math.ceil(totalCount / limit);
 
     const orderRequests = await OrderRequest.find({ 
       restaurantId, 
@@ -293,14 +355,22 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const processedOrderRequests = await processOrdersWithTotals(orderRequests);
 
     res.json({
       success: true,
       message: 'Waiting order requests retrieved successfully',
-      data: processedOrderRequests
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -311,6 +381,12 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
 router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await OrderRequest.countDocuments({ restaurantId, status: 'completed' });
+    const totalPages = Math.ceil(totalCount / limit);
 
     const orderRequests = await OrderRequest.find({ 
       restaurantId, 
@@ -354,14 +430,22 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const processedOrderRequests = await processOrdersWithTotals(orderRequests);
 
     res.json({
       success: true,
       message: 'Completed order requests retrieved successfully',
-      data: processedOrderRequests
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -472,16 +556,31 @@ router.get('/action-reasons', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
     const { reasonType } = req.query;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
 
     const filter = { restaurantId};
     if (reasonType) filter.reasonType = reasonType;
 
-    const reasons = await OrderStatusReason.find(filter).sort({ createdAt: -1 });
+    const totalCount = await OrderStatusReason.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const reasons = await OrderStatusReason.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.json({
       success: true,
       message: 'Reasons retrieved successfully',
-      data: reasons
+      data: reasons,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -555,7 +654,7 @@ router.patch('/confirm', restaurantAuthMiddleware, async (req, res) => {
     }
 
     const orderRequest = await OrderRequest.findOneAndUpdate(
-      { _id: orderReqId, restaurantId },
+      { _id: orderReqId, restaurantId, status: { $in: ['pending', 'waiting'] } },
       { 
         $set: {
           status: 'confirmed'
@@ -565,7 +664,7 @@ router.patch('/confirm', restaurantAuthMiddleware, async (req, res) => {
     );
 
     if (!orderRequest) {
-      return res.status(404).json({ success: false, message: 'Order request not found' });
+      return res.status(404).json({ success: false, message: 'Order request not found or cannot be confirmed from current status' });
     }
 
     res.json({
@@ -588,8 +687,20 @@ router.patch('/reject', restaurantAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: 'orderReqId and orderReqReasonId are required' });
     }
 
+    // Validate reason ownership, type, and active status
+    const reason = await OrderStatusReason.findOne({
+      _id: orderReqReasonId,
+      restaurantId,
+      isActive: true,
+      reasonType: 'rejected'
+    });
+
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'Invalid or inactive rejection reason' });
+    }
+
     const orderRequest = await OrderRequest.findOneAndUpdate(
-      { _id: orderReqId, restaurantId },
+      { _id: orderReqId, restaurantId, status: { $in: ['pending', 'waiting'] } },
       { 
         $set: {
           status: 'rejected',
@@ -600,7 +711,7 @@ router.patch('/reject', restaurantAuthMiddleware, async (req, res) => {
     );
 
     if (!orderRequest) {
-      return res.status(404).json({ success: false, message: 'Order request not found' });
+      return res.status(404).json({ success: false, message: 'Order request not found or cannot be rejected from current status' });
     }
 
     res.json({
@@ -627,8 +738,20 @@ router.patch('/waiting', restaurantAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: 'waitingTime must be greater than 0' });
     }
 
+    // Validate reason ownership, type, and active status
+    const reason = await OrderStatusReason.findOne({
+      _id: orderReqReasonId,
+      restaurantId,
+      isActive: true,
+      reasonType: 'waiting'
+    });
+
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'Invalid or inactive waiting reason' });
+    }
+
     const orderRequest = await OrderRequest.findOneAndUpdate(
-      { _id: orderReqId, restaurantId },
+      { _id: orderReqId, restaurantId, status: 'pending' },
       { 
         $set: {
           status: 'waiting',
@@ -640,7 +763,7 @@ router.patch('/waiting', restaurantAuthMiddleware, async (req, res) => {
     );
 
     if (!orderRequest) {
-      return res.status(404).json({ success: false, message: 'Order request not found' });
+      return res.status(404).json({ success: false, message: 'Order request not found or cannot be set to waiting from current status' });
     }
 
     res.json({

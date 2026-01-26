@@ -12,13 +12,31 @@ const createLog = require('../utils/createLog');
 
 router.get('/',restaurantAuthMiddleware, async (req, res) => {
   try {
-    const  restaurantId  = req.restaurant.restaurantId;
+    const restaurantId = req.restaurant.restaurantId;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Combo.countDocuments({ restaurantId });
+    const totalPages = Math.ceil(totalCount / limit);
+
     const combos = await Combo.find({ restaurantId })
       .populate('items.itemId', 'name images')
       .populate('items.attribute', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
     
-    res.json({ success: true, data: combos });
+    res.json({
+      success: true,
+      data: combos,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -15,8 +15,7 @@ const orderRequestSchema = new mongoose.Schema(
     },
 
     orderRequestNo: {
-      type: Number,
-      unique: true
+      type: Number
     },
 
     // Cart items snapshot
@@ -144,5 +143,8 @@ orderRequestSchema.pre('save', async function(next) {
   }
   next();
 });
+
+// Compound unique index for per-restaurant order numbering
+orderRequestSchema.index({ restaurantId: 1, orderRequestNo: 1 }, { unique: true });
 
 module.exports = mongoose.model('OrderRequest', orderRequestSchema);

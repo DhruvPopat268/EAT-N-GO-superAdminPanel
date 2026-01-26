@@ -11,8 +11,28 @@ const Restaurant = require('../models/Restaurant');
 // Get all subcategories for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const subcategories = await Subcategory.find({ restaurantId: req.restaurant.restaurantId }).sort({ createdAt: -1 });
-    res.json({ success: true, data: subcategories });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Subcategory.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const subcategories = await Subcategory.find({ restaurantId: req.restaurant.restaurantId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      success: true,
+      data: subcategories,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

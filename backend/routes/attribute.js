@@ -9,8 +9,28 @@ const createLog = require('../utils/createLog');
 // Get all attributes for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const attributes = await Attribute.find({ restaurantId: req.restaurant.restaurantId }).sort({ createdAt: -1 });
-    res.json({ success: true, data: attributes });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Attribute.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const attributes = await Attribute.find({ restaurantId: req.restaurant.restaurantId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      success: true,
+      data: attributes,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
