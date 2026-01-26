@@ -108,11 +108,18 @@ const orderSchema = new mongoose.Schema(
     // Order status
     status: {
       type: String,
-      enum: ['confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded'],
+      enum: ['confirmed', 'waiting', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded'],
       default: 'confirmed',
     },
 
+    // Waiting time in minutes
+    waitingTime: {
+      type: Number,
+      min: 0
+    },
+
     // Timestamps for status changes
+    waitingAt: { type: Date },
     preparedAt: { type: Date },
     readyAt: { type: Date },
     servedAt: { type: Date },

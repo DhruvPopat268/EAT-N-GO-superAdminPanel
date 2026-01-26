@@ -83,8 +83,8 @@ router.post('/place', verifyToken, async (req, res) => {
     if (!orderRequest) {
       return res.status(400).json({
         success: false,
-        message: 'Order request not found or not confirmed',
-        code: 'ORDER_REQUEST_NOT_CONFIRMED'
+        message: 'Order request not found or not confirmed or not waiting',
+        code: 'ORDER_REQUEST_NOT_CONFIRMED_OR_WAITING'
       });
     }
 
@@ -153,7 +153,11 @@ router.post('/place', verifyToken, async (req, res) => {
       takeawayTimings: orderRequest.takeawayTimings,
       takeawayInstructions: orderRequest.takeawayInstructions,
       paymentMethod,
-      totalAmount: cartTotal
+      totalAmount: cartTotal,
+      // If order request was waiting, set order status to waiting and copy waitingTime
+      status: orderRequest.status === 'waiting' ? 'waiting' : 'confirmed',
+      waitingTime: orderRequest.waitingTime || undefined,
+      waitingAt: orderRequest.status === 'waiting' ? new Date() : undefined
     });
 
     await order.save();
@@ -161,11 +165,10 @@ router.post('/place', verifyToken, async (req, res) => {
     // Clear cart
     await Cart.findOneAndDelete({ userId });
 
-    // Update order request with final order id and status
+    // Update order request with final order id only (keep current status)
     await OrderRequest.findByIdAndUpdate(orderReqId, {
       $set: { 
-        finalOrderId: order._id,
-        status: 'completed'
+        finalOrderId: order._id
       }
     });
 
