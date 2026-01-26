@@ -9,8 +9,11 @@ const authMiddleware = require('../middleware/auth');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
 const { sendUserCredentials } = require('../services/emailService');
+const { getJwtConfig } = require('../utils/jwtConfig');
 const router = express.Router();
 const Item = require('../models/Item');
+const orderRequestRoutes = require('../restaurantRoutes/orderRequestRoutes');
+const orderRoutes = require('../restaurantRoutes/orderRoutes');
 
 const uploadToCloudinary = (buffer, folder) => {
   return new Promise((resolve, reject) => {
@@ -59,10 +62,13 @@ router.post('/login', async (req, res) => {
     // Remove existing sessions for this restaurant
     await RestaurantSession.deleteMany({ email: restaurant.contactDetails.email });
 
+    // Validate JWT configuration
+    const { secret, expiry } = getJwtConfig('restaurant');
+
     const token = jwt.sign(
       { restaurantId: restaurant._id, email: restaurant.contactDetails.email },
-      process.env.JWT_SECRET_RESTAURENT || 'your-secret-key',
-      { expiresIn: '24h' }
+      secret,
+      { expiresIn: expiry }
     );
 
     // Create new session
@@ -76,7 +82,7 @@ router.post('/login', async (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: 24 * 60 * 60 * 1000
+      maxAge: process.env.RESTAURANT_COOKIE_MAX_AGE
     });
 
     const restaurantResponse = restaurant.toObject();
@@ -784,5 +790,11 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     });
   }
 });
+
+// Use order request routes
+router.use('/order-requests', orderRequestRoutes);
+
+// Use order routes
+router.use('/orders', orderRoutes);
 
 module.exports = router;

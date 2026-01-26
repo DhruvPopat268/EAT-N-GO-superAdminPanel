@@ -6,6 +6,7 @@ const AdminSession = require('../models/AdminSession');
 const { sendUserCredentials } = require('../services/emailService');
 const authMiddleware = require('../middleware/auth');
 const createLog = require('../utils/createLog');
+const { getJwtConfig } = require('../utils/jwtConfig');
 const router = express.Router();
 
 // Login user
@@ -32,10 +33,13 @@ router.post('/login', async (req, res) => {
     // Remove existing sessions for this user
     await AdminSession.deleteMany({ email: user.email });
     
+    // Validate JWT configuration
+    const { secret, expiry } = getJwtConfig('superadmin');
+    
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      process.env.JWT_SECRET_SUPERADMIN || 'your-secret-key',
-      { expiresIn: '24h' }
+      secret,
+      { expiresIn: expiry }
     );
     
     // Create new session
@@ -49,7 +53,7 @@ router.post('/login', async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000
+      maxAge: process.env.SUPER_ADMIN_COOKIE_MAX_AGE
     });
     
     await SuperAdmin.findByIdAndUpdate(user._id, { lastLogin: new Date() });

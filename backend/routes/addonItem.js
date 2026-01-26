@@ -11,6 +11,13 @@ const createLog = require('../utils/createLog');
 // Get all addon items for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await AddonItem.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const totalPages = Math.ceil(totalCount / limit);
+
     const addonItems = await AddonItem.find({ restaurantId: req.restaurant.restaurantId })
     .populate([
       {
@@ -21,8 +28,21 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
         path: 'attributes.attribute',
         select: 'name ',
       }
-    ]).sort({ createdAt: -1 });
-    res.json({ success: true, data: addonItems });
+    ])
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+    res.json({
+      success: true,
+      data: addonItems,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

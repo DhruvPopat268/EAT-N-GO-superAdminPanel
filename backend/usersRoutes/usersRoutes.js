@@ -9,6 +9,8 @@ const jwt = require('jsonwebtoken');
 const itemRoutes = require('./itemRoute');
 const restaurentRoutes = require('./restaurentRoutes');
 const cartRoutes = require('./cartRoutes');
+const orderRequestRoutes = require('./orderRequestRoutes');
+const orderRoutes = require('./orderRoutes');
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -290,5 +292,11 @@ router.use('/restaurents', restaurentRoutes);
 
 // Use cart routes
 router.use('/cart', cartRoutes);
+
+// Use order request routes
+router.use('/order-request', orderRequestRoutes);
+
+// Use order routes
+router.use('/orders', orderRoutes);
 
 module.exports = router;
