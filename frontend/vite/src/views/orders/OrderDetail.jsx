@@ -1,243 +1,330 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  Box,
+  Card,
+  Typography,
+  Grid,
+  Chip,
+  IconButton,
+  Avatar
+} from '@mui/material';
+import { IconArrowLeft, IconPrinter, IconUser, IconBuildingStore, IconShoppingCart } from '@tabler/icons-react';
+import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
-// Mock data for order details
-const mockOrderDetails = {
-  4: {
-    orderNumber: '#ORD004',
-    customerName: 'Alice Brown',
-    customerPhone: '+91 9876543213',
-    customerEmail: 'alice.brown@email.com',
-    customerLocation: '654 Pine Road, Chennai, Tamil Nadu',
-    restaurant: 'Sushi World',
-    restaurantLocation: '123 Sushi Plaza, Chennai, Tamil Nadu',
-    status: 'Delivered',
-    date: '2024-01-20',
-    time: '12:15',
-    items: [
-      {
-        id: 8,
-        name: 'Salmon Roll',
-        image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 180
-      },
-      {
-        id: 9,
-        name: 'Miso Soup',
-        image: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=100&h=100&fit=crop',
-        quantity: 1,
-        price: 100
-      }
-    ]
-  }
-};
-
-const StatusBadge = ({ status }) => {
-  const getStatusStyle = (status) => {
-    const styles = {
-      'Delivered': 'bg-green-50 text-green-700 border-green-200',
-      'Preparing': 'bg-amber-50 text-amber-700 border-amber-200',
-      'Pending': 'bg-blue-50 text-blue-700 border-blue-200',
-      'Cancelled': 'bg-red-50 text-red-700 border-red-200',
-    };
-    return styles[status] || styles.Pending;
+const getStatusChip = (status) => {
+  const statusConfig = {
+    confirmed: { bgcolor: '#4CAF50', borderColor: '#4CAF50', textColor: 'white' },
+    waiting: { bgcolor: '#FF9800', borderColor: '#FF9800', textColor: 'white' },
+    preparing: { bgcolor: '#2196F3', borderColor: '#2196F3', textColor: 'white' },
+    ready: { bgcolor: '#9C27B0', borderColor: '#9C27B0', textColor: 'white' },
+    served: { bgcolor: '#1976D2', borderColor: '#1976D2', textColor: 'white' },
+    completed: { bgcolor: '#2E7D32', borderColor: '#2E7D32', textColor: 'white' },
+    cancelled: { bgcolor: '#9E9E9E', borderColor: '#9E9E9E', textColor: 'white' },
+    refunded: { bgcolor: '#F44336', borderColor: '#F44336', textColor: 'white' }
   };
-
+  
+  const config = statusConfig[status] || statusConfig.waiting;
   return (
-    <span className={`px-2 py-1 rounded-md text-xs font-medium border ${getStatusStyle(status)}`}>
-      {status}
-    </span>
+    <Chip 
+      label={status?.charAt(0).toUpperCase() + status?.slice(1) || 'Unknown'}
+      sx={{ 
+        bgcolor: config.bgcolor,
+        color: config.textColor,
+        border: `1px solid ${config.borderColor}`,
+        fontSize: '0.75rem',
+        fontWeight: 500
+      }}
+      size="small"
+    />
   );
 };
 
-const InfoCard = ({ icon, title, children, bgColor = "bg-gray-50" }) => (
-  <div className={`${bgColor} rounded-lg p-4 h-full border border-gray-200`}>
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
+const InfoCard = ({ icon, title, children, bgColor = "#f8f9fa" }) => (
+  <Card sx={{ p: 3, height: '100%', bgcolor: bgColor, border: '1px solid #e0e0e0' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+      <Box sx={{ width: 32, height: 32, bgcolor: '#64748b', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {icon}
-      </div>
-      <h3 className="font-medium text-gray-900">{title}</h3>
-    </div>
+      </Box>
+      <Typography variant="h6" fontWeight="medium">{title}</Typography>
+    </Box>
     {children}
-  </div>
+  </Card>
 );
 
 export default function OrderDetail() {
-  const [currentOrderId] = useState('4');
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const orderData = mockOrderDetails[currentOrderId];
-  const totalAmount = orderData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const restaurantId = searchParams.get('restaurantId');
 
-  const handleBack = () => {
-    navigate(-1);
+  useEffect(() => {
+    fetchOrderDetail();
+  }, [id]);
+
+  const fetchOrderDetail = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(
+        `http://localhost:5000/api/orders/detail/${id}?restaurantId=${restaurantId}`,
+        { credentials: 'include' }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setOrder(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching order detail:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePrint = () => {
-    // window.print();
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
+
+  const formatTimings = (timings) => {
+    if (!timings) return 'N/A';
+    return `${timings.startTime} - ${timings.endTime}`;
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <ThemeSpinner message="Loading order details..." />
+      </Box>
+    );
+  }
+
+  if (!order) {
+    return (
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography variant="h6" color="text.secondary">Order not found</Typography>
+      </Box>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 py-6">
-
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', p: 3 }}>
+      <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
         {/* Header */}
-        <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={handleBack}
-                className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
-              >                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">Order Details</h1>
-                <p className="text-gray-500 text-sm">View comprehensive order information</p>
-              </div>
-            </div>
-            <button
-              onClick={handlePrint}
-              className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+        <Card sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <IconButton 
+                onClick={() => navigate(-1)}
+                sx={{ 
+                  width: 36, 
+                  height: 36, 
+                  bgcolor: '#f1f5f9', 
+                  '&:hover': { bgcolor: '#e2e8f0' } 
+                }}
+              >
+                <IconArrowLeft size={20} />
+              </IconButton>
+              <Box>
+                <Typography variant="h5" fontWeight="semibold">Order Details</Typography>
+                <Typography variant="body2" color="text.secondary">Order details and management</Typography>
+              </Box>
+            </Box>
+            <IconButton 
+              onClick={() => window.print()}
+              sx={{ 
+                width: 36, 
+                height: 36, 
+                bgcolor: '#f1f5f9', 
+                '&:hover': { bgcolor: '#e2e8f0' } 
+              }}
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-            </button>
-          </div>
-        </div>
+              <IconPrinter size={20} />
+            </IconButton>
+          </Box>
+        </Card>
 
-        {/* Order Summary Card */}
-        <div className="bg-white rounded-lg border border-gray-200 mb-6">
-          {/* Order Header */}
-          <div className="bg-slate-600 text-white p-4 rounded-t-lg">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-lg font-semibold">{orderData.orderNumber}</h2>
-                <p className="text-white/80 text-sm">{orderData.date} at {orderData.time}</p>
-              </div>
-              <StatusBadge status={orderData.status} />
-            </div>
-          </div>
+        {/* Order Summary */}
+        <Card sx={{ border: '1px solid #e0e0e0', mb: 3 }}>
+          <Box sx={{ bgcolor: '#64748b', color: 'white', p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="h6" fontWeight="semibold">Order #{order.orderNo}</Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+                  {formatDate(order.createdAt)}
+                </Typography>
+              </Box>
+              {getStatusChip(order.status)}
+            </Box>
+          </Box>
 
-          {/* Customer and Restaurant Info */}
-          <div className="p-4">
-            <div className="grid md:grid-cols-2 gap-4">
+          <Box sx={{ p: 3 }}>
+            <Grid container spacing={3}>
               {/* Customer Info */}
-              <InfoCard
-                icon={
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                }
-                title="Customer Information"
-                bgColor="bg-blue-50"
-              >
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">{orderData.customerName}</h4>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <span className="text-sm">{orderData.customerPhone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-sm truncate">{orderData.customerEmail}</span>
-                  </div>
-                  <div className="flex items-start gap-2 text-gray-600">
-                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-sm">{orderData.customerLocation}</span>
-                  </div>
-                </div>
-              </InfoCard>
+              <Grid item xs={12} md={6}>
+                <InfoCard
+                  icon={<IconUser size={16} color="white" />}
+                  title="Customer Information"
+                  bgColor="#eff6ff"
+                >
+                  <Box sx={{ space: 2 }}>
+                    <Typography variant="h6" fontWeight="medium" color="black">
+                      {order.userId?.fullName || 'N/A'}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                      📞 {order.userId?.phone || 'N/A'}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                      🍽️ {order.orderType?.replace('-', ' ').toUpperCase() || 'N/A'}
+                    </Typography>
+                    {order.numberOfGuests && (
+                      <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                        👥 Guests: {order.numberOfGuests}
+                      </Typography>
+                    )}
+                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                      ⏰ {formatTimings(order.eatTimings)}
+                    </Typography>
+                    {order.dineInstructions && (
+                      <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                        📝 {order.dineInstructions}
+                      </Typography>
+                    )}
+                  </Box>
+                </InfoCard>
+              </Grid>
 
-              {/* Restaurant Info */}
-              <InfoCard
-                icon={
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                }
-                title="Restaurant Information"
-                bgColor="bg-green-50"
-              >
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">{orderData.restaurant}</h4>
-                  <div className="flex items-start gap-2 text-gray-600">
-                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="text-sm">{orderData.restaurantLocation}</span>
-                  </div>
-                </div>
-              </InfoCard>
-            </div>
-          </div>
-        </div>
+              {/* Order Info */}
+              <Grid item xs={12} md={6}>
+                <InfoCard
+                  icon={<IconBuildingStore size={16} color="white" />}
+                  title="Order Information"
+                  bgColor="#f0fdf4"
+                >
+                  <Box sx={{ space: 2 }}>
+                    <Typography variant="body2" color="black">
+                      💳 Payment: {order.paymentMethod?.replace('_', ' ').toUpperCase() || 'N/A'}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                      💰 Total: ₹{order.totalAmount}
+                    </Typography>
+                    {order.waitingTime && (
+                      <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                        ⏱️ Waiting Time: {order.waitingTime} min
+                      </Typography>
+                    )}
+                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                      📅 Created: {formatDate(order.createdAt)}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
+                      🔄 Updated: {formatDate(order.updatedAt)}
+                    </Typography>
+                  </Box>
+                </InfoCard>
+              </Grid>
+            </Grid>
+          </Box>
+        </Card>
 
         {/* Order Items */}
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              
-              <h3 className="font-semibold text-gray-900">Order Items</h3>
-            </div>
-          </div>
+        <Card sx={{ border: '1px solid #e0e0e0' }}>
+          <Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <IconShoppingCart size={20} />
+              <Typography variant="h6" fontWeight="semibold">Order Items</Typography>
+            </Box>
+          </Box>
 
-          <div className="divide-y divide-gray-100">
-            {orderData.items.map((item, index) => (
-              <div key={item.id} className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-6 h-6  rounded-md flex items-center justify-center flex-shrink-0">
-                    <span className="text-black font-medium text-xs">{index + 1}</span>
-                  </div>
-
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-16 h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0"
-                  />
-
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 truncate">{item.name}</h4>
-                    <p className="text-sm text-gray-500">Premium quality item</p>
-                  </div>
-
-                  <div className="flex-shrink-0">
-                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                      Qty: {item.quantity}
-                    </span>
-                  </div>
-
-                  <div className="text-right flex-shrink-0">
-                    <div className="font-semibold text-gray-900">₹{item.price * item.quantity}</div>
-                    {item.quantity > 1 && (
-                      <div className="text-xs text-gray-500">₹{item.price} each</div>
+          <Box sx={{ divide: '1px solid #f1f5f9' }}>
+            {order.items?.map((item, index) => (
+              <Box key={item._id} sx={{ p: 3, borderBottom: index < order.items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                <Box sx={{ display: 'flex', gap: 3 }}>
+                  <Avatar 
+                    src={item.itemId?.images?.[0]} 
+                    sx={{ width: 80, height: 80, borderRadius: 2 }}
+                    variant="rounded"
+                  >
+                    🍽️
+                  </Avatar>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="h6" fontWeight="medium" color="black">
+                      {item.itemId?.name || 'N/A'}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
+                      {item.itemId?.description || 'No description'}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
+                      Category: {item.itemId?.category} | {item.itemId?.subcategory?.name}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
+                      Quantity: {item.quantity} | Size: {item.selectedAttribute?.name}
+                    </Typography>
+                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
+                      Food Type: {item.selectedFoodType}
+                    </Typography>
+                    
+                    {/* Customizations */}
+                    {item.selectedCustomizations?.length > 0 && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2" color="black" fontWeight="medium">Customizations:</Typography>
+                        {item.selectedCustomizations.map((custom, idx) => (
+                          <Typography key={idx} variant="body2" color="black" sx={{ ml: 1 }}>
+                            • {custom.customizationName}: {custom.selectedOptions?.map(opt => `${opt.optionName} (${opt.quantity})`).join(', ')}
+                          </Typography>
+                        ))}
+                      </Box>
                     )}
-                  </div>
-                </div>
-              </div>
+                    
+                    {/* Addons */}
+                    {item.selectedAddons?.length > 0 && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="body2" color="black" fontWeight="medium">Addons:</Typography>
+                        {item.selectedAddons.map((addon, idx) => (
+                          <Typography key={idx} variant="body2" color="black" sx={{ ml: 1 }}>
+                            • {addon.addonId?.name} ({addon.selectedAttribute?.name}) - Qty: {addon.quantity}
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="h6" fontWeight="bold" color="black">
+                      ₹{item.itemTotal}
+                    </Typography>
+                    {item.customizationTotal > 0 && (
+                      <Typography variant="body2" color="black">
+                        Customizations: ₹{item.customizationTotal}
+                      </Typography>
+                    )}
+                    {item.addonsTotal > 0 && (
+                      <Typography variant="body2" color="black">
+                        Addons: ₹{item.addonsTotal}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              </Box>
             ))}
-          </div>
+          </Box>
 
-          {/* Total */}
-          <div className="bg-gray-50 p-4 border-t border-gray-200 rounded-b-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-gray-700">Total Amount</span>
-              <span className="text-xl font-bold text-slate-700">₹{totalAmount}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+          {/* Order Total */}
+          <Box sx={{ p: 3, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6" fontWeight="bold">Order Request Total</Typography>
+              <Typography variant="h5" fontWeight="bold" color="primary">
+                ₹{order.orderTotal || order.totalAmount}
+              </Typography>
+            </Box>
+          </Box>
+        </Card>
+      </Box>
+    </Box>
   );
 }
