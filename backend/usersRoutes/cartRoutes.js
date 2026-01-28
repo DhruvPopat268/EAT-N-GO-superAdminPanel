@@ -85,6 +85,58 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+// Get cart summary (total items and cart total only)
+router.get('/summary', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.itemId',
+        select: 'attributes'
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        select: 'price'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        select: 'attributes'
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        select: 'price'
+      });
+
+    if (!cart || !cart.items.length) {
+      return res.json({
+        success: true,
+        data: {
+          totalItems: 0,
+          cartTotal: 0
+        }
+      });
+    }
+
+    const { cartTotal } = calculateCartTotals(cart.items);
+    const totalItems = cart.items.length;
+
+    res.json({
+      success: true,
+      data: {
+        totalItems,
+        cartTotal
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 // Add item to cart
 router.post('/add', verifyToken, async (req, res) => {
   try {
@@ -105,6 +157,34 @@ router.post('/add', verifyToken, async (req, res) => {
         success: false,
         message: 'Restaurant ID, Item ID, and quantity are required'
       });
+    }
+
+    // Validate addon quantities (should be 1 max)
+    if (selectedAddons?.length) {
+      for (const selectedAddon of selectedAddons) {
+        if (selectedAddon.quantity && selectedAddon.quantity > 1) {
+          return res.status(400).json({
+            success: false,
+            message: 'Addon quantity must be 1'
+          });
+        }
+      }
+    }
+
+    // Validate customization option quantities (should be 1 max)
+    if (selectedCustomizations?.length) {
+      for (const selectedCustomization of selectedCustomizations) {
+        if (selectedCustomization.selectedOptions?.length) {
+          for (const selectedOption of selectedCustomization.selectedOptions) {
+            if (selectedOption.quantity && selectedOption.quantity > 1) {
+              return res.status(400).json({
+                success: false,
+                message: 'Customization option quantity must be 1'
+              });
+            }
+          }
+        }
+      }
     }
 
     /* -------------------- Restaurant Checks -------------------- */
@@ -630,25 +710,29 @@ router.post('/replace', verifyToken, async (req, res) => {
   }
 });
 
-// Update cart item quantity
-router.put('/update', verifyToken, async (req, res) => {
+// Increase cart item quantity
+router.put('/increase', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const {
       restaurantId,
       cartItemId,
-      quantity,
+      itemRepeatationStatus,
       selectedCustomizations = [],
       selectedAddons = []
     } = req.body;
 
-    // Parse quantity from string to number (handles "+1", "-1", "0")
-    const quantityChange = quantity ? Number(quantity) : 0;
-
-    if (!restaurantId || !cartItemId || isNaN(quantityChange)) {
+    if (!restaurantId || !cartItemId || !itemRepeatationStatus) {
       return res.status(400).json({
         success: false,
-        message: 'Restaurant ID, Cart Item ID, and valid quantity are required'
+        message: 'Restaurant ID, Cart Item ID, and itemRepeatationStatus are required'
+      });
+    }
+
+    if (!['repeat_last', 'i_will_choose'].includes(itemRepeatationStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'itemRepeatationStatus is not correct'
       });
     }
 
@@ -660,138 +744,92 @@ router.put('/update', verifyToken, async (req, res) => {
       });
     }
 
-    const itemIndex = cart.items.findIndex(item => item._id.toString() === cartItemId);
-    if (itemIndex === -1) {
-      return res.status(404).json({
-        success: false,
-        message: 'Cart item not found'
-      });
-    }
+    if (itemRepeatationStatus === 'repeat_last') {
+      // Simple quantity increase for existing item
+      const itemIndex = cart.items.findIndex(item => item._id.toString() === cartItemId);
+      if (itemIndex === -1) {
+        return res.status(404).json({
+          success: false,
+          message: 'Cart item not found'
+        });
+      }
 
-    const cartItem = cart.items[itemIndex];
-
-    // Update main item quantity based on increment/decrement
-    cartItem.quantity += quantityChange;
-
-    // Remove item if quantity becomes 0 or negative
-    if (cartItem.quantity <= 0) {
-      cart.items.splice(itemIndex, 1);
+      cart.items[itemIndex].quantity += 1;
       await cart.save();
-      
-      const populatedCart = await Cart.findOne({ userId, restaurantId })
-        .populate({
-          path: 'restaurantId',
-          select: 'basicInfo.restaurantName basicInfo.foodCategory'
-        })
-        .populate({
-          path: 'items.itemId',
-          select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-          populate: [
-            { path: 'subcategory', select: 'name' },
-            { path: 'addons', select: 'category name description images currency isAvailable attributes' }
-          ]
-        })
-        .populate({ path: 'items.selectedAttribute', select: 'name' })
-        .populate({
-          path: 'items.selectedAddons.addonId',
-          select: 'category name description images currency isAvailable attributes',
-          populate: { path: 'attributes.attribute', select: 'name' }
-        })
-        .populate({ path: 'items.selectedAddons.selectedAttribute', select: 'name' });
+    } else if (itemRepeatationStatus === 'i_will_choose') {
+      // Validate addon quantities (should be 1 max)
+      if (selectedAddons?.length) {
+        for (const selectedAddon of selectedAddons) {
+          if (selectedAddon.quantity && selectedAddon.quantity > 1) {
+            return res.status(400).json({
+              success: false,
+              message: 'Addon quantity must be 1'
+            });
+          }
+        }
+      }
 
-      const cartObj = populatedCart?.toObject() || { items: [] };
-      const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
-      cartObj.items = processedItems;
-
-      return res.json({
-        success: true,
-        message: 'Item removed from cart successfully',
-        data: { cart: cartObj, cartTotal }
-      });
-    }
-
-    // Update customization option quantities and remove zero quantities
-    if (selectedCustomizations?.length) {
-      selectedCustomizations.forEach(newCustomization => {
-        const existingCustomizationIndex = cartItem.selectedCustomizations?.findIndex(
-          c => c.customizationId === newCustomization.customizationId
-        ) ?? -1;
-        
-        if (existingCustomizationIndex !== -1) {
-          // Update existing customization
-          const existingCustomization = cartItem.selectedCustomizations[existingCustomizationIndex];
-          
-          if (newCustomization.selectedOptions?.length) {
-            newCustomization.selectedOptions.forEach(newOption => {
-              const existingOptionIndex = existingCustomization.selectedOptions.findIndex(
-                o => o.optionId === newOption.optionId
-              );
-              
-              if (existingOptionIndex !== -1) {
-                // Update existing option
-                if (newOption.quantity === 0) {
-                  existingCustomization.selectedOptions.splice(existingOptionIndex, 1);
-                } else {
-                  existingCustomization.selectedOptions[existingOptionIndex].quantity = newOption.quantity;
-                }
-              } else if (newOption.quantity > 0) {
-                // Add new option if quantity > 0
-                existingCustomization.selectedOptions.push({
-                  optionId: newOption.optionId,
-                  quantity: newOption.quantity
+      // Validate customization option quantities (should be 1 max)
+      if (selectedCustomizations?.length) {
+        for (const selectedCustomization of selectedCustomizations) {
+          if (selectedCustomization.selectedOptions?.length) {
+            for (const selectedOption of selectedCustomization.selectedOptions) {
+              if (selectedOption.quantity && selectedOption.quantity > 1) {
+                return res.status(400).json({
+                  success: false,
+                  message: 'Customization option quantity must be 1'
                 });
               }
-            });
-            
-            // Remove customization if no options left
-            if (existingCustomization.selectedOptions.length === 0) {
-              cartItem.selectedCustomizations.splice(existingCustomizationIndex, 1);
             }
           }
-        } else if (newCustomization.selectedOptions?.length) {
-          // Add new customization if it has options with quantity > 0
-          const validOptions = newCustomization.selectedOptions.filter(opt => opt.quantity > 0);
-          if (validOptions.length > 0) {
-            if (!cartItem.selectedCustomizations) cartItem.selectedCustomizations = [];
-            cartItem.selectedCustomizations.push({
-              customizationId: newCustomization.customizationId,
-              selectedOptions: validOptions
-            });
-          }
         }
+      }
+
+      // Check if item with same configuration already exists
+      const existingItem = cart.items.find(item => item._id.toString() === cartItemId);
+      if (!existingItem) {
+        return res.status(404).json({
+          success: false,
+          message: 'Cart item not found'
+        });
+      }
+
+      console.log('Existing item found:', existingItem);
+      console.log('Searching for duplicate with config:', {
+        itemId: existingItem.itemId,
+        selectedAttribute: req.body.selectedAttribute || existingItem.selectedAttribute,
+        selectedFoodType: existingItem.selectedFoodType,
+        selectedCustomizations,
+        selectedAddons
       });
+
+      const duplicateItem = findExistingCartItem(cart.items, {
+        itemId: existingItem.itemId.toString(),
+        selectedAttribute: (req.body.selectedAttribute || existingItem.selectedAttribute?.toString()),
+        selectedFoodType: existingItem.selectedFoodType,
+        selectedCustomizations,
+        selectedAddons
+      });
+
+      console.log('Duplicate item found:', duplicateItem);
+
+      if (duplicateItem) {
+        console.log('Item already exists in cart, increasing quantity');
+        duplicateItem.quantity += 1;
+      } else {
+        console.log('No duplicate found, adding new item');
+        cart.items.push({
+          itemId: existingItem.itemId,
+          quantity: 1,
+          selectedAttribute: (req.body.selectedAttribute || existingItem.selectedAttribute?.toString()),
+          selectedFoodType: existingItem.selectedFoodType,
+          selectedCustomizations,
+          selectedAddons
+        });
+      }
+      await cart.save();
     }
 
-    // Update addon quantities and remove zero quantities
-    if (selectedAddons?.length) {
-      selectedAddons.forEach(newAddon => {
-        const addonQuantityChange = newAddon.quantity ? Number(newAddon.quantity) : 0;
-        const existingAddonIndex = cartItem.selectedAddons?.findIndex(
-          a => a.addonId.toString() === newAddon.addonId &&
-               (a.selectedAttribute?.toString() || null) === (newAddon.selectedAttribute || null)
-        ) ?? -1;
-        
-        if (existingAddonIndex !== -1) {
-          // Update existing addon
-          cartItem.selectedAddons[existingAddonIndex].quantity += addonQuantityChange;
-          if (cartItem.selectedAddons[existingAddonIndex].quantity <= 0) {
-            cartItem.selectedAddons.splice(existingAddonIndex, 1);
-          }
-        } else if (addonQuantityChange > 0) {
-          // Add new addon if quantity > 0
-          if (!cartItem.selectedAddons) cartItem.selectedAddons = [];
-          cartItem.selectedAddons.push({
-            addonId: newAddon.addonId,
-            selectedAttribute: newAddon.selectedAttribute,
-            quantity: addonQuantityChange
-          });
-        }
-      });
-    }
-
-    await cart.save();
-
-    // Return populated cart
     const populatedCart = await Cart.findOne({ userId, restaurantId })
       .populate({
         path: 'restaurantId',
@@ -817,9 +855,99 @@ router.put('/update', verifyToken, async (req, res) => {
     const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
     cartObj.items = processedItems;
 
+    const message = itemRepeatationStatus === 'repeat_last' ? 
+      'Item quantity increased successfully' : 
+      'New item configuration added to cart successfully';
+
     res.json({
       success: true,
-      message: 'Cart item updated successfully',
+      message,
+      data: { cart: cartObj, cartTotal }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Decrease cart item quantity
+router.put('/decrease', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { restaurantId, cartItemId, quantity } = req.body;
+
+    if (!restaurantId || !cartItemId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant ID and Cart Item ID are required'
+      });
+    }
+
+    const cart = await Cart.findOne({ userId, restaurantId });
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cart not found'
+      });
+    }
+
+    const itemIndex = cart.items.findIndex(item => item._id.toString() === cartItemId);
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cart item not found'
+      });
+    }
+
+    const cartItem = cart.items[itemIndex];
+
+    // Handle quantity 0 for complete removal, otherwise decrease by 1
+    if (quantity === 0) {
+      cart.items.splice(itemIndex, 1);
+    } else {
+      cartItem.quantity -= 1;
+      if (cartItem.quantity <= 0) {
+        cart.items.splice(itemIndex, 1);
+      }
+    }
+
+    await cart.save();
+
+    const populatedCart = await Cart.findOne({ userId, restaurantId })
+      .populate({
+        path: 'restaurantId',
+        select: 'basicInfo.restaurantName basicInfo.foodCategory'
+      })
+      .populate({
+        path: 'items.itemId',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          { path: 'subcategory', select: 'name' },
+          { path: 'addons', select: 'category name description images currency isAvailable attributes' }
+        ]
+      })
+      .populate({ path: 'items.selectedAttribute', select: 'name' })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        select: 'category name description images currency isAvailable attributes',
+        populate: { path: 'attributes.attribute', select: 'name' }
+      })
+      .populate({ path: 'items.selectedAddons.selectedAttribute', select: 'name' });
+
+    const cartObj = populatedCart?.toObject() || { items: [] };
+    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
+    cartObj.items = processedItems;
+
+    const message = quantity === 0 || cartItem?.quantity <= 0 ? 
+      'Item removed from cart successfully' : 
+      'Item quantity decreased successfully';
+
+    res.json({
+      success: true,
+      message,
       data: { cart: cartObj, cartTotal }
     });
   } catch (error) {
