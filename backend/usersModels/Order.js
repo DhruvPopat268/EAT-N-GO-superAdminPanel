@@ -21,8 +21,7 @@ const orderSchema = new mongoose.Schema(
     },
 
     orderNo: {
-      type: Number,
-      unique: true
+      type: Number
     },
 
     // Copy items from order request
@@ -149,5 +148,8 @@ orderSchema.pre('save', async function(next) {
   }
   next();
 });
+
+// Compound unique index for per-restaurant order numbering
+orderSchema.index({ restaurantId: 1, orderNo: 1 }, { unique: true });
 
 module.exports = mongoose.model('Order', orderSchema);

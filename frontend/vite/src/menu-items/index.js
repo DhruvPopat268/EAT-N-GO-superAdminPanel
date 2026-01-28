@@ -16,7 +16,7 @@ const menuItems = {
   items: [
     dashboard,
     restaurent,
-    // orders,
+     orders,
     // payments,
     // customers,
     rbac,

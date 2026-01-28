@@ -4,7 +4,7 @@ const User = require('../models/SuperAdmin');
 
 const authMiddleware = async (req, res, next) => {
   try {
-    const token = req.cookies.AdminToken;
+    const token = req.cookies.AdminToken || (req.headers.authorization && req.headers.authorization.replace('Bearer ', ''));
     //console.log("Auth Middleware Token:", token);
     
     if (!token) {
