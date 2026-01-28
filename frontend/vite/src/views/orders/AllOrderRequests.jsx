@@ -48,7 +48,7 @@ export default function AllOrderRequests() {
 
   useEffect(() => {
     fetchOrderRequests();
-  }, [selectedRestaurant, page, rowsPerPage]);
+  }, [selectedRestaurant, page, rowsPerPage, searchTerm]);
 
   const fetchRestaurantNames = async () => {
     try {
@@ -74,6 +74,10 @@ export default function AllOrderRequests() {
         url += `&restaurantId=${selectedRestaurant.restaurantId}`;
       }
       
+      if (searchTerm.trim()) {
+        url += `&search=${encodeURIComponent(searchTerm.trim())}`;
+      }
+      
       const response = await fetch(url, { credentials: 'include' });
       const result = await response.json();
       
@@ -92,17 +96,7 @@ export default function AllOrderRequests() {
   };
 
   const getFilteredOrderRequests = () => {
-    let filtered = orderRequests || [];
-    
-    if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order.userId?.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.userId?.phone?.includes(searchTerm) ||
-        order.orderRequestNo?.toString().includes(searchTerm)
-      );
-    }
-    
-    return filtered;
+    return orderRequests || [];
   };
 
   const filteredOrderRequests = getFilteredOrderRequests();
@@ -192,7 +186,10 @@ export default function AllOrderRequests() {
               <TextField
                 placeholder="Search by customer name, phone, or order number..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(0);
+                }}
                 sx={{ minWidth: 400 }}
                 InputProps={{
                   startAdornment: (

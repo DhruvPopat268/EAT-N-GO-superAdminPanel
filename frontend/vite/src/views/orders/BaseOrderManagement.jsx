@@ -39,7 +39,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
   const fetchRestaurants = async () => {
     try {
       const response = await fetch(
-        'http://localhost:5000/api/restaurants/restaurantNames',
+        `${import.meta.env.VITE_BACKEND_URL}/api/restaurants/restaurantNames`,
         {
           credentials: 'include'
         }
@@ -57,7 +57,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
     try {
       setLoading(true);
       const endpoint = apiEndpoint || '/all';
-      let url = `http://localhost:5000/api/orders${endpoint}?page=${page + 1}&limit=${rowsPerPage}`;
+      let url = `${import.meta.env.VITE_BACKEND_URL}/api/orders${endpoint}?page=${page + 1}&limit=${rowsPerPage}`;
       
       if (selectedRestaurant?.restaurantId && selectedRestaurant.restaurantId !== 'all') {
         url += `&restaurantId=${selectedRestaurant.restaurantId}`;
@@ -69,7 +69,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
       const data = await response.json();
       if (data.success) {
         setOrders(data.data);
-        setTotalCount(data.pagination.totalCount);
+        setTotalCount(data.pagination?.totalCount || 0);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);

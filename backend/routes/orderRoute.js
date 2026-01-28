@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const Order = require('../usersModels/Order');
 const { processOrdersWithTotals } = require('../utils/orderHelpers');
+const { buildOrderQuery, orderPopulateConfig } = require('../utils/orderPopulate');
 
 // Get all orders for restaurant
 router.get('/all', authMiddleware, async (req, res) => {
@@ -17,49 +18,7 @@ router.get('/all', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -92,49 +51,7 @@ router.get('/waiting', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -167,49 +84,7 @@ router.get('/confirmed', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -242,49 +117,7 @@ router.get('/preparing', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -317,49 +150,7 @@ router.get('/ready', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -392,49 +183,7 @@ router.get('/served', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -467,49 +216,7 @@ router.get('/completed', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -542,49 +249,7 @@ router.get('/cancelled', authMiddleware, async (req, res) => {
     const totalCount = await Order.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const orders = await Order.find(filter)
-      .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    const orders = await buildOrderQuery(Order, filter, { page, limit });
 
     const processedOrders = await processOrdersWithTotals(orders);
 
@@ -617,44 +282,7 @@ router.get('/detail/:orderId', authMiddleware, async (req, res) => {
     }
 
     const order = await Order.findOne({ _id: orderId, restaurantId })
-      .populate('userId', 'fullName phone')
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
-        populate: [
-          {
-            path: 'subcategory',
-            model: 'Subcategory',
-            select: 'name'
-          },
-          {
-            path: 'addons',
-            model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
-          }
-        ]
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute',
-        select: 'name'
-      });
+      .populate(orderPopulateConfig);
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
