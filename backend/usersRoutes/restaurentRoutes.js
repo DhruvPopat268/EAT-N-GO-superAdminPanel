@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
+const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 
 // Get restaurant basic info and contact details
 router.post('/details', verifyToken, async (req, res) => {
@@ -99,22 +100,10 @@ router.get('/search', verifyToken, async (req, res) => {
 
     // Add isOpen calculation to each restaurant
     const restaurantsWithStatus = restaurants.map(restaurant => {
-      const now = new Date();
-      const currentTime = now.getHours() * 60 + now.getMinutes();
-      let isOpen = false;
-      
-      if (restaurant.basicInfo.operatingHours?.openTime && restaurant.basicInfo.operatingHours?.closeTime) {
-        const [openHour, openMin] = restaurant.basicInfo.operatingHours.openTime.split(':').map(Number);
-        const [closeHour, closeMin] = restaurant.basicInfo.operatingHours.closeTime.split(':').map(Number);
-        const openTime = openHour * 60 + openMin;
-        const closeTime = closeHour * 60 + closeMin;
-        
-        if (closeTime > openTime) {
-          isOpen = currentTime >= openTime && currentTime <= closeTime;
-        } else {
-          isOpen = currentTime >= openTime || currentTime <= closeTime;
-        }
-      }
+      const isOpen = isRestaurantOpen(
+        restaurant.basicInfo.operatingHours?.openTime,
+        restaurant.basicInfo.operatingHours?.closeTime
+      );
       
       return {
         ...restaurant.toObject(),

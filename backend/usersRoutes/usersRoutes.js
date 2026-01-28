@@ -220,6 +220,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
 
     const Restaurant = require('../models/Restaurant');
     const { calculateDistance } = require('../utils/routeUtils');
+    const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
     const allRestaurants = await Restaurant.find({ status: 'approved' });
 
     const filteredRestaurants = getRestaurantsAlongRoute(
@@ -233,34 +234,11 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       const distanceInMeters = calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
       const distanceInKm = (distanceInMeters / 1000).toFixed(2);
       
-      // Calculate if restaurant is open (convert to IST)
-      const now = new Date();
-      const istParts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Kolkata',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      }).formatToParts(now);
-      
-      const parsedHour = parseInt(istParts.find(part => part.type === 'hour').value);
-      const parsedMinute = parseInt(istParts.find(part => part.type === 'minute').value);
-      const currentTime = parsedHour * 60 + parsedMinute; // Current time in minutes (IST)
-      let isOpen = false;
-      
-      if (restaurant.basicInfo.operatingHours?.openTime && restaurant.basicInfo.operatingHours?.closeTime) {
-        const [openHour, openMin] = restaurant.basicInfo.operatingHours.openTime.split(':').map(Number);
-        const [closeHour, closeMin] = restaurant.basicInfo.operatingHours.closeTime.split(':').map(Number);
-        const openTime = openHour * 60 + openMin;
-        const closeTime = closeHour * 60 + closeMin;
-        
-        if (closeTime > openTime) {
-          // Same day (e.g., 9:00 to 22:00)
-          isOpen = currentTime >= openTime && currentTime <= closeTime;
-        } else {
-          // Crosses midnight (e.g., 22:00 to 2:00)
-          isOpen = currentTime >= openTime || currentTime <= closeTime;
-        }
-      }
+      // Calculate if restaurant is open
+      const isOpen = isRestaurantOpen(
+        restaurant.basicInfo.operatingHours?.openTime,
+        restaurant.basicInfo.operatingHours?.closeTime
+      );
       
       return {
         _id: restaurant._id,
