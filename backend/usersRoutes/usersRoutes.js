@@ -235,8 +235,16 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       
       // Calculate if restaurant is open (convert to IST)
       const now = new Date();
-      const istTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
-      const currentTime = istTime.getHours() * 60 + istTime.getMinutes(); // Current time in minutes (IST)
+      const istParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }).formatToParts(now);
+      
+      const parsedHour = parseInt(istParts.find(part => part.type === 'hour').value);
+      const parsedMinute = parseInt(istParts.find(part => part.type === 'minute').value);
+      const currentTime = parsedHour * 60 + parsedMinute; // Current time in minutes (IST)
       let isOpen = false;
       
       if (restaurant.basicInfo.operatingHours?.openTime && restaurant.basicInfo.operatingHours?.closeTime) {
