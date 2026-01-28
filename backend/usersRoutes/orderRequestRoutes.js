@@ -5,9 +5,11 @@ const Cart = require('../usersModels/Cart');
 const OrderRequest = require('../usersModels/OrderRequest');
 const Restaurant = require('../models/Restaurant');
 const { processOrdersWithTotals } = require('../utils/orderHelpers');
+const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 
-// Helper function to check if time is within operating hours
+// Helper function to check if time is within operating hours using IST
 function isTimeWithinOperatingHours(requestedTime, openTime, closeTime) {
+  // Convert current IST time to minutes for comparison
   const timeToMinutes = (time) => {
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;

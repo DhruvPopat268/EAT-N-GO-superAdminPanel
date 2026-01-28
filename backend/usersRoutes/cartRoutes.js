@@ -6,7 +6,8 @@ const Attribute = require('../models/Attribute');
 const AddonItem = require('../models/AddonItem');
 const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
-const { calculateCartTotals, isRestaurantOpen, findExistingCartItem } = require('../utils/cartHelpers');
+const { calculateCartTotals, findExistingCartItem } = require('../utils/cartHelpers');
+const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 
 // Get user cart
 router.get('/', verifyToken, async (req, res) => {
@@ -208,15 +209,9 @@ router.post('/add', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Restaurant is not approved' });
     }
 
-    const now = new Date();
-    const currentTime =
-      now.getHours().toString().padStart(2, '0') +
-      ':' +
-      now.getMinutes().toString().padStart(2, '0');
-
     const { openTime, closeTime } = restaurant.basicInfo?.operatingHours || {};
     if (openTime && closeTime) {
-      if (!isRestaurantOpen(openTime, closeTime, currentTime)) {
+      if (!isRestaurantOpen(openTime, closeTime)) {
         return res.status(400).json({
           success: false,
           code: 'RESTAURANT_CLOSED',
@@ -526,15 +521,9 @@ router.post('/replace', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Restaurant is not approved' });
     }
 
-    const now = new Date();
-    const currentTime =
-      now.getHours().toString().padStart(2, '0') +
-      ':' +
-      now.getMinutes().toString().padStart(2, '0');
-
     const { openTime, closeTime } = restaurant.basicInfo?.operatingHours || {};
     if (openTime && closeTime) {
-      if (!isRestaurantOpen(openTime, closeTime, currentTime)) {
+      if (!isRestaurantOpen(openTime, closeTime)) {
         return res.status(400).json({
           success: false,
           message: `Restaurant is closed. Operating hours: ${openTime} - ${closeTime}`
