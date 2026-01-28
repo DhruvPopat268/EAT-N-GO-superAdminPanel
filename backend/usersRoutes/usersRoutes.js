@@ -233,9 +233,10 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       const distanceInMeters = calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
       const distanceInKm = (distanceInMeters / 1000).toFixed(2);
       
-      // Calculate if restaurant is open
+      // Calculate if restaurant is open (convert to IST)
       const now = new Date();
-      const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
+      const istTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+      const currentTime = istTime.getHours() * 60 + istTime.getMinutes(); // Current time in minutes (IST)
       let isOpen = false;
       
       if (restaurant.basicInfo.operatingHours?.openTime && restaurant.basicInfo.operatingHours?.closeTime) {
