@@ -34,7 +34,12 @@ router.get('/', verifyToken, async (req, res) => {
           {
             path: 'addons',
             model: 'AddonItem',
-            select: 'category name description images currency isAvailable attributes'
+            select: 'category name description images currency isAvailable',
+            populate: {
+              path: 'attributes.attribute',
+              model: 'Attribute',
+              select: 'name'
+            }
           }
         ]
       })
