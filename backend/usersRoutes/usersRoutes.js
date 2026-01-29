@@ -202,7 +202,7 @@ router.put('/profile', verifyToken, async (req, res) => {
 // Get restaurants along route
 router.post('/restaurants-along-route', verifyToken, async (req, res) => {
   try {
-    const { currentLocation, destinationLocation, bufferRadius = 500 } = req.body;
+    const { currentLocation, destinationLocation, bufferRadius = 5000 } = req.body;
 
     if (!currentLocation || !destinationLocation) {
       return res.status(400).json({ 
@@ -222,6 +222,12 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
     const { calculateDistance } = require('../utils/routeUtils');
     const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
     const allRestaurants = await Restaurant.find({ status: 'approved' });
+
+    // Debug logging
+    console.log('Current Location:', currentLocation);
+    console.log('Destination:', destinationLocation);
+    console.log('Buffer Radius:', bufferRadius);
+    console.log('Total restaurants found:', allRestaurants.length);
 
     const filteredRestaurants = getRestaurantsAlongRoute(
       allRestaurants, 
@@ -260,6 +266,8 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         isOpen: isOpen
       };
     });
+
+    console.log('Filtered restaurants count:', filteredRestaurants.length);
 
     res.json({
       success: true,

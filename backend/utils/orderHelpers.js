@@ -1,5 +1,20 @@
 const { calculateCartTotals } = require('./cartHelpers');
 
+// Helper function to format date to 24-hour format
+function formatDateTo24Hour(date) {
+  if (!date) return null;
+  const d = new Date(date);
+  return d.toLocaleString('en-GB', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+}
+
 // Helper function to populate customizations and options
 async function populateCustomizations(items) {
   for (const item of items) {
@@ -64,7 +79,9 @@ async function processOrdersWithTotals(orders) {
     return {
       ...orderObj,
       items: processedItems,
-      orderTotal: cartTotal
+      orderTotal: cartTotal,
+      createdAt: formatDateTo24Hour(orderObj.createdAt),
+      updatedAt: formatDateTo24Hour(orderObj.updatedAt)
     };
   }));
 }

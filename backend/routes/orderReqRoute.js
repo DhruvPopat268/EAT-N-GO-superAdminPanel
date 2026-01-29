@@ -8,13 +8,36 @@ const { buildOrderQuery, orderPopulateConfig } = require('../utils/orderPopulate
 // Get all order requests for restaurant
 router.get('/all', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId, search } = req.query;
+    const { restaurantId, search, orderType, status, startDate, endDate } = req.query;
     
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const filter = restaurantId ? { restaurantId } : {};
+    
+    // Add orderType filter
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    // Add status filter
+    if (status && ['pending', 'confirmed', 'rejected', 'waiting', 'completed'].includes(status)) {
+      filter.status = status;
+    }
+    
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999); // Set to end of day
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
     
     // Add search functionality
     if (search) {
@@ -52,13 +75,42 @@ router.get('/all', authMiddleware, async (req, res) => {
 // Get pending order requests
 router.get('/pending', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.query;
+    const { restaurantId, search, orderType, startDate, endDate } = req.query;
     
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const filter = restaurantId ? { restaurantId, status: 'pending' } : { status: 'pending' };
+    
+    // Add orderType filter
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+    
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderRequestNo: { $regex: searchRegex } },
+        { 'userId.fullName': { $regex: searchRegex } },
+        { 'userId.phone': { $regex: searchRegex } }
+      ];
+    }
+    
     const totalCount = await OrderRequest.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -85,13 +137,42 @@ router.get('/pending', authMiddleware, async (req, res) => {
 // Get confirmed order requests
 router.get('/confirmed', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.query;
+    const { restaurantId, search, orderType, startDate, endDate } = req.query;
     
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const filter = restaurantId ? { restaurantId, status: 'confirmed' } : { status: 'confirmed' };
+    
+    // Add orderType filter
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+    
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderRequestNo: { $regex: searchRegex } },
+        { 'userId.fullName': { $regex: searchRegex } },
+        { 'userId.phone': { $regex: searchRegex } }
+      ];
+    }
+    
     const totalCount = await OrderRequest.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -118,13 +199,42 @@ router.get('/confirmed', authMiddleware, async (req, res) => {
 // Get waiting order requests
 router.get('/waiting', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.query;
+    const { restaurantId, search, orderType, startDate, endDate } = req.query;
     
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const filter = restaurantId ? { restaurantId, status: 'waiting' } : { status: 'waiting' };
+    
+    // Add orderType filter
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+    
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderRequestNo: { $regex: searchRegex } },
+        { 'userId.fullName': { $regex: searchRegex } },
+        { 'userId.phone': { $regex: searchRegex } }
+      ];
+    }
+    
     const totalCount = await OrderRequest.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -151,13 +261,42 @@ router.get('/waiting', authMiddleware, async (req, res) => {
 // Get completed order requests
 router.get('/completed', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.query;
+    const { restaurantId, search, orderType, startDate, endDate } = req.query;
     
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const filter = restaurantId ? { restaurantId, status: 'completed' } : { status: 'completed' };
+    
+    // Add orderType filter
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+    
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderRequestNo: { $regex: searchRegex } },
+        { 'userId.fullName': { $regex: searchRegex } },
+        { 'userId.phone': { $regex: searchRegex } }
+      ];
+    }
+    
     const totalCount = await OrderRequest.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
@@ -184,13 +323,42 @@ router.get('/completed', authMiddleware, async (req, res) => {
 // Get rejected order requests
 router.get('/rejected', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.query;
+    const { restaurantId, search, orderType, startDate, endDate } = req.query;
     
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
     const filter = restaurantId ? { restaurantId, status: 'rejected' } : { status: 'rejected' };
+    
+    // Add orderType filter
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+    
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderRequestNo: { $regex: searchRegex } },
+        { 'userId.fullName': { $regex: searchRegex } },
+        { 'userId.phone': { $regex: searchRegex } }
+      ];
+    }
+    
     const totalCount = await OrderRequest.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 

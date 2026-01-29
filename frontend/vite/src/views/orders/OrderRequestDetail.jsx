@@ -133,7 +133,7 @@ export default function OrderRequestDetail() {
                   Order Request #{orderRequest.orderRequestNo}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Order details and management
+                  order req detail and management
                 </Typography>
               </Box>
             </Box>
@@ -329,7 +329,7 @@ export default function OrderRequestDetail() {
                                 <Box key={idx} sx={{ ml: 1 }}>
                                   {custom.selectedOptions?.map((option, optIdx) => (
                                     <Typography key={optIdx} variant="body2" color="text.secondary">
-                                      • {option.optionName}
+                                      • {option.optionName} ({option.optionUnit})
                                     </Typography>
                                   ))}
                                 </Box>

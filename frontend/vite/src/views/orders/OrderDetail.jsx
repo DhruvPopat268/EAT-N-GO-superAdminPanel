@@ -1,84 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Card,
   Typography,
   Grid,
   Chip,
+  useTheme,
+  Fade,
   IconButton,
-  Avatar
+  Stack,
+  alpha,
+  Button,
+  Divider
 } from '@mui/material';
-import { IconArrowLeft, IconPrinter, IconUser, IconBuildingStore, IconShoppingCart } from '@tabler/icons-react';
+import { ArrowBack, Person, Restaurant, Print, Phone, Email, LocationOn } from '@mui/icons-material';
+import { IconClipboardList } from '@tabler/icons-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
-
-const getStatusChip = (status) => {
-  const statusConfig = {
-    confirmed: { bgcolor: '#4CAF50', borderColor: '#4CAF50', textColor: 'white' },
-    waiting: { bgcolor: '#FF9800', borderColor: '#FF9800', textColor: 'white' },
-    preparing: { bgcolor: '#2196F3', borderColor: '#2196F3', textColor: 'white' },
-    ready: { bgcolor: '#9C27B0', borderColor: '#9C27B0', textColor: 'white' },
-    served: { bgcolor: '#1976D2', borderColor: '#1976D2', textColor: 'white' },
-    completed: { bgcolor: '#2E7D32', borderColor: '#2E7D32', textColor: 'white' },
-    cancelled: { bgcolor: '#9E9E9E', borderColor: '#9E9E9E', textColor: 'white' },
-    refunded: { bgcolor: '#F44336', borderColor: '#F44336', textColor: 'white' }
-  };
-  
-  const config = statusConfig[status] || statusConfig.waiting;
-  return (
-    <Chip 
-      label={status?.charAt(0).toUpperCase() + status?.slice(1) || 'Unknown'}
-      sx={{ 
-        bgcolor: config.bgcolor,
-        color: config.textColor,
-        border: `1px solid ${config.borderColor}`,
-        fontSize: '0.75rem',
-        fontWeight: 500
-      }}
-      size="small"
-    />
-  );
-};
-
-const InfoCard = ({ icon, title, children, bgColor = "#f8f9fa" }) => (
-  <Card sx={{ p: 3, height: '100%', bgcolor: bgColor, border: '1px solid #e0e0e0' }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-      <Box sx={{ width: 32, height: 32, bgcolor: '#64748b', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {icon}
-      </Box>
-      <Typography variant="h6" fontWeight="medium">{title}</Typography>
-    </Box>
-    {children}
-  </Card>
-);
+import { useToast } from '../../utils/toast.jsx';
 
 export default function OrderDetail() {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const toast = useToast();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  
   const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const restaurantId = searchParams.get('restaurantId');
 
   useEffect(() => {
-    fetchOrderDetail();
+    if (id) {
+      fetchOrderDetail();
+    }
   }, [id]);
 
   const fetchOrderDetail = async () => {
     try {
       setLoading(true);
-      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-      const response = await fetch(
-        `${baseUrl}/api/orders/detail/${id}?restaurantId=${restaurantId}`,
-        { credentials: 'include' }
-      );
-      const data = await response.json();
-      if (data.success) {
-        setOrder(data.data);
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/orders/detail/${id}?restaurantId=${restaurantId}`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        setOrder(result.data);
+      } else {
+        toast.error(result.message || 'Failed to fetch order details');
       }
     } catch (error) {
-      console.error('Error fetching order detail:', error);
+      console.error('Error fetching order details:', error);
+      toast.error('Failed to fetch order details');
     } finally {
       setLoading(false);
     }
@@ -94,14 +68,37 @@ export default function OrderDetail() {
     });
   };
 
-  const formatTimings = (timings) => {
-    if (!timings) return 'N/A';
-    return `${timings.startTime} - ${timings.endTime}`;
+  const getStatusChip = (status) => {
+    const statusConfig = {
+      confirmed: { bgcolor: '#4CAF50', borderColor: '#4CAF50', textColor: 'white' },
+      waiting: { bgcolor: '#FF9800', borderColor: '#FF9800', textColor: 'white' },
+      preparing: { bgcolor: '#2196F3', borderColor: '#2196F3', textColor: 'white' },
+      ready: { bgcolor: '#9C27B0', borderColor: '#9C27B0', textColor: 'white' },
+      served: { bgcolor: '#1976D2', borderColor: '#1976D2', textColor: 'white' },
+      completed: { bgcolor: '#009688', borderColor: '#009688', textColor: 'white' },
+      cancelled: { bgcolor: '#9E9E9E', borderColor: '#9E9E9E', textColor: 'white' },
+      refunded: { bgcolor: '#F44336', borderColor: '#F44336', textColor: 'white' }
+    };
+    
+    const config = statusConfig[status] || statusConfig.waiting;
+    return (
+      <Chip 
+        label={status?.charAt(0).toUpperCase() + status?.slice(1) || 'Unknown'}
+        sx={{ 
+          bgcolor: config.bgcolor,
+          color: config.textColor,
+          border: `1px solid ${config.borderColor}`,
+          fontSize: '0.75rem',
+          fontWeight: 500
+        }}
+        size="small"
+      />
+    );
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <ThemeSpinner message="Loading order details..." />
       </Box>
     );
@@ -110,16 +107,19 @@ export default function OrderDetail() {
   if (!order) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography variant="h6" color="text.secondary">Order not found</Typography>
+        <Typography variant="h6" color="text.secondary">
+          Order not found
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5', p: 3 }}>
-      <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#f9fafb', p: 3 }}>
+      <Box sx={{ maxWidth: '80rem', mx: 'auto' }}>
+        
         {/* Header */}
-        <Card sx={{ p: 3, mb: 3, border: '1px solid #e0e0e0' }}>
+        <Card sx={{ p: 3, mb: 3, borderRadius: 2, border: '1px solid #e5e7eb' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <IconButton 
@@ -127,204 +127,249 @@ export default function OrderDetail() {
                 sx={{ 
                   width: 36, 
                   height: 36, 
-                  bgcolor: '#f1f5f9', 
-                  '&:hover': { bgcolor: '#e2e8f0' } 
+                  bgcolor: alpha(theme.palette.grey[100], 0.8),
+                  '&:hover': { bgcolor: alpha(theme.palette.grey[200], 0.8) }
                 }}
               >
-                <IconArrowLeft size={20} />
+                <ArrowBack sx={{ fontSize: 20, color: theme.palette.grey[600] }} />
               </IconButton>
               <Box>
-                <Typography variant="h5" fontWeight="semibold">Order Details</Typography>
-                <Typography variant="body2" color="text.secondary">Order details and management</Typography>
-              </Box>
-            </Box>
-            <IconButton 
-              onClick={() => window.print()}
-              sx={{ 
-                width: 36, 
-                height: 36, 
-                bgcolor: '#f1f5f9', 
-                '&:hover': { bgcolor: '#e2e8f0' } 
-              }}
-            >
-              <IconPrinter size={20} />
-            </IconButton>
-          </Box>
-        </Card>
-
-        {/* Order Summary */}
-        <Card sx={{ border: '1px solid #e0e0e0', mb: 3 }}>
-          <Box sx={{ bgcolor: '#64748b', color: 'white', p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="h6" fontWeight="semibold">Order #{order.orderNo}</Typography>
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                  {formatDate(order.createdAt)}
+                <Typography variant="h5" fontWeight={600} color="text.primary">
+                  Order #{order.orderNo}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  order detail and management
                 </Typography>
               </Box>
-              {getStatusChip(order.status)}
             </Box>
-          </Box>
-
-          <Box sx={{ p: 3 }}>
-            <Grid container spacing={3}>
-              {/* Customer Info */}
-              <Grid item xs={12} md={6}>
-                <InfoCard
-                  icon={<IconUser size={16} color="white" />}
-                  title="Customer Information"
-                  bgColor="#eff6ff"
-                >
-                  <Box sx={{ space: 2 }}>
-                    <Typography variant="h6" fontWeight="medium" color="black">
-                      {order.userId?.fullName || 'N/A'}
-                    </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                      📞 {order.userId?.phone || 'N/A'}
-                    </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                      🍽️ {order.orderType?.replace('-', ' ').toUpperCase() || 'N/A'}
-                    </Typography>
-                    {order.numberOfGuests && (
-                      <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                        👥 Guests: {order.numberOfGuests}
-                      </Typography>
-                    )}
-                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                      ⏰ {formatTimings(order.eatTimings)}
-                    </Typography>
-                    {order.dineInstructions && (
-                      <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                        📝 {order.dineInstructions}
-                      </Typography>
-                    )}
-                  </Box>
-                </InfoCard>
-              </Grid>
-
-              {/* Order Info */}
-              <Grid item xs={12} md={6}>
-                <InfoCard
-                  icon={<IconBuildingStore size={16} color="white" />}
-                  title="Order Information"
-                  bgColor="#f0fdf4"
-                >
-                  <Box sx={{ space: 2 }}>
-                    <Typography variant="body2" color="black">
-                      💳 Payment: {order.paymentMethod?.replace('_', ' ').toUpperCase() || 'N/A'}
-                    </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                      💰 Total: ₹{order.totalAmount}
-                    </Typography>
-                    {order.waitingTime && (
-                      <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                        ⏱️ Waiting Time: {order.waitingTime} min
-                      </Typography>
-                    )}
-                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                      📅 Created: {formatDate(order.createdAt)}
-                    </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 1 }}>
-                      🔄 Updated: {formatDate(order.updatedAt)}
-                    </Typography>
-                  </Box>
-                </InfoCard>
-              </Grid>
-            </Grid>
+            {getStatusChip(order.status)}
           </Box>
         </Card>
 
-        {/* Order Items */}
-        <Card sx={{ border: '1px solid #e0e0e0' }}>
-          <Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <IconShoppingCart size={20} />
-              <Typography variant="h6" fontWeight="semibold">Order Items</Typography>
-            </Box>
-          </Box>
-
-          <Box sx={{ divide: '1px solid #f1f5f9' }}>
-            {order.items?.map((item, index) => (
-              <Box key={item._id} sx={{ p: 3, borderBottom: index < order.items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                <Box sx={{ display: 'flex', gap: 3 }}>
-                  <Avatar 
-                    src={item.itemId?.images?.[0]} 
-                    sx={{ width: 80, height: 80, borderRadius: 2 }}
-                    variant="rounded"
-                  >
-                    🍽️
-                  </Avatar>
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="h6" fontWeight="medium" color="black">
-                      {item.itemId?.name || 'N/A'}
+        {/* Main Content - Side by Side Layout */}
+        <Box sx={{ display: 'flex', gap: 3 }}>
+          {/* Order Information - Left Side */}
+          <Card sx={{ borderRadius: 2, border: '1px solid #e5e7eb', height: 'fit-content', width: '300px', flexShrink: 0 }}>
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h6" fontWeight={600} color="text.primary" sx={{ mb: 3 }}>
+                  Order Information
+                </Typography>
+                
+                <Stack spacing={2.5}>
+                  {/* Restaurant */}
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                      Restaurant
                     </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
-                      {item.itemId?.description || 'No description'}
+                    <Typography variant="body1" color="text.primary">
+                      {order.restaurantId?.basicInfo?.restaurantName || 'N/A'}
                     </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
-                      Category: {item.itemId?.category} | {item.itemId?.subcategory?.name}
-                    </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
-                      Quantity: {item.quantity} | Size: {item.selectedAttribute?.name}
-                    </Typography>
-                    <Typography variant="body2" color="black" sx={{ mt: 0.5 }}>
-                      Food Type: {item.selectedFoodType}
-                    </Typography>
-                    
-                    {/* Customizations */}
-                    {item.selectedCustomizations?.length > 0 && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography variant="body2" color="black" fontWeight="medium">Customizations:</Typography>
-                        {item.selectedCustomizations.map((custom, idx) => (
-                          <Typography key={idx} variant="body2" color="black" sx={{ ml: 1 }}>
-                            • {custom.customizationName}: {custom.selectedOptions?.map(opt => `${opt.optionName} (${opt.quantity})`).join(', ')}
-                          </Typography>
-                        ))}
-                      </Box>
-                    )}
-                    
-                    {/* Addons */}
-                    {item.selectedAddons?.length > 0 && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography variant="body2" color="black" fontWeight="medium">Addons:</Typography>
-                        {item.selectedAddons.map((addon, idx) => (
-                          <Typography key={idx} variant="body2" color="black" sx={{ ml: 1 }}>
-                            • {addon.addonId?.name} ({addon.selectedAttribute?.name}) - Qty: {addon.quantity}
-                          </Typography>
-                        ))}
-                      </Box>
-                    )}
                   </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="h6" fontWeight="bold" color="black">
-                      ₹{item.itemTotal}
+
+                  {/* Customer */}
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                      Customer
                     </Typography>
-                    {item.customizationTotal > 0 && (
-                      <Typography variant="body2" color="black">
-                        Customizations: ₹{item.customizationTotal}
+                    <Typography variant="body1" fontWeight={500} color="text.primary">
+                      {order.userId?.fullName || 'N/A'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {order.userId?.phone || 'N/A'}
+                    </Typography>
+                  </Box>
+
+                  {/* Order Type */}
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                      Order Type
+                    </Typography>
+                    <Typography variant="body1" color="text.primary">
+                      {order.orderType === 'dine-in' ? 'Dine-In' : 'Takeaway'}
+                    </Typography>
+                  </Box>
+
+                  {/* Guests (for dine-in) */}
+                  {order.orderType === 'dine-in' && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Guests
                       </Typography>
-                    )}
-                    {item.addonsTotal > 0 && (
-                      <Typography variant="body2" color="black">
-                        Addons: ₹{item.addonsTotal}
+                      <Typography variant="body1" color="text.primary">
+                        {order.numberOfGuests}
                       </Typography>
-                    )}
+                    </Box>
+                  )}
+
+                  {/* Waiting Time */}
+                  {order.waitingTime && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Waiting Time
+                      </Typography>
+                      <Typography variant="body1" color="text.primary">
+                        {order.waitingTime} Mins
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Eat Timings */}
+                  {order.orderType === 'dine-in' && order.eatTimings && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Eat Timings
+                      </Typography>
+                      <Typography variant="body1" color="text.primary">
+                        {order.eatTimings.startTime} - {order.eatTimings.endTime}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Pickup Timings */}
+                  {order.orderType === 'takeaway' && order.takeawayTimings && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Pickup Timings
+                      </Typography>
+                      <Typography variant="body1" color="text.primary">
+                        {order.takeawayTimings.startTime} - {order.takeawayTimings.endTime}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Instructions */}
+                  {order.dineInstructions && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Instructions
+                      </Typography>
+                      <Typography variant="body1" color="text.primary">
+                        {order.dineInstructions}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Order Date */}
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                      Order Req Date
+                    </Typography>
+                    <Typography variant="body1" color="text.primary">
+                      {formatDate(order.createdAt)}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+          </Card>
+
+          {/* Order Items - Right Side */}
+          <Card sx={{ borderRadius: 2, border: '1px solid #e5e7eb', flex: 1 }}>
+              <Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                <Typography variant="h6" fontWeight={600} color="text.primary">
+                  Order Items
+                </Typography>
+              </Box>
+              <Box sx={{ p: 3 }}>
+                <Stack spacing={3}>
+                  {order.items?.map((item, index) => (
+                    <Box key={index} sx={{ display: 'flex', gap: 2 }}>
+                      {/* Item Image */}
+                      {item.itemId?.images?.[0] && (
+                        <Box
+                          component="img"
+                          src={item.itemId.images[0]}
+                          alt={item.itemId?.name}
+                          sx={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: 2,
+                            objectFit: 'cover',
+                            border: '1px solid #e5e7eb',
+                            flexShrink: 0
+                          }}
+                        />
+                      )}
+                      
+                      {/* Item Details */}
+                      <Box sx={{ flex: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          <Typography variant="h6" fontWeight={500} color="text.primary">
+                            {item.itemId?.name || 'N/A'}
+                          </Typography>
+                          <Typography variant="h6" fontWeight={600} sx={{ color: '#00a63e' }}>
+                            ₹{item.itemTotal || 0}
+                          </Typography>
+                        </Box>
+                        
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {item.itemId?.description || 'Premium quality item'}
+                        </Typography>
+                        
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2" color="text.secondary">
+                            Category: {item.itemId?.subcategory?.name || 'Veg'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Quantity: {item.quantity || 1}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Size: {item.selectedAttribute?.name || 'Medium Size'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Food Type: {item.selectedFoodType || 'Regular'}
+                          </Typography>
+                          
+                          {/* Customizations */}
+                          {item.selectedCustomizations && item.selectedCustomizations.length > 0 && (
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Customizations:
+                              </Typography>
+                              {item.selectedCustomizations.map((custom, idx) => (
+                                <Box key={idx} sx={{ ml: 1 }}>
+                                  {custom.selectedOptions?.map((option, optIdx) => (
+                                    <Typography key={optIdx} variant="body2" color="text.secondary">
+                                      • {option.optionName} ({option.optionUnit})
+                                    </Typography>
+                                  ))}
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                          
+                          {/* Addons */}
+                          {item.selectedAddons && item.selectedAddons.length > 0 && (
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">
+                                Addons:
+                              </Typography>
+                              {item.selectedAddons.map((addon, idx) => (
+                                <Typography key={idx} variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                                  • {addon.addonId?.name} ({addon.selectedAttribute?.name}) x{addon.quantity}
+                                </Typography>
+                              ))}
+                            </Box>
+                          )}
+                        </Stack>
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+                
+                {/* Order Total */}
+                <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid #e5e7eb' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6" fontWeight={600} color="text.primary">
+                      Order Request Total
+                    </Typography>
+                    <Typography variant="h5" fontWeight={700} sx={{ color: '#00a63e' }}>
+                      ₹{order.orderTotal || order.totalAmount || 0}
+                    </Typography>
                   </Box>
                 </Box>
               </Box>
-            ))}
-          </Box>
-
-          {/* Order Total */}
-          <Box sx={{ p: 3, bgcolor: '#f8f9fa', borderTop: '1px solid #e0e0e0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" fontWeight="bold">Order Request Total</Typography>
-              <Typography variant="h5" fontWeight="bold" color="primary">
-                ₹{order.orderTotal || order.totalAmount}
-              </Typography>
-            </Box>
-          </Box>
-        </Card>
+            </Card>
+        </Box>
       </Box>
     </Box>
   );
