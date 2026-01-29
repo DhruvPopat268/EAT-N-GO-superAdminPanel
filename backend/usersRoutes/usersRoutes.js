@@ -202,7 +202,7 @@ router.put('/profile', verifyToken, async (req, res) => {
 // Get restaurants along route
 router.post('/restaurants-along-route', verifyToken, async (req, res) => {
   try {
-    const { currentLocation, destinationLocation, bufferRadius = 500 } = req.body;
+    const { currentLocation, destinationLocation, bufferRadius = 2000 } = req.body;
 
     if (!currentLocation || !destinationLocation) {
       return res.status(400).json({ 
