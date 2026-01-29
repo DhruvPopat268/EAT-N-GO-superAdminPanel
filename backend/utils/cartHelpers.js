@@ -10,7 +10,7 @@ const calculateCartTotals = (cartItems) => {
     // Item attribute price
     if (itemObj.selectedAttribute && itemObj.itemId?.attributes) {
       const attr = itemObj.itemId.attributes.find(
-        a => a.attribute.toString() === itemObj.selectedAttribute._id.toString()
+        a => a.attribute._id.toString() === itemObj.selectedAttribute._id.toString()
       );
       itemPrice = attr?.price || 0;
     }
