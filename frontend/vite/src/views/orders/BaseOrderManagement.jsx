@@ -21,7 +21,7 @@ import {
   Tooltip,
   TablePagination
 } from '@mui/material';
-import { IconEye, IconBuildingStore } from '@tabler/icons-react';
+import { IconEye, IconBuildingStore, IconSearch } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 
@@ -30,11 +30,34 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
   const [orders, setOrders] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedOrderType, setSelectedOrderType] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
+
+  const statusOptions = [
+    { value: '', label: 'All Status' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'waiting', label: 'Waiting' },
+    { value: 'preparing', label: 'Preparing' },
+    { value: 'ready', label: 'Ready' },
+    { value: 'served', label: 'Served' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
+    { value: 'refunded', label: 'Refunded' }
+  ];
+
+  const orderTypeOptions = [
+    { value: '', label: 'All Types' },
+    { value: 'dine-in', label: 'Dine In' },
+    { value: 'takeaway', label: 'Takeaway' }
+  ];
 
   const fetchRestaurants = async () => {
     try {
@@ -63,6 +86,26 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
         url += `&restaurantId=${selectedRestaurant.restaurantId}`;
       }
       
+      if (searchTerm.trim()) {
+        url += `&search=${encodeURIComponent(searchTerm.trim())}`;
+      }
+      
+      if (selectedStatus) {
+        url += `&status=${selectedStatus}`;
+      }
+      
+      if (selectedOrderType) {
+        url += `&orderType=${selectedOrderType}`;
+      }
+      
+      if (startDate) {
+        url += `&startDate=${startDate}`;
+      }
+      
+      if (endDate) {
+        url += `&endDate=${endDate}`;
+      }
+      
       const response = await fetch(url, {
         credentials: 'include'
       });
@@ -84,7 +127,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, rowsPerPage, selectedRestaurant]);
+  }, [page, rowsPerPage, selectedRestaurant, searchTerm, selectedStatus, selectedOrderType, startDate, endDate]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -153,32 +196,113 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
       <Fade in timeout={1000}>
         <Card sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
-            <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
-              <Autocomplete
-                sx={{ minWidth: 300 }}
-                options={restaurants}
-                getOptionLabel={(option) => option.name}
-                value={selectedRestaurant}
-                onChange={(event, newValue) => {
-                  setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+              <TextField
+                placeholder="Search by customer name, phone, or order number..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
                   setPage(0);
                 }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Restaurant"
-                    placeholder="Search restaurants..."
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconBuildingStore size={20} />
-                        </InputAdornment>
-                      ),
+                sx={{ minWidth: 400 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconSearch size={20} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Autocomplete
+                  sx={{ minWidth: 220 }}
+                  options={restaurants}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedRestaurant}
+                  onChange={(event, newValue) => {
+                    setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Restaurant"
+                      placeholder="Search restaurants..."
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <IconBuildingStore size={20} />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
+                />
+
+                {status === 'all' && (
+                  <Autocomplete
+                    sx={{ minWidth: 150 }}
+                    options={statusOptions}
+                    getOptionLabel={(option) => option.label}
+                    value={statusOptions.find(option => option.value === selectedStatus) || statusOptions[0]}
+                    onChange={(event, newValue) => {
+                      setSelectedStatus(newValue?.value || '');
+                      setPage(0);
                     }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Status"
+                        placeholder="Select status..."
+                      />
+                    )}
                   />
                 )}
-              />
+
+                <Autocomplete
+                  sx={{ minWidth: 150 }}
+                  options={orderTypeOptions}
+                  getOptionLabel={(option) => option.label}
+                  value={orderTypeOptions.find(option => option.value === selectedOrderType) || orderTypeOptions[0]}
+                  onChange={(event, newValue) => {
+                    setSelectedOrderType(newValue?.value || '');
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Order Type"
+                      placeholder="Select type..."
+                    />
+                  )}
+                />
+                
+                <TextField
+                  type="date"
+                  label="Start Date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 140 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+                
+                <TextField
+                  type="date"
+                  label="End Date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 140 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
             </Stack>
           </Box>
           

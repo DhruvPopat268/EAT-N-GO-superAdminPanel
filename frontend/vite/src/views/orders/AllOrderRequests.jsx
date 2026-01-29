@@ -35,11 +35,30 @@ export default function AllOrderRequests() {
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedOrderType, setSelectedOrderType] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [orderRequests, setOrderRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+
+  const statusOptions = [
+    { value: '', label: 'All Status' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
+    { value: 'waiting', label: 'Waiting' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'rejected', label: 'Rejected' }
+  ];
+
+  const orderTypeOptions = [
+    { value: '', label: 'All Types' },
+    { value: 'dine-in', label: 'Dine In' },
+    { value: 'takeaway', label: 'Takeaway' }
+  ];
 
   useEffect(() => {
     fetchRestaurantNames();
@@ -48,7 +67,7 @@ export default function AllOrderRequests() {
 
   useEffect(() => {
     fetchOrderRequests();
-  }, [selectedRestaurant, page, rowsPerPage, searchTerm]);
+  }, [selectedRestaurant, page, rowsPerPage, searchTerm, selectedStatus, selectedOrderType, startDate, endDate]);
 
   const fetchRestaurantNames = async () => {
     try {
@@ -78,6 +97,22 @@ export default function AllOrderRequests() {
         url += `&search=${encodeURIComponent(searchTerm.trim())}`;
       }
       
+      if (selectedStatus) {
+        url += `&status=${selectedStatus}`;
+      }
+      
+      if (selectedOrderType) {
+        url += `&orderType=${selectedOrderType}`;
+      }
+      
+      if (startDate) {
+        url += `&startDate=${startDate}`;
+      }
+      
+      if (endDate) {
+        url += `&endDate=${endDate}`;
+      }
+      
       const response = await fetch(url, { credentials: 'include' });
       const result = await response.json();
       
@@ -102,7 +137,15 @@ export default function AllOrderRequests() {
   const filteredOrderRequests = getFilteredOrderRequests();
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    // Parse DD/MM/YYYY HH:mm:ss format
+    const [datePart, timePart] = dateString.split(' ');
+    const [day, month, year] = datePart.split('/');
+    const [hour, minute, second] = timePart.split(':');
+    
+    // Create date object with correct format (month is 0-indexed)
+    const date = new Date(year, month - 1, day, hour, minute, second);
+    
+    return date.toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -156,33 +199,7 @@ export default function AllOrderRequests() {
       <Fade in timeout={1000}>
         <Card sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
-            <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
-              <Autocomplete
-                sx={{ minWidth: 300 }}
-                options={restaurants}
-                getOptionLabel={(option) => option.name}
-                value={selectedRestaurant}
-                onChange={(event, newValue) => {
-                  setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
-                  setPage(0);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Restaurant"
-                    placeholder="Search restaurants..."
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconBuildingStore size={20} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                )}
-              />
-
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
               <TextField
                 placeholder="Search by customer name, phone, or order number..."
                 value={searchTerm}
@@ -199,6 +216,94 @@ export default function AllOrderRequests() {
                   ),
                 }}
               />
+              
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Autocomplete
+                  sx={{ minWidth: 220 }}
+                  options={restaurants}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedRestaurant}
+                  onChange={(event, newValue) => {
+                    setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Restaurant"
+                      placeholder="Search restaurants..."
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <IconBuildingStore size={20} />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
+                />
+
+                <Autocomplete
+                  sx={{ minWidth: 150 }}
+                  options={statusOptions}
+                  getOptionLabel={(option) => option.label}
+                  value={statusOptions.find(option => option.value === selectedStatus) || statusOptions[0]}
+                  onChange={(event, newValue) => {
+                    setSelectedStatus(newValue?.value || '');
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Status"
+                      placeholder="Select status..."
+                    />
+                  )}
+                />
+
+                <Autocomplete
+                  sx={{ minWidth: 150 }}
+                  options={orderTypeOptions}
+                  getOptionLabel={(option) => option.label}
+                  value={orderTypeOptions.find(option => option.value === selectedOrderType) || orderTypeOptions[0]}
+                  onChange={(event, newValue) => {
+                    setSelectedOrderType(newValue?.value || '');
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Order Type"
+                      placeholder="Select type..."
+                    />
+                  )}
+                />
+                
+                <TextField
+                  type="date"
+                  label="Start Date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 140 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+                
+                <TextField
+                  type="date"
+                  label="End Date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 140 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
             </Stack>
           </Box>
           
@@ -215,7 +320,8 @@ export default function AllOrderRequests() {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Waiting Time</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order Req Total</TableCell>
-                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order Req Date</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Created At</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Updated At</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -312,7 +418,12 @@ export default function AllOrderRequests() {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            {formatDate(orderRequest.createdAt)}
+                            {orderRequest.createdAt}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
+                          <Typography variant="body2" color="black">
+                            {orderRequest.updatedAt}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

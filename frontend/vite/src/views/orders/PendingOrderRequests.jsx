@@ -35,11 +35,20 @@ export default function PendingOrderRequests() {
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOrderType, setSelectedOrderType] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [orderRequests, setOrderRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+
+  const orderTypeOptions = [
+    { value: '', label: 'All Types' },
+    { value: 'dine-in', label: 'Dine In' },
+    { value: 'takeaway', label: 'Takeaway' }
+  ];
 
   useEffect(() => {
     fetchRestaurantNames();
@@ -48,7 +57,7 @@ export default function PendingOrderRequests() {
 
   useEffect(() => {
     fetchOrderRequests();
-  }, [selectedRestaurant, page, rowsPerPage]);
+  }, [selectedRestaurant, page, rowsPerPage, searchTerm, selectedOrderType, startDate, endDate]);
 
   const fetchRestaurantNames = async () => {
     try {
@@ -72,6 +81,22 @@ export default function PendingOrderRequests() {
       
       if (selectedRestaurant?.restaurantId && selectedRestaurant.restaurantId !== 'all') {
         url += `&restaurantId=${selectedRestaurant.restaurantId}`;
+      }
+      
+      if (searchTerm.trim()) {
+        url += `&search=${encodeURIComponent(searchTerm.trim())}`;
+      }
+      
+      if (selectedOrderType) {
+        url += `&orderType=${selectedOrderType}`;
+      }
+      
+      if (startDate) {
+        url += `&startDate=${startDate}`;
+      }
+      
+      if (endDate) {
+        url += `&endDate=${endDate}`;
       }
       
       const response = await fetch(url, { credentials: 'include' });
@@ -106,16 +131,6 @@ export default function PendingOrderRequests() {
   };
 
   const filteredOrderRequests = getFilteredOrderRequests();
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   const getTimeSinceCreated = (createdAt) => {
     const now = new Date();
@@ -161,37 +176,14 @@ export default function PendingOrderRequests() {
       <Fade in timeout={1000}>
         <Card sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
-            <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
-              <Autocomplete
-                sx={{ minWidth: 300 }}
-                options={restaurants}
-                getOptionLabel={(option) => option.name}
-                value={selectedRestaurant}
-                onChange={(event, newValue) => {
-                  setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
-                  setPage(0);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Restaurant"
-                    placeholder="Search restaurants..."
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconBuildingStore size={20} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                )}
-              />
-
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
               <TextField
                 placeholder="Search by customer name, phone, or order number..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(0);
+                }}
                 sx={{ minWidth: 400 }}
                 InputProps={{
                   startAdornment: (
@@ -201,6 +193,76 @@ export default function PendingOrderRequests() {
                   ),
                 }}
               />
+              
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Autocomplete
+                  sx={{ minWidth: 220 }}
+                  options={restaurants}
+                  getOptionLabel={(option) => option.name}
+                  value={selectedRestaurant}
+                  onChange={(event, newValue) => {
+                    setSelectedRestaurant(newValue || { restaurantId: 'all', name: 'All Restaurants' });
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Restaurant"
+                      placeholder="Search restaurants..."
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <IconBuildingStore size={20} />
+                          </InputAdornment>
+                        ),
+                      }}
+                    />
+                  )}
+                />
+
+                <Autocomplete
+                  sx={{ minWidth: 150 }}
+                  options={orderTypeOptions}
+                  getOptionLabel={(option) => option.label}
+                  value={orderTypeOptions.find(option => option.value === selectedOrderType) || orderTypeOptions[0]}
+                  onChange={(event, newValue) => {
+                    setSelectedOrderType(newValue?.value || '');
+                    setPage(0);
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Order Type"
+                      placeholder="Select type..."
+                    />
+                  )}
+                />
+                
+                <TextField
+                  type="date"
+                  label="Start Date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 140 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+                
+                <TextField
+                  type="date"
+                  label="End Date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 140 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Box>
             </Stack>
           </Box>
           
@@ -217,20 +279,21 @@ export default function PendingOrderRequests() {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Waiting Time</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order Req Total</TableCell>
-                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order Req Date</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>CreatedAt</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Updated At</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading pending order requests..." />
                     </TableCell>
                   </TableRow>
                 ) : filteredOrderRequests.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconClock size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -324,12 +387,17 @@ export default function PendingOrderRequests() {
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Box>
                             <Typography variant="body2" color="black">
-                              {formatDate(orderRequest.createdAt)}
+                              {orderRequest.createdAt}
                             </Typography>
                             <Typography variant="body2" color="black">
                               {getTimeSinceCreated(orderRequest.createdAt)}
                             </Typography>
                           </Box>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
+                          <Typography variant="body2" color="black">
+                            {orderRequest.updatedAt}
+                          </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Tooltip title="View Details" arrow>
