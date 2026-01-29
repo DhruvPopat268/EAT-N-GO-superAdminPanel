@@ -82,5 +82,7 @@ function getRestaurantsAlongRoute(restaurants, currentLocation, destinationLocat
 
 module.exports = {
   getRestaurantsAlongRoute,
-  calculateDistance
+  calculateDistance,
+  distanceToLineSegment,
+  isAheadOnRoute
 };

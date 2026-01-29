@@ -219,15 +219,63 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
     }
 
     const Restaurant = require('../models/Restaurant');
-    const { calculateDistance } = require('../utils/routeUtils');
+    const { calculateDistance, getRestaurantsAlongRoute } = require('../utils/routeUtils');
     const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
     const allRestaurants = await Restaurant.find({ status: 'approved' });
 
     // Debug logging
+    console.log('=== ROUTE ANALYSIS DEBUG ===');
     console.log('Current Location:', currentLocation);
-    console.log('Destination:', destinationLocation);
-    console.log('Buffer Radius:', bufferRadius);
-    console.log('Total restaurants found:', allRestaurants.length);
+    console.log('Destination Location:', destinationLocation);
+    console.log('Buffer Radius (meters):', bufferRadius);
+    console.log('Total approved restaurants found:', allRestaurants.length);
+    console.log('\n=== RESTAURANT ANALYSIS ===');
+
+    // Detailed analysis for each restaurant
+    const restaurantAnalysis = allRestaurants.map(restaurant => {
+      const restLat = parseFloat(restaurant.contactDetails.latitude);
+      const restLng = parseFloat(restaurant.contactDetails.longitude);
+      
+      if (!restLat || !restLng) {
+        console.log(`❌ Restaurant "${restaurant.basicInfo.restaurantName}" - Invalid coordinates: lat=${restaurant.contactDetails.latitude}, lng=${restaurant.contactDetails.longitude}`);
+        return null;
+      }
+
+      // Calculate distance from restaurant to route line
+      const { distanceToLineSegment, isAheadOnRoute } = require('../utils/routeUtils');
+      const distanceToRoute = distanceToLineSegment(
+        restLat, restLng, 
+        currentLocation.lat, currentLocation.lng, 
+        destinationLocation.lat, destinationLocation.lng
+      );
+      
+      const isAhead = isAheadOnRoute(
+        restLat, restLng,
+        currentLocation.lat, currentLocation.lng,
+        destinationLocation.lat, destinationLocation.lng
+      );
+      
+      const distanceFromCurrent = calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
+      const isWithinBuffer = distanceToRoute <= bufferRadius;
+      
+      console.log(`\n🏪 Restaurant: "${restaurant.basicInfo.restaurantName}"`);
+      console.log(`   📍 Coordinates: ${restLat}, ${restLng}`);
+      console.log(`   📏 Distance from current location: ${(distanceFromCurrent / 1000).toFixed(2)} km`);
+      console.log(`   🛣️  Distance from route line: ${(distanceToRoute / 1000).toFixed(2)} km`);
+      console.log(`   ⬆️  Is ahead on route: ${isAhead ? '✅ Yes' : '❌ No (behind current location)'}`);
+      console.log(`   🎯 Within buffer radius (${bufferRadius}m): ${isWithinBuffer ? '✅ Yes' : '❌ No'}`);
+      console.log(`   🏁 Will be included: ${isAhead && isWithinBuffer ? '✅ YES' : '❌ NO'}`);
+      
+      return {
+        restaurant,
+        restLat,
+        restLng,
+        distanceToRoute,
+        isAhead,
+        isWithinBuffer,
+        willBeIncluded: isAhead && isWithinBuffer
+      };
+    }).filter(Boolean);
 
     const filteredRestaurants = getRestaurantsAlongRoute(
       allRestaurants, 
@@ -267,7 +315,10 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       };
     });
 
-    console.log('Filtered restaurants count:', filteredRestaurants.length);
+    console.log('\n=== FINAL RESULTS ===');
+    console.log(`✅ Restaurants included in results: ${filteredRestaurants.length}`);
+    console.log(`❌ Restaurants excluded: ${allRestaurants.length - filteredRestaurants.length}`);
+    console.log('========================\n');
 
     res.json({
       success: true,
@@ -275,6 +326,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       data: filteredRestaurants
     });
   } catch (error) {
+    console.error('Error in restaurants-along-route:', error);
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
