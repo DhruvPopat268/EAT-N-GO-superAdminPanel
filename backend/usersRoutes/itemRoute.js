@@ -3,7 +3,9 @@ const router = express.Router();
 const Item = require('../models/Item');
 const Subcategory = require('../models/Subcategory');
 const Restaurant = require('../models/Restaurant');
+const Cart = require('../usersModels/Cart');
 const { verifyToken } = require('../middleware/userAuth');
+const { calculateCartTotals } = require('../utils/cartHelpers');
 
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -13,6 +15,7 @@ const escapeRegex = (string) => {
 router.post('/popular-items', verifyToken, async (req, res) => {
   try {
     const { restaurantId } = req.body;
+    const userId = req.user.userId;
 
     if (!restaurantId) {
       return res.status(400).json({
@@ -46,10 +49,58 @@ router.post('/popular-items', verifyToken, async (req, res) => {
       })
       .sort({ createdAt: -1 })
 
+    // Get user's cart to check which items are already added
+    const userCart = await Cart.findOne({ userId, restaurantId })
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'customizations attributes'
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'attributes'
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
+
+    // Add cart information to each item
+    const itemsWithCartInfo = popularItems.map(item => {
+      const itemObj = item.toObject();
+      itemObj.cartItems = [];
+      
+      if (userCart && userCart.items) {
+        const cartItems = userCart.items.filter(
+          cartItem => cartItem.itemId.toString() === item._id.toString()
+        );
+        
+        // Process cart items using cartHelpers to get proper customization details
+        const { processedItems } = calculateCartTotals(cartItems);
+        
+        itemObj.cartItems = processedItems.map(cartItem => ({
+          quantity: cartItem.quantity,
+          selectedAttribute: cartItem.selectedAttribute,
+          selectedFoodType: cartItem.selectedFoodType,
+          selectedCustomizations: cartItem.selectedCustomizations,
+          selectedAddons: cartItem.selectedAddons
+        }));
+      }
+      
+      return itemObj;
+    });
+
     res.json({
       success: true,
       message: 'Popular items retrieved successfully',
-      data: popularItems
+      data: itemsWithCartInfo
     });
   } catch (error) {
     res.status(500).json({
