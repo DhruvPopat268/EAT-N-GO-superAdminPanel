@@ -5,7 +5,6 @@ const Subcategory = require('../models/Subcategory');
 const Restaurant = require('../models/Restaurant');
 const Cart = require('../usersModels/Cart');
 const { verifyToken } = require('../middleware/userAuth');
-const { calculateCartTotals } = require('../utils/cartHelpers');
 
 const escapeRegex = (string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -79,18 +78,21 @@ router.post('/popular-items', verifyToken, async (req, res) => {
       
       if (userCart && userCart.items) {
         const cartItems = userCart.items.filter(
-          cartItem => cartItem.itemId.toString() === item._id.toString()
+          cartItem => cartItem.itemId && cartItem.itemId._id.toString() === item._id.toString()
         );
         
-        // Process cart items using cartHelpers to get proper customization details
-        const { processedItems } = calculateCartTotals(cartItems);
-        
-        itemObj.cartItems = processedItems.map(cartItem => ({
+        // Cart items already contain complete data with snapshots
+        itemObj.cartItems = cartItems.map(cartItem => ({
+          _id: cartItem._id,
           quantity: cartItem.quantity,
           selectedAttribute: cartItem.selectedAttribute,
+          selectedAttributePrice: cartItem.selectedAttributePrice,
           selectedFoodType: cartItem.selectedFoodType,
           selectedCustomizations: cartItem.selectedCustomizations,
-          selectedAddons: cartItem.selectedAddons
+          selectedAddons: cartItem.selectedAddons,
+          itemTotal: cartItem.itemTotal,
+          customizationTotal: cartItem.customizationTotal,
+          addonTotal: cartItem.addonTotal
         }));
       }
       

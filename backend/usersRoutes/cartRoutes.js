@@ -692,7 +692,8 @@ router.post('/replace', verifyToken, async (req, res) => {
     const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
     cartObj.items = processedItems;
 
-    /* -------------------- Response -------------------- */
+    /* ----
+    ---------------- Response -------------------- */
     res.json({
       success: true,
       message: 'Cart replaced successfully',
