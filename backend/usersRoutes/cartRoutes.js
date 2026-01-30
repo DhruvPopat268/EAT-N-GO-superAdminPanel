@@ -981,4 +981,254 @@ router.delete('/clear', verifyToken, async (req, res) => {
   }
 });
 
+// Update cart item
+router.put('/update', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      restaurantId,
+      cartItemId,
+      quantity,
+      selectedAttribute,
+      selectedFoodType,
+      selectedCustomizations = [],
+      selectedAddons = []
+    } = req.body;
+
+    if (!restaurantId || !cartItemId || quantity == null || typeof quantity !== 'number' || quantity < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant ID, Cart Item ID, and valid quantity (>= 0) are required'
+      });
+    }
+
+    // Validate addon quantities (only 0 or 1 allowed)
+    if (selectedAddons?.length) {
+      for (const selectedAddon of selectedAddons) {
+        if (selectedAddon.quantity != null && ![0, 1].includes(selectedAddon.quantity)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Addon quantity must be 0 or 1'
+          });
+        }
+      }
+    }
+
+    // Validate customization option quantities (only 0 or 1 allowed)
+    if (selectedCustomizations?.length) {
+      for (const selectedCustomization of selectedCustomizations) {
+        if (selectedCustomization.selectedOptions?.length) {
+          for (const selectedOption of selectedCustomization.selectedOptions) {
+            if (selectedOption.quantity != null && ![0, 1].includes(selectedOption.quantity)) {
+              return res.status(400).json({
+                success: false,
+                message: 'Customization option quantity must be 0 or 1'
+              });
+            }
+          }
+        }
+      }
+    }
+
+    const cart = await Cart.findOne({ userId, restaurantId });
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cart not found'
+      });
+    }
+
+    const itemIndex = cart.items.findIndex(item => item._id.toString() === cartItemId);
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cart item not found'
+      });
+    }
+
+    // Remove item if quantity is 0
+    if (quantity === 0) {
+      cart.items.splice(itemIndex, 1);
+    } else {
+      const cartItem = cart.items[itemIndex];
+      
+      // Get item details for price snapshots
+      const item = await Item.findById(cartItem.itemId)
+        .populate({ path: 'addons', select: 'attributes' });
+      
+      if (!item) {
+        return res.status(404).json({
+          success: false,
+          message: 'Item not found'
+        });
+      }
+
+      // Create price snapshots for attributes
+      let selectedAttributePrice = 0;
+      if (selectedAttribute) {
+        const attr = item.attributes.find(attr => attr.attribute.toString() === selectedAttribute);
+        selectedAttributePrice = attr?.price || 0;
+      }
+
+      // Create price snapshots for addons
+      let processedAddons = [];
+      if (selectedAddons?.length) {
+        for (const selectedAddon of selectedAddons) {
+          const addon = item.addons.find(addon => addon._id.toString() === selectedAddon.addonId);
+          if (addon) {
+            let addonAttributePrice = 0;
+            if (selectedAddon.selectedAttribute) {
+              const addonAttr = addon.attributes?.find(attr => attr.attribute.toString() === selectedAddon.selectedAttribute);
+              addonAttributePrice = addonAttr?.price || 0;
+            }
+            
+            processedAddons.push({
+              addonId: selectedAddon.addonId,
+              selectedAttribute: selectedAddon.selectedAttribute,
+              selectedAttributePrice: addonAttributePrice,
+              quantity: selectedAddon.quantity || 1
+            });
+          }
+        }
+      }
+
+      // Create customization snapshots
+      let processedCustomizations = [];
+      if (selectedCustomizations?.length) {
+        for (const selectedCustomization of selectedCustomizations) {
+          const customization = item.customizations?.find(c => c._id.toString() === selectedCustomization.customizationId);
+          if (customization) {
+            let processedOptions = [];
+            if (selectedCustomization.selectedOptions?.length) {
+              for (const selectedOption of selectedCustomization.selectedOptions) {
+                const option = customization.options?.find(option => option._id.toString() === selectedOption.optionId);
+                if (option) {
+                  processedOptions.push({
+                    optionId: selectedOption.optionId,
+                    optionName: option.label,
+                    optionQuantity: option.quantity,
+                    unit: option.unit,
+                    price: option.price || 0,
+                    quantity: selectedOption.quantity || 1
+                  });
+                }
+              }
+            }
+            
+            processedCustomizations.push({
+              customizationId: selectedCustomization.customizationId,
+              customizationName: customization.name,
+              customizationType: customization.type,
+              isRequired: customization.isRequired,
+              selectedOptions: processedOptions
+            });
+          }
+        }
+      }
+
+      // Calculate totals
+      const itemPrice = selectedAttributePrice || 0;
+      let customizationTotal = 0;
+      let addonTotal = 0;
+      
+      if (processedCustomizations?.length) {
+        processedCustomizations.forEach(customization => {
+          if (customization.selectedOptions?.length) {
+            customization.selectedOptions.forEach(option => {
+              customizationTotal += (option.price || 0) * (option.quantity || 1);
+            });
+          }
+        });
+      }
+      
+      if (processedAddons?.length) {
+        processedAddons.forEach(addon => {
+          addonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 1);
+        });
+      }
+      
+      const itemTotal = (itemPrice + customizationTotal + addonTotal) * quantity;
+      
+      // Update cart item with new data
+      cartItem.quantity = quantity;
+      cartItem.selectedAttribute = selectedAttribute;
+      cartItem.selectedAttributePrice = selectedAttributePrice;
+      cartItem.selectedFoodType = selectedFoodType;
+      cartItem.selectedCustomizations = processedCustomizations;
+      cartItem.selectedAddons = processedAddons;
+      cartItem.itemTotal = itemTotal;
+      cartItem.customizationTotal = customizationTotal;
+      cartItem.addonTotal = addonTotal;
+    }
+    
+    // Recalculate cart total
+    let cartTotal = 0;
+    cart.items.forEach(item => {
+      cartTotal += item.itemTotal || 0;
+    });
+    cart.cartTotal = cartTotal;
+
+    await cart.save();
+
+    // Return populated cart
+    const populatedCart = await Cart.findOne({ userId, restaurantId })
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          {
+            path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'attributes.attribute',
+            model: 'Attribute',
+            select: 'name'
+          },
+          {
+            path: 'addons',
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes',
+            populate: {
+              path: 'attributes.attribute',
+              model: 'Attribute',
+              select: 'name'
+            }
+          }
+        ]
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'category name description images currency isAvailable'
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
+
+    const cartObj = populatedCart?.toObject() || { items: [], cartTotal: 0 };
+
+    res.json({
+      success: true,
+      message: quantity === 0 ? 'Item removed from cart successfully' : 'Cart item updated successfully',
+      data: cartObj
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
