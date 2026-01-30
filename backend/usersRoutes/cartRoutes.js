@@ -230,7 +230,7 @@ router.post('/add', verifyToken, async (req, res) => {
           addonId: selectedAddon.addonId,
           selectedAttribute: selectedAddon.selectedAttribute,
           selectedAttributePrice: addonAttributePrice,
-          quantity: selectedAddon.quantity || 1
+          quantity: quantity  // Use item quantity for addon quantity
         });
       }
     }
@@ -268,7 +268,7 @@ router.post('/add', verifyToken, async (req, res) => {
               optionQuantity: option.quantity,
               unit: option.unit,
               price: option.price || 0,
-              quantity: selectedOption.quantity || 1
+              quantity: quantity  // Use item quantity for customization quantity
             });
           }
         }
@@ -337,6 +337,15 @@ router.post('/add', verifyToken, async (req, res) => {
         });
       }
       
+      // Recalculate item total
+      const basePrice = existingItem.selectedAttributePrice || 0;
+      const customizationTotal = existingItem.customizationTotal || 0;
+      const addonTotal = existingItem.addonTotal || 0;
+      existingItem.itemTotal = (basePrice + customizationTotal + addonTotal) * existingItem.quantity;
+      
+      // Recalculate cart total
+      cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
+      
       await cart.save();
       
       // Get updated populated cart
@@ -401,7 +410,7 @@ router.post('/add', verifyToken, async (req, res) => {
         processedCustomizations.forEach(customization => {
           if (customization.selectedOptions?.length) {
             customization.selectedOptions.forEach(option => {
-              customizationTotal += (option.price || 0) * (option.quantity || 1);
+              customizationTotal += (option.price || 0) * quantity;
             });
           }
         });
@@ -409,11 +418,11 @@ router.post('/add', verifyToken, async (req, res) => {
       
       if (processedAddons?.length) {
         processedAddons.forEach(addon => {
-          addonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 1);
+          addonTotal += (addon.selectedAttributePrice || 0) * quantity;
         });
       }
       
-      const itemTotal = (itemPrice + customizationTotal + addonTotal) * quantity;
+      const itemTotal = (itemPrice * quantity) + customizationTotal + addonTotal;
       
       cart.items.push({
         itemId,
@@ -831,11 +840,51 @@ router.put('/increase', verifyToken, async (req, res) => {
       const cartItem = cart.items[itemIndex];
       cartItem.quantity += 1;
       
-      // Recalculate item total
+      // Update addon quantities to match item quantity
+      if (cartItem.selectedAddons?.length) {
+        cartItem.selectedAddons.forEach(addon => {
+          addon.quantity = cartItem.quantity;
+        });
+      }
+      
+      // Update customization option quantities to match item quantity
+      if (cartItem.selectedCustomizations?.length) {
+        cartItem.selectedCustomizations.forEach(customization => {
+          if (customization.selectedOptions?.length) {
+            customization.selectedOptions.forEach(option => {
+              option.quantity = cartItem.quantity;
+            });
+          }
+        });
+      }
+      
+      // Recalculate totals
       const basePrice = cartItem.selectedAttributePrice || 0;
-      const customizationTotal = cartItem.customizationTotal || 0;
-      const addonTotal = cartItem.addonTotal || 0;
-      cartItem.itemTotal = (basePrice + customizationTotal + addonTotal) * cartItem.quantity;
+      let newCustomizationTotal = 0;
+      let newAddonTotal = 0;
+      
+      // Calculate new customization total
+      if (cartItem.selectedCustomizations?.length) {
+        cartItem.selectedCustomizations.forEach(customization => {
+          if (customization.selectedOptions?.length) {
+            customization.selectedOptions.forEach(option => {
+              newCustomizationTotal += (option.price || 0) * (option.quantity || 0);
+            });
+          }
+        });
+      }
+      
+      // Calculate new addon total
+      if (cartItem.selectedAddons?.length) {
+        cartItem.selectedAddons.forEach(addon => {
+          newAddonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 0);
+        });
+      }
+      
+      // Update stored totals
+      cartItem.customizationTotal = newCustomizationTotal;
+      cartItem.addonTotal = newAddonTotal;
+      cartItem.itemTotal = (basePrice * cartItem.quantity) + newCustomizationTotal + newAddonTotal;
       
       // Recalculate cart total
       cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
@@ -1087,11 +1136,51 @@ router.put('/decrease', verifyToken, async (req, res) => {
       if (cartItem.quantity <= 0) {
         cart.items.splice(itemIndex, 1);
       } else {
-        // Recalculate item total
+        // Update addon quantities to match item quantity
+        if (cartItem.selectedAddons?.length) {
+          cartItem.selectedAddons.forEach(addon => {
+            addon.quantity = cartItem.quantity;
+          });
+        }
+        
+        // Update customization option quantities to match item quantity
+        if (cartItem.selectedCustomizations?.length) {
+          cartItem.selectedCustomizations.forEach(customization => {
+            if (customization.selectedOptions?.length) {
+              customization.selectedOptions.forEach(option => {
+                option.quantity = cartItem.quantity;
+              });
+            }
+          });
+        }
+        
+        // Recalculate totals
         const basePrice = cartItem.selectedAttributePrice || 0;
-        const customizationTotal = cartItem.customizationTotal || 0;
-        const addonTotal = cartItem.addonTotal || 0;
-        cartItem.itemTotal = (basePrice + customizationTotal + addonTotal) * cartItem.quantity;
+        let newCustomizationTotal = 0;
+        let newAddonTotal = 0;
+        
+        // Calculate new customization total
+        if (cartItem.selectedCustomizations?.length) {
+          cartItem.selectedCustomizations.forEach(customization => {
+            if (customization.selectedOptions?.length) {
+              customization.selectedOptions.forEach(option => {
+                newCustomizationTotal += (option.price || 0) * (option.quantity || 0);
+              });
+            }
+          });
+        }
+        
+        // Calculate new addon total
+        if (cartItem.selectedAddons?.length) {
+          cartItem.selectedAddons.forEach(addon => {
+            newAddonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 0);
+          });
+        }
+        
+        // Update stored totals
+        cartItem.customizationTotal = newCustomizationTotal;
+        cartItem.addonTotal = newAddonTotal;
+        cartItem.itemTotal = (basePrice * cartItem.quantity) + newCustomizationTotal + newAddonTotal;
       }
     }
     
@@ -1266,7 +1355,7 @@ router.put('/update', verifyToken, async (req, res) => {
               addonId: selectedAddon.addonId,
               selectedAttribute: selectedAddon.selectedAttribute,
               selectedAttributePrice: addonAttributePrice,
-              quantity: selectedAddon.quantity || 1
+              quantity: quantity  // Use item quantity for addon quantity
             });
           }
         }
@@ -1289,7 +1378,7 @@ router.put('/update', verifyToken, async (req, res) => {
                     optionQuantity: option.quantity,
                     unit: option.unit,
                     price: option.price || 0,
-                    quantity: selectedOption.quantity || 1
+                    quantity: quantity  // Use item quantity for customization quantity
                   });
                 }
               }
@@ -1315,7 +1404,7 @@ router.put('/update', verifyToken, async (req, res) => {
         processedCustomizations.forEach(customization => {
           if (customization.selectedOptions?.length) {
             customization.selectedOptions.forEach(option => {
-              customizationTotal += (option.price || 0) * (option.quantity || 1);
+              customizationTotal += (option.price || 0) * quantity;
             });
           }
         });
@@ -1323,11 +1412,11 @@ router.put('/update', verifyToken, async (req, res) => {
       
       if (processedAddons?.length) {
         processedAddons.forEach(addon => {
-          addonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 1);
+          addonTotal += (addon.selectedAttributePrice || 0) * quantity;
         });
       }
       
-      const itemTotal = (itemPrice + customizationTotal + addonTotal) * quantity;
+      const itemTotal = (itemPrice * quantity) + customizationTotal + addonTotal;
       
       // Update cart item with new data
       cartItem.quantity = quantity;

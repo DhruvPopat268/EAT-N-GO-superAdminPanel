@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const OrderRequest = require('../usersModels/OrderRequest');
-const { processOrdersWithTotals } = require('../utils/orderHelpers');
 const { buildOrderQuery, orderPopulateConfig } = require('../utils/orderPopulate');
 
 // Get all order requests for restaurant
@@ -54,7 +53,7 @@ router.get('/all', authMiddleware, async (req, res) => {
 
     const orderRequests = await buildOrderQuery(OrderRequest, filter, { page, limit });
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -116,7 +115,7 @@ router.get('/pending', authMiddleware, async (req, res) => {
 
     const orderRequests = await buildOrderQuery(OrderRequest, filter, { page, limit });
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -178,7 +177,7 @@ router.get('/confirmed', authMiddleware, async (req, res) => {
 
     const orderRequests = await buildOrderQuery(OrderRequest, filter, { page, limit });
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -240,7 +239,7 @@ router.get('/waiting', authMiddleware, async (req, res) => {
 
     const orderRequests = await buildOrderQuery(OrderRequest, filter, { page, limit });
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -302,7 +301,7 @@ router.get('/completed', authMiddleware, async (req, res) => {
 
     const orderRequests = await buildOrderQuery(OrderRequest, filter, { page, limit });
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -364,7 +363,7 @@ router.get('/rejected', authMiddleware, async (req, res) => {
 
     const orderRequests = await buildOrderQuery(OrderRequest, filter, { page, limit });
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -403,8 +402,7 @@ router.get('/by-id', authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order request not found' });
     }
 
-    const processedOrderRequests = await processOrdersWithTotals([orderRequest]);
-    const processedOrder = processedOrderRequests[0];
+    const processedOrder = orderRequest.toObject();
 
     res.json({
       success: true,

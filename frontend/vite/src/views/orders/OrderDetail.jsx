@@ -327,9 +327,12 @@ export default function OrderDetail() {
                               </Typography>
                               {item.selectedCustomizations.map((custom, idx) => (
                                 <Box key={idx} sx={{ ml: 1 }}>
+                                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                    {custom.customizationName}:
+                                  </Typography>
                                   {custom.selectedOptions?.map((option, optIdx) => (
-                                    <Typography key={optIdx} variant="body2" color="text.secondary">
-                                      • {option.optionName} ({option.optionUnit})
+                                    <Typography key={optIdx} variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                                      {option.optionName} ({option.unit}) × {option.quantity}
                                     </Typography>
                                   ))}
                                 </Box>

@@ -3,7 +3,6 @@ const router = express.Router();
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const OrderRequest = require('../usersModels/OrderRequest');
 const OrderStatusReason = require('../models/orderReqActionReason');
-const { processOrdersWithTotals } = require('../utils/orderHelpers');
 
 // Get all order requests for restaurant
 router.get('/all', restaurantAuthMiddleware, async (req, res) => {
@@ -95,7 +94,7 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -198,7 +197,7 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -301,7 +300,7 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -404,7 +403,7 @@ router.get('/rejected', restaurantAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -507,7 +506,7 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -610,7 +609,7 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -685,8 +684,7 @@ router.get('/by-id', restaurantAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order request not found' });
     }
 
-    const processedOrderRequests = await processOrdersWithTotals([orderRequest]);
-    const processedOrder = processedOrderRequests[0];
+    const processedOrder = orderRequest.toObject();
 
     res.json({
       success: true,

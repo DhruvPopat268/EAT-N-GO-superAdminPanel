@@ -4,7 +4,6 @@ const { verifyToken } = require('../middleware/userAuth');
 const Cart = require('../usersModels/Cart');
 const OrderRequest = require('../usersModels/OrderRequest');
 const Restaurant = require('../models/Restaurant');
-const { processOrdersWithTotals } = require('../utils/orderHelpers');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 
 // Helper function to check if time is within operating hours using IST
@@ -143,7 +142,7 @@ router.get('/', verifyToken, async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    const processedOrderRequests = await processOrdersWithTotals(orderRequests);
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
 
     res.json({
       success: true,
@@ -259,7 +258,7 @@ router.post('/create', verifyToken, async (req, res) => {
       });
     }
 
-    // Create order request
+    // Create order request with cart data including totals
     const orderRequest = new OrderRequest({
       userId,
       restaurantId: cart.restaurantId,
@@ -269,12 +268,13 @@ router.post('/create', verifyToken, async (req, res) => {
       eatTimings,
       dineInstructions,
       takeawayTimings,
-      takeawayInstructions
+      takeawayInstructions,
+      cartTotal: cart.cartTotal
     });
 
     await orderRequest.save();
 
-    // ⭐ NOW POPULATE — same as the Cart populate logic ⭐
+    // Populate the created order request
     const populatedOrderRequest = await OrderRequest.findById(orderRequest._id)
       .populate({
         path: 'items.itemId',
@@ -314,12 +314,12 @@ router.post('/create', verifyToken, async (req, res) => {
         select: 'name'
       });
 
-    const processedOrderRequests = await processOrdersWithTotals([populatedOrderRequest]);
+    const processedOrderRequest = populatedOrderRequest.toObject();
 
     res.status(201).json({
       success: true,
       message: 'Order request created successfully',
-      data: processedOrderRequests[0]
+      data: processedOrderRequest
     });
 
   } catch (error) {

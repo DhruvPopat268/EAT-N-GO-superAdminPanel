@@ -37,6 +37,11 @@ const orderRequestSchema = new mongoose.Schema(
         ref: 'Attribute'
       },
       
+      selectedAttributePrice: {
+        type: Number,
+        default: 0
+      },
+      
       selectedFoodType: {
         type: String,
         enum: ['Regular', 'Jain', 'Swaminarayan'],
@@ -45,8 +50,15 @@ const orderRequestSchema = new mongoose.Schema(
       
       selectedCustomizations: [{
         customizationId: String,
+        customizationName: String,
+        customizationType: String,
+        isRequired: Boolean,
         selectedOptions: [{
           optionId: String,
+          optionName: String,
+          optionQuantity: Number,
+          unit: String,
+          price: Number,
           quantity: Number,
           _id: false
         }],
@@ -62,13 +74,31 @@ const orderRequestSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Attribute'
         },
+        selectedAttributePrice: {
+          type: Number,
+          default: 0
+        },
         quantity: {
           type: Number,
           default: 1,
           min: 1
         },
         _id: false
-      }]
+      }],
+      
+      // Calculated totals for security
+      itemTotal: {
+        type: Number,
+        default: 0
+      },
+      customizationTotal: {
+        type: Number,
+        default: 0
+      },
+      addonTotal: {
+        type: Number,
+        default: 0
+      }
     }],
 
     // dine-in OR takeaway
@@ -122,6 +152,12 @@ const orderRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
     },
+    
+    // Order level totals for security
+    cartTotal: {
+      type: Number,
+      default: 0
+    }
   },
   {
     timestamps: true,

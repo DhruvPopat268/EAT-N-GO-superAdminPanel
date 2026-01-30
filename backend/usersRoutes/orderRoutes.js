@@ -4,8 +4,6 @@ const { verifyToken } = require('../middleware/userAuth');
 const Cart = require('../usersModels/Cart');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
-const { calculateCartTotals } = require('../utils/cartHelpers');
-const { processOrdersWithTotals } = require('../utils/orderHelpers');
 
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
@@ -113,39 +111,15 @@ router.post('/place', verifyToken, async (req, res) => {
       });
     }
 
-    // Calculate total amount using populated order request items
-    const populatedOrderRequest = await OrderRequest.findById(orderReqId)
-      .populate({
-        path: 'items.itemId',
-        model: 'Item',
-        select: 'attributes customizations addons'
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        model: 'Attribute'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        model: 'AddonItem',
-        select: 'attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        model: 'Attribute'
-      });
-
-    const { processedItems, cartTotal } = calculateCartTotals(populatedOrderRequest.items);
+    // Use cart total directly from database
+    const cartTotal = cart.cartTotal || 0;
 
     // Create order
     const order = new Order({
       userId,
       restaurantId: orderRequest.restaurantId,
       orderRequestId: orderReqId,
-      items: orderRequest.items,
+      items: cart.items,
       orderType: orderRequest.orderType,
       numberOfGuests: orderRequest.numberOfGuests,
       eatTimings: orderRequest.eatTimings,
@@ -154,6 +128,7 @@ router.post('/place', verifyToken, async (req, res) => {
       takeawayInstructions: orderRequest.takeawayInstructions,
       paymentMethod,
       totalAmount: cartTotal,
+      cartTotal,
       // If order request was waiting, set order status to waiting and copy waitingTime
       status: orderRequest.status === 'waiting' ? 'waiting' : 'confirmed',
       waitingTime: orderRequest.waitingTime || undefined,
@@ -214,8 +189,7 @@ router.post('/place', verifyToken, async (req, res) => {
       });
 
     // Process order with totals
-    const processedOrders = await processOrdersWithTotals([populatedOrder]);
-    const processedOrder = processedOrders[0];
+    const processedOrder = populatedOrder.toObject();
 
     res.status(201).json({
       success: true,
