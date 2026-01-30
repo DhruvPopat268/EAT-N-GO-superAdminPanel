@@ -6,7 +6,7 @@ const Attribute = require('../models/Attribute');
 const AddonItem = require('../models/AddonItem');
 const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
-const { calculateCartTotals, findExistingCartItem } = require('../utils/cartHelpers');
+const { findExistingCartItem } = require('../utils/cartHelpers');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 
 // Get user cart
@@ -18,8 +18,7 @@ router.get('/', verifyToken, async (req, res) => {
       .populate({
         path: 'items.itemId',
         model: 'Item',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
         populate: [
           {
             path: 'subcategory',
@@ -34,7 +33,7 @@ router.get('/', verifyToken, async (req, res) => {
           {
             path: 'addons',
             model: 'AddonItem',
-            select: 'category name description images currency isAvailable',
+            select: 'category name description images currency isAvailable attributes',
             populate: {
               path: 'attributes.attribute',
               model: 'Attribute',
@@ -51,11 +50,7 @@ router.get('/', verifyToken, async (req, res) => {
       .populate({
         path: 'items.selectedAddons.addonId',
         model: 'AddonItem',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          model: 'Attribute'
-        }
+        select: 'category name description images currency isAvailable'
       })
       .populate({
         path: 'items.selectedAddons.selectedAttribute',
@@ -68,23 +63,18 @@ router.get('/', verifyToken, async (req, res) => {
         success: true,
         message: 'Cart is empty',
         data: {
-          cart: { items: [] },
+          items: [],
           cartTotal: 0
         }
       });
     }
 
     const cartObj = cart.toObject();
-    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
-    cartObj.items = processedItems;
 
     res.json({
       success: true,
       message: 'Cart retrieved successfully',
-      data: {
-        cart: cartObj,
-        cartTotal
-      }
+      data: cartObj
     });
   } catch (error) {
     console.error(error);
@@ -100,24 +90,7 @@ router.get('/', verifyToken, async (req, res) => {
 router.get('/summary', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-
-    const cart = await Cart.findOne({ userId })
-      .populate({
-        path: 'items.itemId',
-        select: 'attributes'
-      })
-      .populate({
-        path: 'items.selectedAttribute',
-        select: 'price'
-      })
-      .populate({
-        path: 'items.selectedAddons.addonId',
-        select: 'attributes'
-      })
-      .populate({
-        path: 'items.selectedAddons.selectedAttribute',
-        select: 'price'
-      });
+    const cart = await Cart.findOne({ userId });
 
     if (!cart || !cart.items.length) {
       return res.json({
@@ -129,14 +102,13 @@ router.get('/summary', verifyToken, async (req, res) => {
       });
     }
 
-    const { cartTotal } = calculateCartTotals(cart.items);
     const totalItems = cart.items.length;
 
     res.json({
       success: true,
       data: {
         totalItems,
-        cartTotal
+        cartTotal: cart.cartTotal || 0
       }
     });
   } catch (error) {
@@ -170,48 +142,18 @@ router.post('/add', verifyToken, async (req, res) => {
       });
     }
 
-    // Validate addon quantities (should be 1 max)
-    if (selectedAddons?.length) {
-      for (const selectedAddon of selectedAddons) {
-        if (selectedAddon.quantity && selectedAddon.quantity > 1) {
-          return res.status(400).json({
-            success: false,
-            message: 'Addon quantity must be 1'
-          });
-        }
-      }
-    }
-
-    // Validate customization option quantities (should be 1 max)
-    if (selectedCustomizations?.length) {
-      for (const selectedCustomization of selectedCustomizations) {
-        if (selectedCustomization.selectedOptions?.length) {
-          for (const selectedOption of selectedCustomization.selectedOptions) {
-            if (selectedOption.quantity && selectedOption.quantity > 1) {
-              return res.status(400).json({
-                success: false,
-                message: 'Customization option quantity must be 1'
-              });
-            }
-          }
-        }
-      }
-    }
-
     /* -------------------- Restaurant Checks -------------------- */
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
 
-    /* -------------------- Cart Validation -------------------- */
     const existingCart = await Cart.findOne({ userId });
     if (existingCart && existingCart.restaurantId.toString() !== restaurantId) {
       return res.status(400).json({
         success: false,
         code: 'CART_RESTAURANT_MISMATCH',
-        message:
-          'You can only add items from one restaurant at a time. Please clear your current cart first.'
+        message: 'You can only add items from one restaurant at a time. Please clear your current cart first.'
       });
     }
 
@@ -230,12 +172,10 @@ router.post('/add', verifyToken, async (req, res) => {
       }
     }
 
-    /* -------------------- Item Checks -------------------- */
+    /* -------------------- Item Checks & Price Snapshot -------------------- */
     const item = await Item.findOne({ _id: itemId, restaurantId })
-      .populate({
-        path: 'addons',
-        select: 'attributes'
-      });
+      .populate({ path: 'addons', select: 'attributes' });
+    
     if (!item) {
       return res.status(404).json({
         success: false,
@@ -250,24 +190,23 @@ router.post('/add', verifyToken, async (req, res) => {
       });
     }
 
+    let selectedAttributePrice = 0;
     if (selectedAttribute) {
-      const attributeExists = item.attributes.some(
-        attr => attr.attribute.toString() === selectedAttribute
-      );
-      if (!attributeExists) {
+      const attr = item.attributes.find(attr => attr.attribute.toString() === selectedAttribute);
+      if (!attr) {
         return res.status(400).json({
           success: false,
           message: 'Selected attribute does not belong to this item'
         });
       }
+      selectedAttributePrice = attr.price || 0;
     }
 
-    /* -------------------- Addon Validation -------------------- */
+    /* -------------------- Addon Validation & Price Snapshot -------------------- */
+    let processedAddons = [];
     if (selectedAddons?.length) {
       for (const selectedAddon of selectedAddons) {
-        const addon = item.addons.find(
-          addon => addon._id.toString() === selectedAddon.addonId
-        );
+        const addon = item.addons.find(addon => addon._id.toString() === selectedAddon.addonId);
         if (!addon) {
           return res.status(400).json({
             success: false,
@@ -275,21 +214,29 @@ router.post('/add', verifyToken, async (req, res) => {
           });
         }
         
+        let addonAttributePrice = 0;
         if (selectedAddon.selectedAttribute) {
-          const attributeExists = addon.attributes?.some(
-            attr => attr.attribute.toString() === selectedAddon.selectedAttribute
-          );
-          if (!attributeExists) {
+          const addonAttr = addon.attributes?.find(attr => attr.attribute.toString() === selectedAddon.selectedAttribute);
+          if (!addonAttr) {
             return res.status(400).json({
               success: false,
               message: 'Selected attribute does not belong to the addon'
             });
           }
+          addonAttributePrice = addonAttr.price || 0;
         }
+        
+        processedAddons.push({
+          addonId: selectedAddon.addonId,
+          selectedAttribute: selectedAddon.selectedAttribute,
+          selectedAttributePrice: addonAttributePrice,
+          quantity: selectedAddon.quantity || 1
+        });
       }
     }
 
-    /* -------------------- Customization Validation -------------------- */
+    /* -------------------- Customization Validation & Snapshot Creation -------------------- */
+    let processedCustomizations = [];
     if (selectedCustomizations?.length) {
       for (const selectedCustomization of selectedCustomizations) {
         const customization = item.customizations?.find(
@@ -302,19 +249,37 @@ router.post('/add', verifyToken, async (req, res) => {
           });
         }
         
+        let processedOptions = [];
         if (selectedCustomization.selectedOptions?.length) {
           for (const selectedOption of selectedCustomization.selectedOptions) {
-            const optionExists = customization.options?.some(
+            const option = customization.options?.find(
               option => option._id.toString() === selectedOption.optionId
             );
-            if (!optionExists) {
+            if (!option) {
               return res.status(400).json({
                 success: false,
                 message: 'Selected option does not belong to this customization'
               });
             }
+            
+            processedOptions.push({
+              optionId: selectedOption.optionId,
+              optionName: option.label,
+              optionQuantity: option.quantity,
+              unit: option.unit,
+              price: option.price || 0,
+              quantity: selectedOption.quantity || 1
+            });
           }
         }
+        
+        processedCustomizations.push({
+          customizationId: selectedCustomization.customizationId,
+          customizationName: customization.name,
+          customizationType: customization.type,
+          isRequired: customization.isRequired,
+          selectedOptions: processedOptions
+        });
       }
     }
 
@@ -329,8 +294,8 @@ router.post('/add', verifyToken, async (req, res) => {
       itemId,
       selectedAttribute,
       selectedFoodType,
-      selectedCustomizations,
-      selectedAddons
+      selectedCustomizations: processedCustomizations,
+      selectedAddons: processedAddons
     });
 
     if (existingItem) {
@@ -338,8 +303,8 @@ router.post('/add', verifyToken, async (req, res) => {
       existingItem.quantity += quantity;
       
       // Update customization option quantities
-      if (selectedCustomizations?.length && existingItem.selectedCustomizations?.length) {
-        selectedCustomizations.forEach(newCustomization => {
+      if (processedCustomizations?.length && existingItem.selectedCustomizations?.length) {
+        processedCustomizations.forEach(newCustomization => {
           const existingCustomization = existingItem.selectedCustomizations.find(
             c => c.customizationId === newCustomization.customizationId
           );
@@ -377,117 +342,154 @@ router.post('/add', verifyToken, async (req, res) => {
       // Get updated populated cart
       const populatedCart = await Cart.findOne({ userId, restaurantId })
         .populate({
-          path: 'restaurantId',
-          select: 'basicInfo.restaurantName basicInfo.foodCategory'
-        })
-        .populate({
           path: 'items.itemId',
-          select:
-            'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+          model: 'Item',
+          select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
           populate: [
             {
               path: 'subcategory',
+              model: 'Subcategory',
+              select: 'name'
+            },
+            {
+              path: 'attributes.attribute',
+              model: 'Attribute',
               select: 'name'
             },
             {
               path: 'addons',
-              select: 'category name description images currency isAvailable attributes'
+              model: 'AddonItem',
+              select: 'category name description images currency isAvailable attributes',
+              populate: {
+                path: 'attributes.attribute',
+                model: 'Attribute',
+                select: 'name'
+              }
             }
           ]
         })
         .populate({
           path: 'items.selectedAttribute',
+          model: 'Attribute',
           select: 'name'
         })
         .populate({
           path: 'items.selectedAddons.addonId',
-          select: 'category name description images currency isAvailable attributes',
-          populate: {
-            path: 'attributes.attribute',
-            select: 'name'
-          }
+          model: 'AddonItem',
+          select: 'category name description images currency isAvailable'
         })
         .populate({
           path: 'items.selectedAddons.selectedAttribute',
+          model: 'Attribute',
           select: 'name'
         });
 
       const cartObj = populatedCart.toObject();
-      const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
-      cartObj.items = processedItems;
 
       return res.json({
         success: true,
         message: 'Item quantity updated in cart successfully',
-        data: {
-          cart: cartObj,
-          cartTotal
-        }
+        data: cartObj
       });
+    } else {
+      // Calculate totals for new item
+      const itemPrice = selectedAttributePrice || 0;
+      let customizationTotal = 0;
+      let addonTotal = 0;
+      
+      if (processedCustomizations?.length) {
+        processedCustomizations.forEach(customization => {
+          if (customization.selectedOptions?.length) {
+            customization.selectedOptions.forEach(option => {
+              customizationTotal += (option.price || 0) * (option.quantity || 1);
+            });
+          }
+        });
+      }
+      
+      if (processedAddons?.length) {
+        processedAddons.forEach(addon => {
+          addonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 1);
+        });
+      }
+      
+      const itemTotal = (itemPrice + customizationTotal + addonTotal) * quantity;
+      
+      cart.items.push({
+        itemId,
+        quantity,
+        selectedAttribute,
+        selectedAttributePrice,
+        selectedFoodType,
+        selectedCustomizations: processedCustomizations,
+        selectedAddons: processedAddons,
+        itemTotal,
+        customizationTotal,
+        addonTotal
+      });
+      
+      // Calculate cart total
+      let cartTotal = 0;
+      cart.items.forEach(item => {
+        cartTotal += item.itemTotal || 0;
+      });
+      cart.cartTotal = cartTotal;
+      
+      await cart.save();
     }
-
-    cart.items.push({
-      itemId,
-      quantity,
-      selectedAttribute,
-      selectedFoodType,
-      selectedCustomizations,
-      selectedAddons
-    });
-
-    await cart.save();
 
     /* -------------------- Populate Cart -------------------- */
     const populatedCart = await Cart.findOne({ userId, restaurantId })
       .populate({
-        path: 'restaurantId',
-        select: 'basicInfo.restaurantName basicInfo.foodCategory'
-      })
-      .populate({
         path: 'items.itemId',
-        select:
-          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        model: 'Item',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
         populate: [
           {
             path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'attributes.attribute',
+            model: 'Attribute',
             select: 'name'
           },
           {
             path: 'addons',
-            select: 'category name description images currency isAvailable attributes'
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes',
+            populate: {
+              path: 'attributes.attribute',
+              model: 'Attribute',
+              select: 'name'
+            }
           }
         ]
       })
       .populate({
         path: 'items.selectedAttribute',
+        model: 'Attribute',
         select: 'name'
       })
       .populate({
         path: 'items.selectedAddons.addonId',
-        select: 'category name description images currency isAvailable attributes',
-        populate: {
-          path: 'attributes.attribute',
-          select: 'name'
-        }
+        model: 'AddonItem',
+        select: 'category name description images currency isAvailable'
       })
       .populate({
         path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
         select: 'name'
       });
 
-    /* -------------------- Calculate Totals -------------------- */
-    const cartObj = populatedCart.toObject();
-    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
-    cartObj.items = processedItems;
-
     /* -------------------- Response -------------------- */
+    const cartObj = populatedCart.toObject();
+
     res.json({
       success: true,
       message: 'Item added to cart successfully',
-      data: {
-        cart: cartObj,
-        cartTotal
-      }
+      data: cartObj
     });
   } catch (error) {
     console.error(error);

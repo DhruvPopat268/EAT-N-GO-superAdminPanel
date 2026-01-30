@@ -31,6 +31,11 @@ const cartSchema = new mongoose.Schema({
       ref: 'Attribute'
     },
     
+    selectedAttributePrice: {
+      type: Number,
+      default: 0
+    },
+    
     selectedFoodType: {
       type: String,
       enum: ['Regular', 'Jain', 'Swaminarayan'],
@@ -39,8 +44,15 @@ const cartSchema = new mongoose.Schema({
     
     selectedCustomizations: [{
       customizationId: String,
+      customizationName: String,
+      customizationType: String,
+      isRequired: Boolean,
       selectedOptions: [{
         optionId: String,
+        optionName: String,
+        optionQuantity: Number,
+        unit: String,
+        price: Number,
         quantity: Number,
         _id: false
       }],
@@ -56,14 +68,38 @@ const cartSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Attribute'
       },
+      selectedAttributePrice: {
+        type: Number,
+        default: 0
+      },
       quantity: {
         type: Number,
         default: 1,
         min: 1
       },
       _id: false
-    }]
-  }]
+    }],
+    
+    // Calculated totals for security
+    itemTotal: {
+      type: Number,
+      default: 0
+    },
+    customizationTotal: {
+      type: Number,
+      default: 0
+    },
+    addonTotal: {
+      type: Number,
+      default: 0
+    }
+  }],
+  
+  // Cart level totals for security
+  cartTotal: {
+    type: Number,
+    default: 0
+  }
 }, { 
   timestamps: true 
 });
