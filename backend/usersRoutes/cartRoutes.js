@@ -634,6 +634,80 @@ router.post('/replace', verifyToken, async (req, res) => {
     /* -------------------- Clear Cart and Add New Item -------------------- */
     await Cart.findOneAndDelete({ userId });
     
+    // Get item details for price calculation
+    const itemForPricing = await Item.findById(itemId)
+      .populate({ path: 'addons', select: 'attributes' });
+    
+    let selectedAttributePrice = 0;
+    if (selectedAttribute) {
+      const attr = itemForPricing.attributes.find(attr => attr.attribute.toString() === selectedAttribute);
+      selectedAttributePrice = attr?.price || 0;
+    }
+    
+    // Process addons with price snapshots
+    let processedAddons = [];
+    let addonTotal = 0;
+    if (selectedAddons?.length) {
+      for (const selectedAddon of selectedAddons) {
+        const addon = itemForPricing.addons.find(addon => addon._id.toString() === selectedAddon.addonId);
+        if (addon) {
+          let addonAttributePrice = 0;
+          if (selectedAddon.selectedAttribute) {
+            const addonAttr = addon.attributes?.find(attr => attr.attribute.toString() === selectedAddon.selectedAttribute);
+            addonAttributePrice = addonAttr?.price || 0;
+          }
+          
+          processedAddons.push({
+            addonId: selectedAddon.addonId,
+            selectedAttribute: selectedAddon.selectedAttribute,
+            selectedAttributePrice: addonAttributePrice,
+            quantity: selectedAddon.quantity || 1
+          });
+          
+          addonTotal += addonAttributePrice * (selectedAddon.quantity || 1);
+        }
+      }
+    }
+    
+    // Process customizations with price snapshots
+    let processedCustomizations = [];
+    let customizationTotal = 0;
+    if (selectedCustomizations?.length) {
+      for (const selectedCustomization of selectedCustomizations) {
+        const customization = itemForPricing.customizations?.find(c => c._id.toString() === selectedCustomization.customizationId);
+        if (customization) {
+          let processedOptions = [];
+          if (selectedCustomization.selectedOptions?.length) {
+            for (const selectedOption of selectedCustomization.selectedOptions) {
+              const option = customization.options?.find(option => option._id.toString() === selectedOption.optionId);
+              if (option) {
+                processedOptions.push({
+                  optionId: selectedOption.optionId,
+                  optionName: option.label,
+                  optionQuantity: option.quantity,
+                  unit: option.unit,
+                  price: option.price || 0,
+                  quantity: selectedOption.quantity || 1
+                });
+                
+                customizationTotal += (option.price || 0) * (selectedOption.quantity || 1);
+              }
+            }
+          }
+          
+          processedCustomizations.push({
+            customizationId: selectedCustomization.customizationId,
+            customizationName: customization.name,
+            customizationType: customization.type,
+            isRequired: customization.isRequired,
+            selectedOptions: processedOptions
+          });
+        }
+      }
+    }
+    
+    const itemTotal = (selectedAttributePrice + customizationTotal + addonTotal) * quantity;
+    
     const cart = new Cart({
       userId,
       restaurantId,
@@ -641,10 +715,15 @@ router.post('/replace', verifyToken, async (req, res) => {
         itemId,
         quantity,
         selectedAttribute,
+        selectedAttributePrice,
         selectedFoodType,
-        selectedCustomizations,
-        selectedAddons
-      }]
+        selectedCustomizations: processedCustomizations,
+        selectedAddons: processedAddons,
+        itemTotal,
+        customizationTotal,
+        addonTotal
+      }],
+      cartTotal: itemTotal
     });
 
     await cart.save();
@@ -687,20 +766,13 @@ router.post('/replace', verifyToken, async (req, res) => {
         select: 'name'
       });
 
-    /* -------------------- Calculate Totals -------------------- */
+    /* -------------------- Response -------------------- */
     const cartObj = populatedCart.toObject();
-    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
-    cartObj.items = processedItems;
-
-    /* ----
-    ---------------- Response -------------------- */
+    
     res.json({
       success: true,
       message: 'Cart replaced successfully',
-      data: {
-        cart: cartObj,
-        cartTotal
-      }
+      data: cartObj
     });
   } catch (error) {
     console.error(error);
@@ -756,7 +828,18 @@ router.put('/increase', verifyToken, async (req, res) => {
         });
       }
 
-      cart.items[itemIndex].quantity += 1;
+      const cartItem = cart.items[itemIndex];
+      cartItem.quantity += 1;
+      
+      // Recalculate item total
+      const basePrice = cartItem.selectedAttributePrice || 0;
+      const customizationTotal = cartItem.customizationTotal || 0;
+      const addonTotal = cartItem.addonTotal || 0;
+      cartItem.itemTotal = (basePrice + customizationTotal + addonTotal) * cartItem.quantity;
+      
+      // Recalculate cart total
+      cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
+      
       await cart.save();
     } else if (itemRepeatationStatus === 'i_will_choose') {
       // Validate addon quantities (should be 1 max)
@@ -818,16 +901,108 @@ router.put('/increase', verifyToken, async (req, res) => {
       if (duplicateItem) {
         console.log('Item already exists in cart, increasing quantity');
         duplicateItem.quantity += 1;
+        
+        // Recalculate item total
+        const basePrice = duplicateItem.selectedAttributePrice || 0;
+        const customizationTotal = duplicateItem.customizationTotal || 0;
+        const addonTotal = duplicateItem.addonTotal || 0;
+        duplicateItem.itemTotal = (basePrice + customizationTotal + addonTotal) * duplicateItem.quantity;
+        
+        // Recalculate cart total
+        cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
       } else {
         console.log('No duplicate found, adding new item');
+        
+        // Get item details for price calculation
+        const item = await Item.findById(existingItem.itemId)
+          .populate({ path: 'addons', select: 'attributes' });
+        
+        let selectedAttributePrice = 0;
+        const selectedAttr = req.body.selectedAttribute || existingItem.selectedAttribute?.toString();
+        if (selectedAttr) {
+          const attr = item.attributes.find(attr => attr.attribute.toString() === selectedAttr);
+          selectedAttributePrice = attr?.price || 0;
+        }
+        
+        // Process addons with price snapshots
+        let processedAddons = [];
+        let addonTotal = 0;
+        if (selectedAddons?.length) {
+          for (const selectedAddon of selectedAddons) {
+            const addon = item.addons.find(addon => addon._id.toString() === selectedAddon.addonId);
+            if (addon) {
+              let addonAttributePrice = 0;
+              if (selectedAddon.selectedAttribute) {
+                const addonAttr = addon.attributes?.find(attr => attr.attribute.toString() === selectedAddon.selectedAttribute);
+                addonAttributePrice = addonAttr?.price || 0;
+              }
+              
+              processedAddons.push({
+                addonId: selectedAddon.addonId,
+                selectedAttribute: selectedAddon.selectedAttribute,
+                selectedAttributePrice: addonAttributePrice,
+                quantity: selectedAddon.quantity || 1
+              });
+              
+              addonTotal += addonAttributePrice * (selectedAddon.quantity || 1);
+            }
+          }
+        }
+        
+        // Process customizations with price snapshots
+        let processedCustomizations = [];
+        let customizationTotal = 0;
+        if (selectedCustomizations?.length) {
+          for (const selectedCustomization of selectedCustomizations) {
+            const customization = item.customizations?.find(c => c._id.toString() === selectedCustomization.customizationId);
+            if (customization) {
+              let processedOptions = [];
+              if (selectedCustomization.selectedOptions?.length) {
+                for (const selectedOption of selectedCustomization.selectedOptions) {
+                  const option = customization.options?.find(option => option._id.toString() === selectedOption.optionId);
+                  if (option) {
+                    processedOptions.push({
+                      optionId: selectedOption.optionId,
+                      optionName: option.label,
+                      optionQuantity: option.quantity,
+                      unit: option.unit,
+                      price: option.price || 0,
+                      quantity: selectedOption.quantity || 1
+                    });
+                    
+                    customizationTotal += (option.price || 0) * (selectedOption.quantity || 1);
+                  }
+                }
+              }
+              
+              processedCustomizations.push({
+                customizationId: selectedCustomization.customizationId,
+                customizationName: customization.name,
+                customizationType: customization.type,
+                isRequired: customization.isRequired,
+                selectedOptions: processedOptions
+              });
+            }
+          }
+        }
+        
+        const itemTotal = (selectedAttributePrice + customizationTotal + addonTotal) * 1;
+        
         cart.items.push({
           itemId: existingItem.itemId,
           quantity: 1,
-          selectedAttribute: (req.body.selectedAttribute || existingItem.selectedAttribute?.toString()),
+          selectedAttribute: selectedAttr,
+          selectedAttributePrice,
           selectedFoodType: existingItem.selectedFoodType,
-          selectedCustomizations,
-          selectedAddons
+          selectedCustomizations: processedCustomizations,
+          selectedAddons: processedAddons,
+          itemTotal,
+          customizationTotal,
+          addonTotal
         });
+        
+        // Recalculate cart total
+        cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
       }
       await cart.save();
     }
@@ -854,8 +1029,6 @@ router.put('/increase', verifyToken, async (req, res) => {
       .populate({ path: 'items.selectedAddons.selectedAttribute', select: 'name' });
 
     const cartObj = populatedCart.toObject();
-    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
-    cartObj.items = processedItems;
 
     const message = itemRepeatationStatus === 'repeat_last' ? 
       'Item quantity increased successfully' : 
@@ -864,7 +1037,7 @@ router.put('/increase', verifyToken, async (req, res) => {
     res.json({
       success: true,
       message,
-      data: { cart: cartObj, cartTotal }
+      data: cartObj
     });
   } catch (error) {
     res.status(500).json({
@@ -913,8 +1086,17 @@ router.put('/decrease', verifyToken, async (req, res) => {
       cartItem.quantity -= 1;
       if (cartItem.quantity <= 0) {
         cart.items.splice(itemIndex, 1);
+      } else {
+        // Recalculate item total
+        const basePrice = cartItem.selectedAttributePrice || 0;
+        const customizationTotal = cartItem.customizationTotal || 0;
+        const addonTotal = cartItem.addonTotal || 0;
+        cartItem.itemTotal = (basePrice + customizationTotal + addonTotal) * cartItem.quantity;
       }
     }
+    
+    // Recalculate cart total
+    cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
 
     await cart.save();
 
@@ -939,9 +1121,7 @@ router.put('/decrease', verifyToken, async (req, res) => {
       })
       .populate({ path: 'items.selectedAddons.selectedAttribute', select: 'name' });
 
-    const cartObj = populatedCart?.toObject() || { items: [] };
-    const { processedItems, cartTotal } = calculateCartTotals(cartObj.items);
-    cartObj.items = processedItems;
+    const cartObj = populatedCart?.toObject() || { items: [], cartTotal: 0 };
 
     const message = quantity === 0 || cartItem?.quantity <= 0 ? 
       'Item removed from cart successfully' : 
@@ -950,7 +1130,7 @@ router.put('/decrease', verifyToken, async (req, res) => {
     res.json({
       success: true,
       message,
-      data: { cart: cartObj, cartTotal }
+      data: cartObj
     });
   } catch (error) {
     res.status(500).json({
