@@ -117,6 +117,7 @@ router.post('/popular-items', verifyToken, async (req, res) => {
 router.get('/by-subcategory', verifyToken, async (req, res) => {
   try {
     const { subcategoryId, category, restaurantId } = req.query;
+    const userId = req.user.userId;
 
     if (!subcategoryId || !restaurantId) {
       return res.status(400).json({
@@ -169,10 +170,61 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
         }
       })
 
+    // Get user's cart to check which items are already added
+    const userCart = await Cart.findOne({ userId, restaurantId })
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'customizations attributes'
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'attributes'
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
+
+    // Add cart information to each item
+    const itemsWithCartInfo = items.map(item => {
+      const itemObj = item.toObject();
+      itemObj.cartItems = [];
+      
+      if (userCart && userCart.items) {
+        const cartItems = userCart.items.filter(
+          cartItem => cartItem.itemId && cartItem.itemId._id.toString() === item._id.toString()
+        );
+        
+        // Cart items already contain complete data with snapshots
+        itemObj.cartItems = cartItems.map(cartItem => ({
+          _id: cartItem._id,
+          quantity: cartItem.quantity,
+          selectedAttribute: cartItem.selectedAttribute,
+          selectedAttributePrice: cartItem.selectedAttributePrice,
+          selectedFoodType: cartItem.selectedFoodType,
+          selectedCustomizations: cartItem.selectedCustomizations,
+          selectedAddons: cartItem.selectedAddons,
+          itemTotal: cartItem.itemTotal,
+          customizationTotal: cartItem.customizationTotal,
+          addonTotal: cartItem.addonTotal
+        }));
+      }
+      
+      return itemObj;
+    });
+
     res.json({
       success: true,
       message: 'Items retrieved successfully',
-      data: items
+      data: itemsWithCartInfo
     });
   } catch (error) {
     res.status(500).json({
