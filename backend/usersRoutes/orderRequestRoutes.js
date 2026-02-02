@@ -97,6 +97,28 @@ function addonsEqual(arr1 = [], arr2 = []) {
   });
 }
 
+// Get order request by ID
+router.get('/:orderReqId', verifyToken, async (req, res) => {
+  try {
+    const { orderReqId } = req.params;
+    const userId = req.user.userId;
+
+    const orderRequest = await OrderRequest.findOne({ _id: orderReqId, userId });
+    
+    if (!orderRequest) {
+      return res.status(404).json({ success: false, message: 'Order request not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Order request retrieved successfully',
+      data: orderRequest
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // Get user order requests
 router.get('/', verifyToken, async (req, res) => {
   try {
