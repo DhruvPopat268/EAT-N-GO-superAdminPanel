@@ -18,6 +18,7 @@ import { IconClipboardList } from '@tabler/icons-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
+import { formatDateTime } from '../../utils/dateFormatter.js';
 
 export default function OrderRequestDetail() {
   const theme = useTheme();
@@ -55,15 +56,7 @@ export default function OrderRequestDetail() {
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+
 
   const getStatusChip = (status) => {
     const statusConfig = {
@@ -251,8 +244,8 @@ export default function OrderRequestDetail() {
                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
                       Order Req Date
                     </Typography>
-                    <Typography variant="body1" color="text.primary">
-                      {formatDate(orderRequest.createdAt)}
+                    <Typography variant="body1" color="text.primary" sx={{ whiteSpace: 'pre-line' }}>
+                      {formatDateTime(orderRequest.createdAt)}
                     </Typography>
                   </Box>
 
@@ -366,7 +359,7 @@ export default function OrderRequestDetail() {
                       Order Request Total
                     </Typography>
                     <Typography variant="h5" fontWeight={700} sx={{ color: '#00a63e' }}>
-                      ₹{orderRequest.orderTotal || 0}
+                      ₹{orderRequest.cartTotal || 0}
                     </Typography>
                   </Box>
                 </Box>

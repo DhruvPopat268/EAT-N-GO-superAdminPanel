@@ -24,6 +24,7 @@ import {
 import { IconEye, IconBuildingStore, IconSearch } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
+import { formatDateTime } from '../../utils/dateFormatter.js';
 
 const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
   const theme = useTheme();
@@ -170,9 +171,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
     );
   };
 
-  const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString();
-  };
+
 
   const formatTimings = (timings) => {
     if (!timings) return '-';
@@ -398,12 +397,12 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                           {getStatusChip(order.status)}
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
                             {formatDateTime(order.createdAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
                             {formatDateTime(order.updatedAt)}
                           </Typography>
                         </TableCell>

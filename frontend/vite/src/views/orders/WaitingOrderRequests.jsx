@@ -380,7 +380,7 @@ export default function WaitingOrderRequests() {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            ₹{orderRequest.orderTotal?.toFixed(2) || '0.00'}
+                            ₹{orderRequest.cartTotal?.toFixed(2) || '0.00'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

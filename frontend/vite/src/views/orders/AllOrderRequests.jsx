@@ -26,6 +26,7 @@ import { IconBuildingStore, IconSearch, IconClipboardList } from '@tabler/icons-
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
+import { formatDateTime } from '../../utils/dateFormatter.js';
 
 export default function AllOrderRequests() {
   const theme = useTheme();
@@ -136,23 +137,7 @@ export default function AllOrderRequests() {
 
   const filteredOrderRequests = getFilteredOrderRequests();
 
-  const formatDate = (dateString) => {
-    // Parse DD/MM/YYYY HH:mm:ss format
-    const [datePart, timePart] = dateString.split(' ');
-    const [day, month, year] = datePart.split('/');
-    const [hour, minute, second] = timePart.split(':');
-    
-    // Create date object with correct format (month is 0-indexed)
-    const date = new Date(year, month - 1, day, hour, minute, second);
-    
-    return date.toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+
 
   const getStatusChip = (status) => {
     const statusConfig = {
@@ -413,17 +398,17 @@ export default function AllOrderRequests() {
                        
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            ₹{orderRequest.orderTotal?.toFixed(2) || '0.00'}
+                            ₹{orderRequest.cartTotal?.toFixed(2) || '0.00'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
-                            {orderRequest.createdAt}
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
+                            {formatDateTime(orderRequest.createdAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
-                            {orderRequest.updatedAt}
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
+                            {formatDateTime(orderRequest.updatedAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

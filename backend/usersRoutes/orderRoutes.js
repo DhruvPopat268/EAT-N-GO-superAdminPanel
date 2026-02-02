@@ -4,6 +4,7 @@ const { verifyToken } = require('../middleware/userAuth');
 const Cart = require('../usersModels/Cart');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
+const User = require('../usersModels/usersModel');
 
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
@@ -136,6 +137,11 @@ router.post('/place', verifyToken, async (req, res) => {
     });
 
     await order.save();
+
+    // Add order to user's orders array
+    await User.findByIdAndUpdate(userId, {
+      $push: { orders: order._id }
+    });
 
     // Clear cart
     await Cart.findOneAndDelete({ userId });
