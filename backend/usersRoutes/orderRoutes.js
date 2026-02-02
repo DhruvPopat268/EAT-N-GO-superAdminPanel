@@ -5,6 +5,7 @@ const Cart = require('../usersModels/Cart');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
 const User = require('../usersModels/usersModel');
+const { emitOrderToRestaurant } = require('../utils/socketUtils');
 
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
@@ -196,6 +197,12 @@ router.post('/place', verifyToken, async (req, res) => {
 
     // Process order with totals
     const processedOrder = populatedOrder.toObject();
+
+    // Emit socket event to restaurant
+    const io = req.app.get('io');
+    if (io) {
+      emitOrderToRestaurant(io, order.restaurantId, processedOrder);
+    }
 
     res.status(201).json({
       success: true,

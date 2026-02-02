@@ -5,6 +5,7 @@ const Cart = require('../usersModels/Cart');
 const OrderRequest = require('../usersModels/OrderRequest');
 const Restaurant = require('../models/Restaurant');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
+const { emitToRestaurant } = require('../utils/socketUtils');
 
 // Helper function to check if time is within operating hours using IST
 function isTimeWithinOperatingHours(requestedTime, openTime, closeTime) {
@@ -298,6 +299,7 @@ router.post('/create', verifyToken, async (req, res) => {
 
     // Populate the created order request
     const populatedOrderRequest = await OrderRequest.findById(orderRequest._id)
+      .populate('userId', 'fullName phone')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -337,6 +339,12 @@ router.post('/create', verifyToken, async (req, res) => {
       });
 
     const processedOrderRequest = populatedOrderRequest.toObject();
+
+    // Emit socket event to restaurant
+    const io = req.app.get('io');
+    if (io) {
+      emitToRestaurant(io, orderRequest.restaurantId, 'new-order-req', processedOrderRequest);
+    }
 
     res.status(201).json({
       success: true,

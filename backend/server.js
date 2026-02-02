@@ -2,12 +2,15 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const connectToDb = require('./database/db');
+const initializeSocket = require('./config/socket');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
@@ -58,6 +61,12 @@ app.get('/api/sample/menu-items', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+// Initialize Socket.IO
+const io = initializeSocket(server);
+
+// Make io accessible to routes
+app.set('io', io);
+
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
