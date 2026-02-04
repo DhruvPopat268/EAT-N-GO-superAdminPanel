@@ -5,6 +5,7 @@ const Item = require('../models/Item');
 const Attribute = require('../models/Attribute');
 const AddonItem = require('../models/AddonItem');
 const Restaurant = require('../models/Restaurant');
+const Order = require('../usersModels/Order');
 const { verifyToken } = require('../middleware/userAuth');
 const { findExistingCartItem } = require('../utils/cartHelpers');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
@@ -1490,6 +1491,203 @@ router.put('/update', verifyToken, async (req, res) => {
       success: true,
       message: quantity === 0 ? 'Item removed from cart successfully' : 'Cart item updated successfully',
       data: cartObj
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get recommendations based on cart items
+router.get('/recommendations', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get current cart
+    const cart = await Cart.findOne({ userId }).populate('items.itemId', 'subcategory');
+    
+    if (!cart || !cart.items.length) {
+      return res.json({
+        success: true,
+        message: 'No recommendations available - cart is empty',
+        data: []
+      });
+    }
+
+    // Extract distinct subcategories from cart items
+    const subcategoryIds = [...new Set(cart.items.map(item => item.itemId.subcategory.toString()))];
+    
+    // Get current cart item IDs to filter out
+    const cartItemIds = cart.items.map(item => item.itemId._id.toString());
+
+    // Find recommended items from same restaurant with same subcategories
+    const recommendedItems = await Item.find({
+      restaurantId: cart.restaurantId,
+      subcategory: { $in: subcategoryIds },
+      _id: { $nin: cartItemIds },
+      isAvailable: true
+    })
+    .populate({
+      path:'subcategory',
+      model:'Subcategory',
+      select:'name'
+    })
+      .populate({
+        path: 'attributes.attribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'addons',
+        model: 'AddonItem',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute',
+          select: 'name'
+        }
+      })
+    .limit(10);
+
+    res.json({
+      success: true,
+      message: 'Recommendations retrieved successfully',
+      data: recommendedItems
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get last ordered items
+router.get('/last-orders-items', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get last 4-5 orders
+    const lastOrders = await Order.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('items');
+
+    if (!lastOrders.length) {
+      return res.json({
+        success: true,
+        message: 'No previous orders found',
+        data: []
+      });
+    }
+
+    // Extract item IDs in order (most recent first)
+    const orderedItemIds = [];
+    const seenIds = new Set();
+    
+    for (const order of lastOrders) {
+      for (const item of order.items) {
+        const itemId = item.itemId.toString();
+        if (!seenIds.has(itemId)) {
+          orderedItemIds.push(itemId);
+          seenIds.add(itemId);
+        }
+      }
+    }
+
+    // Get items and maintain order
+    const itemsMap = new Map();
+    const items = await Item.find({
+      _id: { $in: orderedItemIds },
+      isAvailable: true
+    })
+    .populate({
+      path: 'subcategory',
+      model: 'Subcategory',
+      select: 'name'
+    })
+    .populate({
+      path: 'attributes.attribute',
+      model: 'Attribute',
+      select: 'name'
+    })
+    .populate({
+      path: 'addons',
+      model: 'AddonItem',
+      populate: {
+        path: 'attributes.attribute',
+        model: 'Attribute',
+        select: 'name'
+      }
+    })
+    .select('category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons');
+
+    // Create map for quick lookup
+    items.forEach(item => itemsMap.set(item._id.toString(), item));
+
+    // Get user's current cart (any restaurant)
+    const userCart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'customizations attributes'
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'attributes'
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
+
+    // Return items in original order with cart info, limit to 5
+    const lastOrderedItems = orderedItemIds
+      .map(id => {
+        const item = itemsMap.get(id);
+        if (!item) return null;
+        
+        const itemObj = item.toObject();
+        itemObj.cartItems = [];
+        
+        if (userCart && userCart.items) {
+          const cartItems = userCart.items.filter(
+            cartItem => cartItem.itemId && cartItem.itemId._id.toString() === item._id.toString()
+          );
+          
+          itemObj.cartItems = cartItems.map(cartItem => ({
+            _id: cartItem._id,
+            quantity: cartItem.quantity,
+            selectedAttribute: cartItem.selectedAttribute,
+            selectedAttributePrice: cartItem.selectedAttributePrice,
+            selectedFoodType: cartItem.selectedFoodType,
+            selectedCustomizations: cartItem.selectedCustomizations,
+            selectedAddons: cartItem.selectedAddons,
+            itemTotal: cartItem.itemTotal,
+            customizationTotal: cartItem.customizationTotal,
+            addonTotal: cartItem.addonTotal
+          }));
+        }
+        
+        return itemObj;
+      })
+      .filter(item => item)
+      .slice(0, 5);
+
+    res.json({
+      success: true,
+      message: 'Last ordered items retrieved successfully',
+      data: lastOrderedItems
     });
   } catch (error) {
     res.status(500).json({

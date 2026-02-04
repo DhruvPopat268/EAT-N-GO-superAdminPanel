@@ -10,20 +10,20 @@ const { emitOrderToRestaurant } = require('../utils/socketUtils');
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
   if (cartItems.length !== orderRequestItems.length) return false;
-  
+
   return cartItems.every(cartItem => {
     return orderRequestItems.some(orderItem => {
       if (cartItem.itemId.toString() !== orderItem.itemId.toString()) return false;
       if (cartItem.quantity !== orderItem.quantity) return false;
       if ((cartItem.selectedAttribute?.toString() || null) !== (orderItem.selectedAttribute?.toString() || null)) return false;
       if ((cartItem.selectedFoodType || 'Regular') !== (orderItem.selectedFoodType || 'Regular')) return false;
-      
+
       // Check customizations
       if (!customizationsEqual(cartItem.selectedCustomizations, orderItem.selectedCustomizations)) return false;
-      
+
       // Check addons
       if (!addonsEqual(cartItem.selectedAddons, orderItem.selectedAddons)) return false;
-      
+
       return true;
     });
   });
@@ -31,13 +31,13 @@ function compareItemsConfiguration(cartItems, orderRequestItems) {
 
 function customizationsEqual(arr1 = [], arr2 = []) {
   if (arr1.length !== arr2.length) return false;
-  
+
   return arr1.every(c1 => {
     const c2 = arr2.find(c => c.customizationId === c1.customizationId);
     if (!c2) return false;
-    
+
     if (c1.selectedOptions.length !== c2.selectedOptions.length) return false;
-    
+
     return c1.selectedOptions.every(o1 => {
       return c2.selectedOptions.some(o2 => o2.optionId === o1.optionId && o2.quantity === o1.quantity);
     });
@@ -46,14 +46,14 @@ function customizationsEqual(arr1 = [], arr2 = []) {
 
 function addonsEqual(arr1 = [], arr2 = []) {
   if (arr1.length !== arr2.length) return false;
-  
+
   return arr1.every(a1 => {
     return arr2.some(a2 => {
       const addonId1 = a1.addonId?.toString() || a1.addonId;
       const addonId2 = a2.addonId?.toString() || a2.addonId;
       const attr1 = a1.selectedAttribute?.toString() || null;
       const attr2 = a2.selectedAttribute?.toString() || null;
-      
+
       return addonId1 === addonId2 && attr1 === attr2 && a1.quantity === a2.quantity;
     });
   });
@@ -149,7 +149,7 @@ router.post('/place', verifyToken, async (req, res) => {
 
     // Update order request with final order id only (keep current status)
     await OrderRequest.findByIdAndUpdate(orderReqId, {
-      $set: { 
+      $set: {
         finalOrderId: order._id
       }
     });
@@ -212,6 +212,250 @@ router.post('/place', verifyToken, async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Get user orders
+router.get('/', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { page = 1, limit = 10 } = req.query;
+
+    // Return all orders with pagination
+    const orders = await Order.find({ userId })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory')
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'category name description images'
+      })
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Order.countDocuments({ userId });
+
+    res.json({
+      success: true,
+      message: 'Orders retrieved successfully',
+      data: {
+        orders,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+        total
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get in-progress orders (for home screen)
+router.get('/inprogress', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const orders = await Order.find({
+      userId,
+      status: { $in: ['confirmed', 'waiting', 'preparing', 'ready'] }
+    })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
+      .sort({ createdAt: -1 });
+
+    // Transform orders to include itemsCount instead of items array
+    const ordersWithItemsCount = orders.map(order => {
+      const orderObj = order.toObject();
+      orderObj.itemsCount = orderObj.items ? orderObj.items.length : 0;
+      delete orderObj.items;
+      return orderObj;
+    });
+
+    res.json({
+      success: true,
+      message: 'In-progress orders retrieved successfully',
+      data: ordersWithItemsCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get active orders
+router.get('/active', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const orders = await Order.find({
+      userId,
+      status: { $nin: ['completed', 'cancelled'] }
+    })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
+      .sort({ createdAt: -1 });
+
+    const ordersWithItemsCount = orders.map(order => {
+      const orderObj = order.toObject();
+      orderObj.itemsCount = orderObj.items ? orderObj.items.length : 0;
+      delete orderObj.items;
+      return orderObj;
+    });
+
+    res.json({
+      success: true,
+      message: 'Active orders retrieved successfully',
+      data: ordersWithItemsCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get completed orders
+router.get('/completed', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const orders = await Order.find({
+      userId,
+      status: 'completed'
+    })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
+      .sort({ createdAt: -1 });
+
+    const ordersWithItemsCount = orders.map(order => {
+      const orderObj = order.toObject();
+      orderObj.itemsCount = orderObj.items ? orderObj.items.length : 0;
+      delete orderObj.items;
+      return orderObj;
+    });
+
+    res.json({
+      success: true,
+      message: 'Completed orders retrieved successfully',
+      data: ordersWithItemsCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get cancelled orders
+router.get('/cancelled', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const orders = await Order.find({
+      userId,
+      status: 'cancelled'
+    })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
+      .sort({ createdAt: -1 });
+
+    const ordersWithItemsCount = orders.map(order => {
+      const orderObj = order.toObject();
+      orderObj.itemsCount = orderObj.items ? orderObj.items.length : 0;
+      delete orderObj.items;
+      return orderObj;
+    });
+
+    res.json({
+      success: true,
+      message: 'Cancelled orders retrieved successfully',
+      data: ordersWithItemsCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// Get order details
+router.get('/:orderId', verifyToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.userId;
+
+    const order = await Order.findOne({ _id: orderId, userId })
+      .populate('userId', 'fullName phone')
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory')
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          {
+            path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'attributes.attribute',
+            model: 'Attribute',
+            select: 'name'
+          },
+          {
+            path: 'addons',
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes'
+          }
+        ]
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'category name description images currency isAvailable attributes',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute'
+        }
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Order details retrieved successfully',
+      data: order
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
   }
 });
 

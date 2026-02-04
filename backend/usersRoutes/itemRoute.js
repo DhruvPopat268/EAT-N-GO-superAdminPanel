@@ -238,26 +238,32 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
 // Search items
 router.get('/search', verifyToken, async (req, res) => {
   try {
-    const { query, restaurantId } = req.query;
+    const { query, restaurantId, limit = 20, offset = 0 } = req.query;
+    const userId = req.user.userId;
 
-    if (!query || !restaurantId) {
+    if (!restaurantId) {
       return res.status(400).json({
         success: false,
-        message: 'Search query and Restaurant ID are required'
+        message: 'Restaurant ID is required'
       });
     }
 
-    const escapedQuery = escapeRegex(query);
-    const items = await Item.find({
-      restaurantId,
-      name: { $regex: escapedQuery, $options: 'i' }
-    })
-    .populate({
-      path:'subcategory',
-      model:'Subcategory',
-      select:'name'
-    })
-    .populate({
+    // Build search filter
+    let searchFilter = { restaurantId, isAvailable: true };
+    
+    // If query is provided, add search condition
+    if (query && query.trim()) {
+      const escapedQuery = escapeRegex(query.trim());
+      searchFilter.name = { $regex: escapedQuery, $options: 'i' };
+    }
+
+    const items = await Item.find(searchFilter)
+      .populate({
+        path: 'subcategory',
+        model: 'Subcategory',
+        select: 'name'
+      })
+      .populate({
         path: 'attributes.attribute',
         model: 'Attribute',
         select: 'name'
@@ -271,11 +277,76 @@ router.get('/search', verifyToken, async (req, res) => {
           select: 'name'
         }
       })
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(offset));
+
+    // Get user's cart to check which items are already added
+    const userCart = await Cart.findOne({ userId, restaurantId })
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'customizations attributes'
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'attributes'
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
+
+    // Add cart information to each item
+    const itemsWithCartInfo = items.map(item => {
+      const itemObj = item.toObject();
+      itemObj.cartItems = [];
+      
+      if (userCart && userCart.items) {
+        const cartItems = userCart.items.filter(
+          cartItem => cartItem.itemId && cartItem.itemId._id.toString() === item._id.toString()
+        );
+        
+        itemObj.cartItems = cartItems.map(cartItem => ({
+          _id: cartItem._id,
+          quantity: cartItem.quantity,
+          selectedAttribute: cartItem.selectedAttribute,
+          selectedAttributePrice: cartItem.selectedAttributePrice,
+          selectedFoodType: cartItem.selectedFoodType,
+          selectedCustomizations: cartItem.selectedCustomizations,
+          selectedAddons: cartItem.selectedAddons,
+          itemTotal: cartItem.itemTotal,
+          customizationTotal: cartItem.customizationTotal,
+          addonTotal: cartItem.addonTotal
+        }));
+      }
+      
+      return itemObj;
+    });
+
+    // Get total count for pagination info
+    const total = await Item.countDocuments(searchFilter);
+    const hasMore = (parseInt(offset) + parseInt(limit)) < total;
 
     res.json({
       success: true,
-      message: 'Items searched successfully',
-      data: items
+      message: query ? 'Items searched successfully' : 'All items retrieved successfully',
+      data: {
+        items: itemsWithCartInfo,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore
+        }
+      }
     });
   } catch (error) {
     res.status(500).json({
