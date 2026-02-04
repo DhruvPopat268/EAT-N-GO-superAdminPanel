@@ -588,6 +588,21 @@ router.post('/replace', verifyToken, async (req, res) => {
       });
     }
 
+    // Validate selectedFoodType
+    if (selectedFoodType && !['Regular', 'Jain', 'Swaminarayan'].includes(selectedFoodType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid food type. Must be Regular, Jain, or Swaminarayan'
+      });
+    }
+
+    if (selectedFoodType && !item.foodTypes.includes(selectedFoodType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected food type is not available for this item'
+      });
+    }
+
     if (selectedAttribute) {
       const attributeExists = item.attributes.some(
         attr => attr.attribute.toString() === selectedAttribute
@@ -1371,6 +1386,21 @@ router.put('/update', verifyToken, async (req, res) => {
         return res.status(404).json({
           success: false,
           message: 'Item not found'
+        });
+      }
+
+      // Validate selectedFoodType
+      if (selectedFoodType && !['Regular', 'Jain', 'Swaminarayan'].includes(selectedFoodType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid food type. Must be Regular, Jain, or Swaminarayan'
+        });
+      }
+
+      if (selectedFoodType && !item.foodTypes.includes(selectedFoodType)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected food type is not available for this item'
         });
       }
 
