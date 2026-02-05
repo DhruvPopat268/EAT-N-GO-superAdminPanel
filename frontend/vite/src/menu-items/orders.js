@@ -54,6 +54,13 @@ const orders = {
           type: 'item',
           url: '/order-requests/rejected',
           breadcrumbs: false
+        },
+        {
+          id: 'order-requests-cancelled',
+          title: 'Cancelled',
+          type: 'item',
+          url: '/order-requests/cancelled',
+          breadcrumbs: false
         }
       ]
     },

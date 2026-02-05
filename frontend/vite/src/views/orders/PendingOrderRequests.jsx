@@ -26,6 +26,7 @@ import { IconBuildingStore, IconSearch, IconClock } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
+import { formatDateTime } from '../../utils/dateFormatter.js';
 
 export default function PendingOrderRequests() {
   const theme = useTheme();
@@ -385,18 +386,13 @@ export default function PendingOrderRequests() {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Box>
-                            <Typography variant="body2" color="black">
-                              {orderRequest.createdAt}
-                            </Typography>
-                            <Typography variant="body2" color="black">
-                              {getTimeSinceCreated(orderRequest.createdAt)}
-                            </Typography>
-                          </Box>
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
+                            {formatDateTime(orderRequest.createdAt)}
+                          </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
-                            {orderRequest.updatedAt}
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
+                            {formatDateTime(orderRequest.updatedAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

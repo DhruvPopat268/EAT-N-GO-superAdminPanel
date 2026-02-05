@@ -21,7 +21,7 @@ router.get('/all', authMiddleware, async (req, res) => {
     }
     
     // Add status filter
-    if (status && ['pending', 'confirmed', 'rejected', 'waiting', 'completed'].includes(status)) {
+    if (status && ['pending', 'confirmed', 'rejected', 'waiting', 'completed', 'cancelledByUser'].includes(status)) {
       filter.status = status;
     }
     
@@ -408,6 +408,68 @@ router.get('/by-id', authMiddleware, async (req, res) => {
       success: true,
       message: 'Order request retrieved successfully',
       data: processedOrder
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Get cancelled order requests
+router.get('/cancelled', authMiddleware, async (req, res) => {
+  try {
+    const { restaurantId, search, orderType, startDate, endDate } = req.query;
+    
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const filter = restaurantId ? { restaurantId, status: 'cancelledByUser' } : { status: 'cancelledByUser' };
+    
+    // Add orderType filter
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+    
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderRequestNo: { $regex: searchRegex } },
+        { 'userId.fullName': { $regex: searchRegex } },
+        { 'userId.phone': { $regex: searchRegex } }
+      ];
+    }
+    
+    const totalCount = await OrderRequest.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const orderRequests = await buildOrderQuery(OrderRequest, filter, { page, limit });
+
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
+
+    res.json({
+      success: true,
+      message: 'Cancelled order requests retrieved successfully',
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });

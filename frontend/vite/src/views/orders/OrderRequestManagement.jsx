@@ -34,7 +34,8 @@ const statusConfig = {
   confirmed: { label: 'Confirmed Order Requests', color: 'success' },
   waiting: { label: 'Waiting Order Requests', color: 'info' },
   completed: { label: 'Completed Order Requests', color: 'primary' },
-  rejected: { label: 'Rejected Order Requests', color: 'error' }
+  rejected: { label: 'Rejected Order Requests', color: 'error' },
+  cancelled: { label: 'Cancelled Order Requests', color: 'error' }
 };
 
 export default function OrderRequestManagement() {

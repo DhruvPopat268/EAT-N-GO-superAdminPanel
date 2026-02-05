@@ -627,6 +627,105 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
   }
 });
 
+// Get cancelled order requests
+router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurantId = req.restaurant.restaurantId;
+    const { search, orderType, startDate, endDate } = req.query;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const filter = { restaurantId, status: 'cancelledByUser' };
+    
+    if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = endDateTime;
+      }
+    }
+    
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      filter.$or = [
+        { orderRequestNo: { $regex: searchRegex } },
+        { 'userId.fullName': { $regex: searchRegex } },
+        { 'userId.phone': { $regex: searchRegex } }
+      ];
+    }
+
+    const totalCount = await OrderRequest.countDocuments(filter);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const orderRequests = await OrderRequest.find(filter)
+      .populate('userId', 'fullName phone')
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          {
+            path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'addons',
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes'
+          }
+        ]
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'category name description images currency isAvailable attributes',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute'
+        }
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const processedOrderRequests = orderRequests.map(order => order.toObject());
+
+    res.json({
+      success: true,
+      message: 'Cancelled order requests retrieved successfully',
+      data: processedOrderRequests,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // Get order request by orderReqId
 router.get('/by-id', restaurantAuthMiddleware, async (req, res) => {
   try {

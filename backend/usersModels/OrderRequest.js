@@ -126,7 +126,7 @@ const orderRequestSchema = new mongoose.Schema(
     // restaurant response
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'rejected', 'waiting', 'completed'],
+      enum: ['pending', 'confirmed', 'rejected', 'waiting', 'completed', 'cancelledByUser'],
       default: 'pending',
     },
 
@@ -182,5 +182,8 @@ orderRequestSchema.pre('save', async function(next) {
 
 // Compound unique index for per-restaurant order numbering
 orderRequestSchema.index({ restaurantId: 1, orderRequestNo: 1 }, { unique: true });
+
+// TTL index to auto-delete order requests after 5 minutes
+orderRequestSchema.index({ createdAt: 1 }, { expireAfterSeconds: 300 });
 
 module.exports = mongoose.model('OrderRequest', orderRequestSchema);

@@ -33,35 +33,35 @@ function findExistingOrderRequest(existingOrders, newOrderData) {
   return existingOrders.find(order => {
     // Check restaurant
     if (order.restaurantId.toString() !== newOrderData.restaurantId.toString()) return false;
-    
+
     // Check order type
     if (order.orderType !== newOrderData.orderType) return false;
-    
+
     // Check timings based on order type
     if (newOrderData.orderType === 'dine-in') {
       if (order.eatTimings?.startTime !== newOrderData.eatTimings?.startTime ||
-          order.eatTimings?.endTime !== newOrderData.eatTimings?.endTime) return false;
+        order.eatTimings?.endTime !== newOrderData.eatTimings?.endTime) return false;
     } else {
       if (order.takeawayTimings?.startTime !== newOrderData.takeawayTimings?.startTime ||
-          order.takeawayTimings?.endTime !== newOrderData.takeawayTimings?.endTime) return false;
+        order.takeawayTimings?.endTime !== newOrderData.takeawayTimings?.endTime) return false;
     }
-    
+
     // Check items configuration
     if (order.items.length !== newOrderData.items.length) return false;
-    
+
     return order.items.every(orderItem => {
       return newOrderData.items.some(newItem => {
         if (orderItem.itemId.toString() !== newItem.itemId.toString()) return false;
         if (orderItem.quantity !== newItem.quantity) return false;
         if ((orderItem.selectedAttribute?.toString() || null) !== (newItem.selectedAttribute?.toString() || null)) return false;
         if ((orderItem.selectedFoodType || 'Regular') !== (newItem.selectedFoodType || 'Regular')) return false;
-        
+
         // Check customizations
         if (!customizationsEqual(orderItem.selectedCustomizations, newItem.selectedCustomizations)) return false;
-        
+
         // Check addons
         if (!addonsEqual(orderItem.selectedAddons, newItem.selectedAddons)) return false;
-        
+
         return true;
       });
     });
@@ -70,13 +70,13 @@ function findExistingOrderRequest(existingOrders, newOrderData) {
 
 function customizationsEqual(arr1 = [], arr2 = []) {
   if (arr1.length !== arr2.length) return false;
-  
+
   return arr1.every(c1 => {
     const c2 = arr2.find(c => c.customizationId === c1.customizationId);
     if (!c2) return false;
-    
+
     if (c1.selectedOptions.length !== c2.selectedOptions.length) return false;
-    
+
     return c1.selectedOptions.every(o1 => {
       return c2.selectedOptions.some(o2 => o2.optionId === o1.optionId && o2.quantity === o1.quantity);
     });
@@ -85,14 +85,14 @@ function customizationsEqual(arr1 = [], arr2 = []) {
 
 function addonsEqual(arr1 = [], arr2 = []) {
   if (arr1.length !== arr2.length) return false;
-  
+
   return arr1.every(a1 => {
     return arr2.some(a2 => {
       const addonId1 = a1.addonId?.toString() || a1.addonId;
       const addonId2 = a2.addonId?.toString() || a2.addonId;
       const attr1 = a1.selectedAttribute?.toString() || null;
       const attr2 = a2.selectedAttribute?.toString() || null;
-      
+
       return addonId1 === addonId2 && attr1 === attr2 && a1.quantity === a2.quantity;
     });
   });
@@ -104,8 +104,8 @@ router.get('/:orderReqId', verifyToken, async (req, res) => {
     const { orderReqId } = req.params;
     const userId = req.user.userId;
 
-    const orderRequest = await OrderRequest.findOne({ _id: orderReqId, userId });
-    
+    const orderRequest = await OrderRequest.findOne({ _id: orderReqId, userId }).populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory');
+
     if (!orderRequest) {
       return res.status(404).json({ success: false, message: 'Order request not found' });
     }
@@ -126,6 +126,7 @@ router.get('/', verifyToken, async (req, res) => {
     const userId = req.user.userId;
 
     const orderRequests = await OrderRequest.find({ userId })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -190,21 +191,21 @@ router.post('/create', verifyToken, async (req, res) => {
 
     // Validate required fields
     if (orderType === 'dine-in') {
-      if (!numberOfGuests || !eatTimings?.startTime || !eatTimings?.endTime || !dineInstructions) {
+      if (!numberOfGuests || !eatTimings?.startTime || !eatTimings?.endTime) {
         return res.status(400).json({
           success: false,
-          message: 'For dine-in orders: numberOfGuests, eatTimings.startTime, eatTimings.endTime and dineInstructions are required'
+          message: 'For dine-in orders: numberOfGuests, eatTimings.startTime and eatTimings.endTime are required'
         });
       }
     } else if (orderType === 'takeaway') {
-      if (!takeawayTimings?.startTime || !takeawayTimings?.endTime || !takeawayInstructions) {
+      if (!takeawayTimings?.startTime || !takeawayTimings?.endTime) {
         return res.status(400).json({
           success: false,
-          message: 'For takeaway orders: takeawayTimings.startTime, takeawayTimings.endTime and takeawayInstructions are required'
+          message: 'For takeaway orders: takeawayTimings.startTime and takeawayTimings.endTime are required'
         });
       }
     }
-    
+
     // Find user's cart (WITHOUT population here)
     const cart = await Cart.findOne({ userId });
     if (!cart || cart.items.length === 0) {
@@ -224,14 +225,14 @@ router.post('/create', verifyToken, async (req, res) => {
         // For dine-in, check both start and end times
         const startTime = eatTimings?.startTime;
         const endTime = eatTimings?.endTime;
-        
+
         if (startTime && !isTimeWithinOperatingHours(startTime, openTime, closeTime)) {
           return res.status(400).json({
             success: false,
             message: `Restaurant is closed at start time. Operating hours: ${openTime} - ${closeTime}`
           });
         }
-        
+
         if (endTime && !isTimeWithinOperatingHours(endTime, openTime, closeTime)) {
           return res.status(400).json({
             success: false,
@@ -242,14 +243,14 @@ router.post('/create', verifyToken, async (req, res) => {
         // For takeaway, check both start and end times
         const startTime = takeawayTimings?.startTime;
         const endTime = takeawayTimings?.endTime;
-        
+
         if (startTime && !isTimeWithinOperatingHours(startTime, openTime, closeTime)) {
           return res.status(400).json({
             success: false,
             message: `Restaurant is closed at start time. Operating hours: ${openTime} - ${closeTime}`
           });
         }
-        
+
         if (endTime && !isTimeWithinOperatingHours(endTime, openTime, closeTime)) {
           return res.status(400).json({
             success: false,
@@ -260,11 +261,11 @@ router.post('/create', verifyToken, async (req, res) => {
     }
 
     // Check for existing order request with same configuration
-    const existingOrders = await OrderRequest.find({ 
-      userId, 
-      status: 'pending' 
+    const existingOrders = await OrderRequest.find({
+      userId,
+      status: 'pending'
     });
-    
+
     const duplicateOrder = findExistingOrderRequest(existingOrders, {
       restaurantId: cart.restaurantId,
       orderType,
@@ -272,7 +273,7 @@ router.post('/create', verifyToken, async (req, res) => {
       takeawayTimings,
       items: cart.items
     });
-    
+
     if (duplicateOrder) {
       return res.status(400).json({
         success: false,
@@ -352,6 +353,32 @@ router.post('/create', verifyToken, async (req, res) => {
       data: processedOrderRequest
     });
 
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Cancel order request
+router.post('/cancel', verifyToken, async (req, res) => {
+  try {
+    const { orderReqId } = req.body;
+    const userId = req.user.userId;
+
+    const orderRequest = await OrderRequest.findOneAndUpdate(
+      { _id: orderReqId, userId, status: 'pending' },
+      { status: 'cancelledByUser' },
+      { new: true }
+    );
+
+    if (!orderRequest) {
+      return res.status(404).json({ success: false, message: 'Order request not found or cannot be cancelled' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Order request cancelled successfully',
+      data: orderRequest
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }

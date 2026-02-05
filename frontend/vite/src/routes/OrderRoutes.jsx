@@ -9,6 +9,7 @@ const ConfirmedOrderRequests = Loadable(lazy(() => import('views/orders/Confirme
 const WaitingOrderRequests = Loadable(lazy(() => import('views/orders/WaitingOrderRequests')));
 const CompletedOrderRequests = Loadable(lazy(() => import('views/orders/CompletedOrderRequests')));
 const RejectedOrderRequests = Loadable(lazy(() => import('views/orders/RejectedOrderRequests')));
+const CancelledOrderRequests = Loadable(lazy(() => import('views/orders/CancelledOrderRequests')));
 const OrderRequestDetail = Loadable(lazy(() => import('views/orders/OrderRequestDetail')));
 
 // Order Management Components
@@ -103,6 +104,10 @@ const OrderRequestRoutes = {
     {
       path: 'rejected',
       element: <RejectedOrderRequests />
+    },
+    {
+      path: 'cancelled',
+      element: <CancelledOrderRequests />
     },
     {
       path: 'detail/:id',

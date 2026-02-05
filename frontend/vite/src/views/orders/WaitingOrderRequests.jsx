@@ -26,6 +26,7 @@ import { IconBuildingStore, IconSearch, IconHourglass } from '@tabler/icons-reac
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
+import { formatDateTime } from '../../utils/dateFormatter.js';
 
 export default function WaitingOrderRequests() {
   const theme = useTheme();
@@ -376,7 +377,9 @@ export default function WaitingOrderRequests() {
                           />
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          {getWaitingTimeChip(orderRequest.waitingTime)}
+                          <Typography variant="body2" color="black">
+                            {orderRequest.waitingTime ? `${orderRequest.waitingTime} min` : 'N/A'}
+                          </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
@@ -384,13 +387,13 @@ export default function WaitingOrderRequests() {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
-                            {orderRequest.createdAt}
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
+                            {formatDateTime(orderRequest.createdAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
-                            {orderRequest.updatedAt}
+                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
+                            {formatDateTime(orderRequest.updatedAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

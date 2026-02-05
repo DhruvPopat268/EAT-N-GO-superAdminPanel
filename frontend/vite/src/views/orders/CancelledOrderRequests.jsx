@@ -21,14 +21,14 @@ import {
   Tooltip,
   TablePagination
 } from '@mui/material';
-import { Visibility, Cancel, Info } from '@mui/icons-material';
+import { Visibility, Cancel } from '@mui/icons-material';
 import { IconBuildingStore, IconSearch, IconX } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
 import { formatDateTime } from '../../utils/dateFormatter.js';
 
-export default function RejectedOrderRequests() {
+export default function CancelledOrderRequests() {
   const theme = useTheme();
   const navigate = useNavigate();
   const toast = useToast();
@@ -78,7 +78,7 @@ export default function RejectedOrderRequests() {
   const fetchOrderRequests = async () => {
     try {
       setLoading(true);
-      let url = `${import.meta.env.VITE_BACKEND_URL}/api/order-requests/rejected?page=${page + 1}&limit=${rowsPerPage}`;
+      let url = `${import.meta.env.VITE_BACKEND_URL}/api/order-requests/cancelled?page=${page + 1}&limit=${rowsPerPage}`;
       
       if (selectedRestaurant?.restaurantId && selectedRestaurant.restaurantId !== 'all') {
         url += `&restaurantId=${selectedRestaurant.restaurantId}`;
@@ -107,11 +107,11 @@ export default function RejectedOrderRequests() {
         setOrderRequests(result.data);
         setTotalCount(result.pagination?.totalCount || 0);
       } else {
-        toast.error(result.message || 'Failed to fetch rejected order requests');
+        toast.error(result.message || 'Failed to fetch cancelled order requests');
       }
     } catch (error) {
       console.error('Error fetching order requests:', error);
-      toast.error('Failed to fetch rejected order requests');
+      toast.error('Failed to fetch cancelled order requests');
     } finally {
       setLoading(false);
     }
@@ -133,27 +133,21 @@ export default function RejectedOrderRequests() {
 
   const filteredOrderRequests = getFilteredOrderRequests();
 
-  const getRejectionReason = (orderReqReasonId) => {
-    // This would typically fetch from a reasons API or be populated
-    // For now, showing a placeholder
-    return orderReqReasonId ? 'Restaurant Unavailable' : 'No reason provided';
-  };
-
   return (
     <Box sx={{ p: 3 }}>
       <Fade in timeout={800}>
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <IconX size={32} color="#F44336" />
+            <Cancel sx={{ fontSize: 32, color: '#FF9800' }} />
             <Typography variant="h4" fontWeight="bold" color="text.primary">
-              Rejected Order Requests
+              Cancelled Order Requests
             </Typography>
             <Chip 
-              label={`${filteredOrderRequests.length} Rejected`}
+              label={`${filteredOrderRequests.length} Cancelled`}
               sx={{ 
-                bgcolor: '#F44336',
+                bgcolor: '#FF9800',
                 color: 'white',
-                border: '1px solid #F44336',
+                border: '1px solid #FF9800',
                 fontSize: '0.75rem',
                 fontWeight: 500
               }}
@@ -161,7 +155,7 @@ export default function RejectedOrderRequests() {
             />
           </Box>
           <Typography variant="body1" color="text.secondary">
-            Order requests rejected by restaurants with reasons
+            Order requests cancelled by users
           </Typography>
         </Box>
       </Fade>
@@ -262,7 +256,7 @@ export default function RejectedOrderRequests() {
           <TableContainer>
             <Table sx={{ minWidth: 800 }}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: alpha(theme.palette.error.main, 0.04) }}>
+                <TableRow sx={{ backgroundColor: alpha('#FF9800', 0.04) }}>
                   <TableCell sx={{ fontWeight: 700, py: 3, textAlign: 'center' }}>Order No</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>User Info</TableCell>
                   {selectedRestaurant?.restaurantId === 'all' && <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Restaurant</TableCell>}
@@ -270,7 +264,6 @@ export default function RejectedOrderRequests() {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Timings</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Total Items</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Waiting Time</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order Req Total</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>CreatedAt</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Updated At</TableCell>
@@ -280,20 +273,20 @@ export default function RejectedOrderRequests() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
-                      <ThemeSpinner message="Loading rejected order requests..." />
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
+                      <ThemeSpinner message="Loading cancelled order requests..." />
                     </TableCell>
                   </TableRow>
                 ) : filteredOrderRequests.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                        <IconX size={48} color={theme.palette.text.secondary} />
+                        <Cancel sx={{ fontSize: 48, color: theme.palette.text.secondary }} />
                         <Typography variant="h6" color="text.secondary">
-                          No rejected order requests
+                          No cancelled order requests
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {searchTerm ? 'Try adjusting your search' : 'No order requests have been rejected'}
+                          {searchTerm ? 'Try adjusting your search' : 'No order requests have been cancelled'}
                         </Typography>
                       </Box>
                     </TableCell>
@@ -301,7 +294,7 @@ export default function RejectedOrderRequests() {
                 ) : (
                   filteredOrderRequests.map((orderRequest, index) => (
                     <Fade in timeout={1200 + index * 100} key={orderRequest._id}>
-                      <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.error.main, 0.02) } }}>
+                      <TableRow sx={{ '&:hover': { backgroundColor: alpha('#FF9800', 0.02) } }}>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
                             #{orderRequest.orderRequestNo}
@@ -355,27 +348,17 @@ export default function RejectedOrderRequests() {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
-                            <Chip 
-                              label="Rejected"
-                              sx={{ 
-                                bgcolor: '#F44336',
-                                color: 'white',
-                                border: '1px solid #F44336',
-                                fontSize: '0.75rem',
-                                fontWeight: 500
-                              }}
-                              size="small"
-                            />
-                            <Tooltip title={getRejectionReason(orderRequest.orderReqReasonId)} arrow>
-                              <Info sx={{ fontSize: 16, color: 'error.main', cursor: 'pointer' }} />
-                            </Tooltip>
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black">
-                            N/A
-                          </Typography>
+                          <Chip 
+                            label="Cancelled by User"
+                            sx={{ 
+                              bgcolor: '#FF9800',
+                              color: 'white',
+                              border: '1px solid #FF9800',
+                              fontSize: '0.75rem',
+                              fontWeight: 500
+                            }}
+                            size="small"
+                          />
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black" sx={{ textDecoration: 'line-through' }}>

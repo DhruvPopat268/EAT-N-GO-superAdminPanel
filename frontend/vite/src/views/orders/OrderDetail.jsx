@@ -18,7 +18,7 @@ import { IconClipboardList } from '@tabler/icons-react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
-import { formatDateTime } from '../../utils/dateFormatter.js';
+import { formatDateTime, formatDate } from '../../utils/dateFormatter.js';
 
 export default function OrderDetail() {
   const theme = useTheme();
