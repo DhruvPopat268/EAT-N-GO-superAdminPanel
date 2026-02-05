@@ -206,6 +206,16 @@ router.post('/create', verifyToken, async (req, res) => {
       }
     }
 
+    // Check if user already has a pending order request
+    const existingPendingOrder = await OrderRequest.findOne({ userId, status: 'pending' });
+    if (existingPendingOrder) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'You already have a pending order request. Please wait for the restaurant to respond or cancel your existing request.',
+        code: 'PENDING_ORDER_EXISTS'
+      });
+    }
+
     // Find user's cart (WITHOUT population here)
     const cart = await Cart.findOne({ userId });
     if (!cart || cart.items.length === 0) {
@@ -260,27 +270,7 @@ router.post('/create', verifyToken, async (req, res) => {
       }
     }
 
-    // Check for existing order request with same configuration
-    const existingOrders = await OrderRequest.find({
-      userId,
-      status: 'pending'
-    });
 
-    const duplicateOrder = findExistingOrderRequest(existingOrders, {
-      restaurantId: cart.restaurantId,
-      orderType,
-      eatTimings,
-      takeawayTimings,
-      items: cart.items
-    });
-
-    if (duplicateOrder) {
-      return res.status(400).json({
-        success: false,
-        message: 'An order request with the same configuration already exists',
-        code: 'DUPLICATE_ORDER_REQUEST'
-      });
-    }
 
     // Create order request with cart data including totals
     const orderRequest = new OrderRequest({
