@@ -157,6 +157,12 @@ const orderRequestSchema = new mongoose.Schema(
     cartTotal: {
       type: Number,
       default: 0
+    },
+    
+    // TTL field for pending orders only
+    expireAt: {
+      type: Date,
+      index: { expires: 0 }
     }
   },
   {
@@ -164,7 +170,7 @@ const orderRequestSchema = new mongoose.Schema(
   }
 );
 
-// Pre-save hook to generate orderRequestNo
+// Pre-save hook to generate orderRequestNo and set expireAt for pending orders
 orderRequestSchema.pre('save', async function(next) {
   if (this.isNew) {
     const OrderReqCounter = require('../models/OrderReqCounter');
@@ -176,14 +182,21 @@ orderRequestSchema.pre('save', async function(next) {
     );
     
     this.orderRequestNo = counter.orderRequestCount;
+    
+    // Set expireAt only for pending status (5 minutes from now)
+    if (this.status === 'pending') {
+      this.expireAt = new Date(Date.now() + 5 * 60 * 1000);
+    }
+  } else if (this.isModified('status')) {
+    // Remove expireAt if status changes from pending
+    if (this.status !== 'pending') {
+      this.expireAt = undefined;
+    }
   }
   next();
 });
 
 // Compound unique index for per-restaurant order numbering
 orderRequestSchema.index({ restaurantId: 1, orderRequestNo: 1 }, { unique: true });
-
-// TTL index to auto-delete order requests after 5 minutes
-orderRequestSchema.index({ createdAt: 1 }, { expireAfterSeconds: 300 });
 
 module.exports = mongoose.model('OrderRequest', orderRequestSchema);

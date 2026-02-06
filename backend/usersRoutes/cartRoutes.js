@@ -355,9 +355,31 @@ router.post('/add', verifyToken, async (req, res) => {
       
       // Recalculate item total
       const basePrice = existingItem.selectedAttributePrice || 0;
-      const customizationTotal = existingItem.customizationTotal || 0;
-      const addonTotal = existingItem.addonTotal || 0;
-      existingItem.itemTotal = (basePrice + customizationTotal + addonTotal) * existingItem.quantity;
+      let newCustomizationTotal = 0;
+      let newAddonTotal = 0;
+      
+      // Calculate new customization total
+      if (existingItem.selectedCustomizations?.length) {
+        existingItem.selectedCustomizations.forEach(customization => {
+          if (customization.selectedOptions?.length) {
+            customization.selectedOptions.forEach(option => {
+              newCustomizationTotal += (option.price || 0) * (option.quantity || 0);
+            });
+          }
+        });
+      }
+      
+      // Calculate new addon total
+      if (existingItem.selectedAddons?.length) {
+        existingItem.selectedAddons.forEach(addon => {
+          newAddonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 0);
+        });
+      }
+      
+      // Update stored totals
+      existingItem.customizationTotal = newCustomizationTotal;
+      existingItem.addonTotal = newAddonTotal;
+      existingItem.itemTotal = (basePrice * existingItem.quantity) + newCustomizationTotal + newAddonTotal;
       
       // Recalculate cart total
       cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
@@ -434,7 +456,7 @@ router.post('/add', verifyToken, async (req, res) => {
       
       if (processedAddons?.length) {
         processedAddons.forEach(addon => {
-          addonTotal += (addon.selectedAttributePrice || 0) * quantity;
+          addonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 0);
         });
       }
       
@@ -1484,7 +1506,7 @@ router.put('/update', verifyToken, async (req, res) => {
       
       if (processedAddons?.length) {
         processedAddons.forEach(addon => {
-          addonTotal += (addon.selectedAttributePrice || 0) * quantity;
+          addonTotal += (addon.selectedAttributePrice || 0) * (addon.quantity || 0);
         });
       }
       

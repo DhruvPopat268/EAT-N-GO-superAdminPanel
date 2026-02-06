@@ -104,7 +104,50 @@ router.get('/:orderReqId', verifyToken, async (req, res) => {
     const { orderReqId } = req.params;
     const userId = req.user.userId;
 
-    const orderRequest = await OrderRequest.findOne({ _id: orderReqId, userId }).populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory');
+    const orderRequest = await OrderRequest.findOne({ _id: orderReqId, userId })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory')
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          {
+            path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'attributes.attribute',
+            model: 'Attribute',
+            select: 'name'
+          },
+          {
+            path: 'addons',
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes',
+            populate: {
+              path: 'attributes.attribute',
+              model: 'Attribute',
+              select: 'name'
+            }
+          }
+        ]
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'category name description images currency isAvailable'
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
 
     if (!orderRequest) {
       return res.status(404).json({ success: false, message: 'Order request not found' });
