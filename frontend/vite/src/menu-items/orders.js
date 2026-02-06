@@ -78,13 +78,6 @@ const orders = {
           breadcrumbs: false
         },
         {
-          id: 'orders-waiting',
-          title: 'Waiting Orders',
-          type: 'item',
-          url: '/orders/waiting',
-          breadcrumbs: false
-        },
-        {
           id: 'orders-confirmed',
           title: 'Confirmed Orders',
           type: 'item',

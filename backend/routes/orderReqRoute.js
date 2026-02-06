@@ -21,7 +21,7 @@ router.get('/all', authMiddleware, async (req, res) => {
     }
     
     // Add status filter
-    if (status && ['pending', 'confirmed', 'rejected', 'waiting', 'completed', 'cancelledByUser'].includes(status)) {
+    if (status && ['pending', 'confirmed', 'rejected', 'waiting', 'completed', 'cancelled'].includes(status)) {
       filter.status = status;
     }
     
@@ -423,7 +423,7 @@ router.get('/cancelled', authMiddleware, async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
-    const filter = restaurantId ? { restaurantId, status: 'cancelledByUser' } : { status: 'cancelledByUser' };
+    const filter = restaurantId ? { restaurantId, status: 'cancelled' } : { status: 'cancelled' };
     
     // Add orderType filter
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {

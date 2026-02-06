@@ -88,6 +88,71 @@ router.post('/place', verifyToken, async (req, res) => {
       });
     }
 
+    // Check if user has other active order requests
+    const otherActiveOrderReq = await OrderRequest.findOne({
+      userId,
+      _id: { $ne: orderReqId },
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+
+    if (otherActiveOrderReq) {
+      return res.status(400).json({
+        success: false,
+        message: `You have another order request (${otherActiveOrderReq.status}) that needs attention. Please complete or cancel that order request first.`,
+        code: 'OTHER_ORDER_REQUEST_ACTIVE'
+      });
+    }
+
+    // Validate timing - user cannot place order during their specified time slot
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+    
+    let timings;
+    if (orderRequest.orderType === 'dine-in') {
+      timings = orderRequest.eatTimings;
+    } else if (orderRequest.orderType === 'takeaway') {
+      timings = orderRequest.takeawayTimings;
+    }
+
+    if (timings && timings.startTime && timings.endTime) {
+      const startTime = timings.startTime.slice(0, 5); // Extract HH:MM
+      const endTime = timings.endTime.slice(0, 5); // Extract HH:MM
+
+      // Check if current time is within the specified time slot
+      if (currentTime >= startTime && currentTime <= endTime) {
+        // Auto-cancel the order request
+        await OrderRequest.findByIdAndUpdate(orderReqId, {
+          $set: {
+            status: 'cancelled',
+            cancelledBy: 'System'
+          }
+        });
+
+        return res.status(400).json({
+          success: false,
+          message: `You cannot place order during your specified time slot (${timings.startTime} - ${timings.endTime}). Order request has been cancelled.`,
+          code: 'ORDER_DURING_TIME_SLOT'
+        });
+      }
+
+      // Check if the time slot has already passed
+      if (currentTime > endTime) {
+        // Auto-cancel the order request
+        await OrderRequest.findByIdAndUpdate(orderReqId, {
+          $set: {
+            status: 'cancelled',
+            cancelledBy: 'System'
+          }
+        });
+
+        return res.status(400).json({
+          success: false,
+          message: `Your specified time slot (${timings.startTime} - ${timings.endTime}) has already passed. Order request has been cancelled.`,
+          code: 'TIME_SLOT_EXPIRED'
+        });
+      }
+    }
+
     // Find current cart
     const cart = await Cart.findOne({ userId });
     if (!cart || cart.items.length === 0) {
@@ -131,10 +196,7 @@ router.post('/place', verifyToken, async (req, res) => {
       paymentMethod,
       totalAmount: cartTotal,
       cartTotal,
-      // If order request was waiting, set order status to waiting and copy waitingTime
-      status: orderRequest.status === 'waiting' ? 'waiting' : 'confirmed',
-      waitingTime: orderRequest.waitingTime || undefined,
-      waitingAt: orderRequest.status === 'waiting' ? new Date() : undefined
+      status: 'confirmed'
     });
 
     await order.save();
@@ -147,10 +209,11 @@ router.post('/place', verifyToken, async (req, res) => {
     // Clear cart
     await Cart.findOneAndDelete({ userId });
 
-    // Update order request with final order id only (keep current status)
+    // Update order request to completed with final order id
     await OrderRequest.findByIdAndUpdate(orderReqId, {
       $set: {
-        finalOrderId: order._id
+        finalOrderId: order._id,
+        status: 'completed'
       }
     });
 

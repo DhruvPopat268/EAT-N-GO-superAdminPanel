@@ -14,7 +14,6 @@ const OrderRequestDetail = Loadable(lazy(() => import('views/orders/OrderRequest
 
 // Order Management Components
 const AllOrders = Loadable(lazy(() => import('views/orders/AllOrders')));
-const WaitingOrders = Loadable(lazy(() => import('views/orders/WaitingOrders')));
 const ConfirmedOrders = Loadable(lazy(() => import('views/orders/ConfirmedOrders')));
 const PreparingOrders = Loadable(lazy(() => import('views/orders/PreparingOrders')));
 const ReadyOrders = Loadable(lazy(() => import('views/orders/ReadyOrders')));
@@ -42,10 +41,6 @@ const OrderManagementRoutes = {
     {
       path: 'all',
       element: <AllOrders />
-    },
-    {
-      path: 'waiting',
-      element: <WaitingOrders />
     },
     {
       path: 'confirmed',

@@ -249,13 +249,69 @@ router.post('/create', verifyToken, async (req, res) => {
       }
     }
 
-    // Check if user already has a pending order request
-    const existingPendingOrder = await OrderRequest.findOne({ userId, status: 'pending' });
-    if (existingPendingOrder) {
+    // Validate time format (HH:MM with valid hours 0-23 and minutes 0-59)
+    const isValidTime = (time) => {
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      return timeRegex.test(time);
+    };
+
+    if (orderType === 'dine-in') {
+      if (!isValidTime(eatTimings.startTime) || !isValidTime(eatTimings.endTime)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid time format. Please use HH:MM format with valid hours (0-23) and minutes (0-59).',
+          code: 'INVALID_TIME_FORMAT'
+        });
+      }
+    } else if (orderType === 'takeaway') {
+      if (!isValidTime(takeawayTimings.startTime) || !isValidTime(takeawayTimings.endTime)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid time format. Please use HH:MM format with valid hours (0-23) and minutes (0-59).',
+          code: 'INVALID_TIME_FORMAT'
+        });
+      }
+    }
+
+    // Validate timing - user cannot create order request with current time in the time range
+    const now = new Date();
+    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+    
+    if (orderType === 'dine-in' && eatTimings) {
+      const startTime = eatTimings.startTime.slice(0, 5);
+      const endTime = eatTimings.endTime.slice(0, 5);
+      
+      if (currentTime >= startTime && currentTime <= endTime) {
+        return res.status(400).json({
+          success: false,
+          message: `You cannot create order request for current time slot (${eatTimings.startTime} - ${eatTimings.endTime}). Please select a future time.`,
+          code: 'INVALID_TIME_SLOT'
+        });
+      }
+    } else if (orderType === 'takeaway' && takeawayTimings) {
+      const startTime = takeawayTimings.startTime.slice(0, 5);
+      const endTime = takeawayTimings.endTime.slice(0, 5);
+      
+      if (currentTime >= startTime && currentTime <= endTime) {
+        return res.status(400).json({
+          success: false,
+          message: `You cannot create order request for current time slot (${takeawayTimings.startTime} - ${takeawayTimings.endTime}). Please select a future time.`,
+          code: 'INVALID_TIME_SLOT'
+        });
+      }
+    }
+
+    // Check if user already has an active order request
+    const existingActiveOrder = await OrderRequest.findOne({ 
+      userId, 
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+    
+    if (existingActiveOrder) {
       return res.status(400).json({ 
         success: false, 
-        message: 'You already have a pending order request. Please wait for the restaurant to respond or cancel your existing request.',
-        code: 'PENDING_ORDER_EXISTS'
+        message: `You already have an active order request (${existingActiveOrder.status}). Please complete or cancel that order request first.`,
+        code: 'ACTIVE_ORDER_REQUEST_EXISTS'
       });
     }
 
@@ -399,7 +455,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
 
     const orderRequest = await OrderRequest.findOneAndUpdate(
       { _id: orderReqId, userId, status: 'pending' },
-      { status: 'cancelledByUser' },
+      { status: 'cancelled', cancelledBy: 'User' },
       { new: true }
     );
 

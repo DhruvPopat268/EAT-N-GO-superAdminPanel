@@ -45,7 +45,6 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
   const statusOptions = [
     { value: '', label: 'All Status' },
     { value: 'confirmed', label: 'Confirmed' },
-    { value: 'waiting', label: 'Waiting' },
     { value: 'preparing', label: 'Preparing' },
     { value: 'ready', label: 'Ready' },
     { value: 'served', label: 'Served' },

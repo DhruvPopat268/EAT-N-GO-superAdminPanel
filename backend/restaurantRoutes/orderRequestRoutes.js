@@ -636,7 +636,7 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const filter = { restaurantId, status: 'cancelledByUser' };
+    const filter = { restaurantId, status: 'cancelled' };
     
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
@@ -1042,6 +1042,54 @@ router.patch('/waiting', restaurantAuthMiddleware, async (req, res) => {
     res.json({
       success: true,
       message: 'Order request set to waiting successfully',
+      data: orderRequest
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Cancel order request
+router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurantId = req.restaurant.restaurantId;
+    const { orderReqId, orderReqReasonId } = req.body;
+
+    if (!orderReqId || !orderReqReasonId) {
+      return res.status(400).json({ success: false, message: 'orderReqId and orderReqReasonId are required' });
+    }
+
+    // Validate reason ownership, type, and active status
+    const reason = await OrderStatusReason.findOne({
+      _id: orderReqReasonId,
+      restaurantId,
+      isActive: true,
+      reasonType: 'cancelled'
+    });
+
+    if (!reason) {
+      return res.status(400).json({ success: false, message: 'Invalid or inactive cancellation reason' });
+    }
+
+    const orderRequest = await OrderRequest.findOneAndUpdate(
+      { _id: orderReqId, restaurantId, status: { $in: ['pending', 'confirmed', 'waiting'] } },
+      { 
+        $set: {
+          status: 'cancelled',
+          cancelledBy: 'Restaurant',
+          orderReqReasonId
+        }
+      },
+      { new: true }
+    );
+
+    if (!orderRequest) {
+      return res.status(404).json({ success: false, message: 'Order request not found or cannot be cancelled from current status' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Order request cancelled successfully',
       data: orderRequest
     });
   } catch (error) {

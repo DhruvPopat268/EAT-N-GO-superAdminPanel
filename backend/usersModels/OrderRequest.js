@@ -82,8 +82,13 @@ const orderRequestSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'rejected', 'waiting', 'completed', 'cancelledByUser'],
+      enum: ['pending', 'confirmed', 'rejected', 'waiting', 'completed', 'cancelled'],
       default: 'pending'
+    },
+
+    cancelledBy: {
+      type: String,
+      enum: ['User', 'Restaurant', 'System']
     },
 
     waitingTime: Number,
