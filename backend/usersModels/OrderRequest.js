@@ -14,189 +14,138 @@ const orderRequestSchema = new mongoose.Schema(
       required: true,
     },
 
-    orderRequestNo: {
-      type: Number
-    },
+    orderRequestNo: Number,
 
-    // Cart items snapshot
-    items: [{
-      itemId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Item',
-        required: true
-      },
-      
-      quantity: {
-        type: Number,
-        required: true,
-        min: 1
-      },
-      
-      selectedAttribute: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Attribute'
-      },
-      
-      selectedAttributePrice: {
-        type: Number,
-        default: 0
-      },
-      
-      selectedFoodType: {
-        type: String,
-        enum: ['Regular', 'Jain', 'Swaminarayan'],
-        default: 'Regular'
-      },
-      
-      selectedCustomizations: [{
-        customizationId: String,
-        customizationName: String,
-        customizationType: String,
-        isRequired: Boolean,
-        selectedOptions: [{
-          optionId: String,
-          optionName: String,
-          optionQuantity: Number,
-          unit: String,
-          price: Number,
-          quantity: Number,
-          _id: false
-        }],
-        _id: false
-      }],
-      
-      selectedAddons: [{
-        addonId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'AddonItem'
+    items: [
+      {
+        itemId: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
+        quantity: { type: Number, required: true, min: 1 },
+
+        selectedAttribute: { type: mongoose.Schema.Types.ObjectId, ref: 'Attribute' },
+        selectedAttributePrice: { type: Number, default: 0 },
+
+        selectedFoodType: {
+          type: String,
+          enum: ['Regular', 'Jain', 'Swaminarayan'],
+          default: 'Regular'
         },
-        selectedAttribute: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Attribute'
-        },
-        selectedAttributePrice: {
-          type: Number,
-          default: 0
-        },
-        quantity: {
-          type: Number,
-          default: 1,
-          min: 1
-        },
-        _id: false
-      }],
-      
-      // Calculated totals for security
-      itemTotal: {
-        type: Number,
-        default: 0
-      },
-      customizationTotal: {
-        type: Number,
-        default: 0
-      },
-      addonTotal: {
-        type: Number,
-        default: 0
+
+        selectedCustomizations: [
+          {
+            customizationId: String,
+            customizationName: String,
+            customizationType: String,
+            isRequired: Boolean,
+            selectedOptions: [
+              {
+                optionId: String,
+                optionName: String,
+                optionQuantity: Number,
+                unit: String,
+                price: Number,
+                quantity: Number,
+                _id: false
+              }
+            ],
+            _id: false
+          }
+        ],
+
+        selectedAddons: [
+          {
+            addonId: { type: mongoose.Schema.Types.ObjectId, ref: 'AddonItem' },
+            selectedAttribute: { type: mongoose.Schema.Types.ObjectId, ref: 'Attribute' },
+            selectedAttributePrice: { type: Number, default: 0 },
+            quantity: { type: Number, default: 1, min: 1 },
+            _id: false
+          }
+        ],
+
+        itemTotal: { type: Number, default: 0 },
+        customizationTotal: { type: Number, default: 0 },
+        addonTotal: { type: Number, default: 0 }
       }
-    }],
+    ],
 
-    // dine-in OR takeaway
     orderType: {
       type: String,
       enum: ['dine-in', 'takeaway'],
-      required: true,
+      required: true
     },
 
-    // DINE-IN fields
-    numberOfGuests: { type: Number },
-    eatTimings: {
-      startTime: { type: String }, // ex: 8:00 PM
-      endTime: { type: String }    // ex: 9:00 PM
-    },
-    dineInstructions: { type: String },
+    numberOfGuests: Number,
+    eatTimings: { startTime: String, endTime: String },
+    dineInstructions: String,
 
-    // TAKEAWAY fields
-    takeawayTimings: {
-      startTime: { type: String }, // ex: 7:00 PM
-      endTime: { type: String }    // ex: 8:00 PM
-    },
-    takeawayInstructions: { type: String },
+    takeawayTimings: { startTime: String, endTime: String },
+    takeawayInstructions: String,
 
-    // restaurant response
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'rejected', 'waiting', 'completed', 'cancelledByUser'],
-      default: 'pending',
+      default: 'pending'
     },
 
-    // if waiting
-    waitingTime: {
-      type: Number // minutes
-    },
+    waitingTime: Number,
 
-    // reason for rejection or waiting
     orderReqReasonId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'OrderStatusReason'
     },
 
-    // user selected payment option after acceptance/waiting
     paymentMethod: {
       type: String,
-      enum: ['online', 'pay_at_restaurant'],
+      enum: ['online', 'pay_at_restaurant']
     },
 
-    // final order id after payment success
     finalOrderId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Order',
+      ref: 'Order'
     },
-    
-    // Order level totals for security
-    cartTotal: {
-      type: Number,
-      default: 0
-    },
-    
-    // TTL field for pending orders only
-    expireAt: {
-      type: Date,
-      index: { expires: 0 }
-    }
+
+    cartTotal: { type: Number, default: 0 },
+
+    expireAt: { type: Date }
   },
-  {
-    timestamps: true,
-  }
+
+  { timestamps: true }
 );
 
-// Pre-save hook to generate orderRequestNo and set expireAt for pending orders
-orderRequestSchema.pre('save', async function(next) {
+orderRequestSchema.pre('save', async function (next) {
   if (this.isNew) {
     const OrderReqCounter = require('../models/OrderReqCounter');
-    
+
     const counter = await OrderReqCounter.findOneAndUpdate(
       { restaurantId: this.restaurantId },
       { $inc: { orderRequestCount: 1 } },
       { new: true, upsert: true }
     );
-    
+
     this.orderRequestNo = counter.orderRequestCount;
-    
-    // Set expireAt only for pending status (5 minutes from now)
+
     if (this.status === 'pending') {
       this.expireAt = new Date(Date.now() + 5 * 60 * 1000);
     }
-  } else if (this.isModified('status')) {
-    // Remove expireAt if status changes from pending
-    if (this.status !== 'pending') {
-      this.expireAt = undefined;
-    }
   }
+
   next();
 });
 
-// Compound unique index for per-restaurant order numbering
+orderRequestSchema.pre('findOneAndUpdate', function (next) {
+  const update = this.getUpdate();
+  const newStatus = update.$set?.status;
+
+  if (newStatus && newStatus !== 'pending') {
+    this.setUpdate({
+      ...update,
+      $unset: { expireAt: "" }
+    });
+  }
+
+  next();
+});
+
 orderRequestSchema.index({ restaurantId: 1, orderRequestNo: 1 }, { unique: true });
+orderRequestSchema.index({ expireAt: 1, status: 1 });
 
 module.exports = mongoose.model('OrderRequest', orderRequestSchema);

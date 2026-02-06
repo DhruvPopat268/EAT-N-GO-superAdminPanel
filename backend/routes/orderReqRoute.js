@@ -476,4 +476,28 @@ router.get('/cancelled', authMiddleware, async (req, res) => {
   }
 });
 
+// Cron job to delete expired pending order requests
+router.get('/cleanup-expired', async (req, res) => {
+  try {
+    const now = new Date();
+    
+    const result = await OrderRequest.deleteMany({
+      status: 'pending',
+      expireAt: { $lte: now }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Expired order requests cleaned up',
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error cleaning up expired order requests',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
