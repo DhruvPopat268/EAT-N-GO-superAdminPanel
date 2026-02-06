@@ -60,8 +60,19 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Remove existing sessions for this restaurant
-    await RestaurantSession.deleteMany({ email: restaurant.contactDetails.email });
+    // Check and manage session limit
+    const maxSessions = parseInt(process.env.RESTAURANT_ALLOWED_SESSIONS) || 1;
+    const existingSessions = await RestaurantSession.find({ 
+      restaurantId: restaurant._id 
+    }).sort({ createdAt: 1 });
+
+    if (existingSessions.length >= maxSessions) {
+      // Delete oldest sessions to maintain limit
+      const sessionsToDelete = existingSessions.slice(0, existingSessions.length - maxSessions + 1);
+      await RestaurantSession.deleteMany({ 
+        _id: { $in: sessionsToDelete.map(s => s._id) } 
+      });
+    }
 
     // Validate JWT configuration
     const { secret, expiry } = getJwtConfig('restaurant');

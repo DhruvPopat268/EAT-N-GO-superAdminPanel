@@ -30,8 +30,19 @@ router.post('/login', async (req, res) => {
       });
     }
     
-    // Remove existing sessions for this user
-    await AdminSession.deleteMany({ email: user.email });
+    // Check and manage session limit
+    const maxSessions = parseInt(process.env.SUPER_ADMIN_ALLOWED_SESSIONS) || 1;
+    const existingSessions = await AdminSession.find({ 
+      userId: user._id 
+    }).sort({ createdAt: 1 });
+
+    if (existingSessions.length >= maxSessions) {
+      // Delete oldest sessions to maintain limit
+      const sessionsToDelete = existingSessions.slice(0, existingSessions.length - maxSessions + 1);
+      await AdminSession.deleteMany({ 
+        _id: { $in: sessionsToDelete.map(s => s._id) } 
+      });
+    }
     
     // Validate JWT configuration
     const { secret, expiry } = getJwtConfig('superadmin');
