@@ -221,6 +221,35 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+// Get in-progress order requests
+router.get('/in-progress/list', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const orderRequests = await OrderRequest.find({ 
+      userId, 
+      status: { $in: ['pending', 'confirmed', 'waiting'] } 
+    })
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
+      .sort({ createdAt: -1 });
+
+    const orderRequestsWithItemsCount = orderRequests.map(orderReq => {
+      const orderReqObj = orderReq.toObject();
+      orderReqObj.itemsCount = orderReqObj.items ? orderReqObj.items.length : 0;
+      delete orderReqObj.items;
+      return orderReqObj;
+    });
+
+    res.json({
+      success: true,
+      message: 'In-progress order requests retrieved successfully',
+      data: orderRequestsWithItemsCount
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // Create order request
 router.post('/create', verifyToken, async (req, res) => {
   try {
@@ -454,7 +483,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
     const userId = req.user.userId;
 
     const orderRequest = await OrderRequest.findOneAndUpdate(
-      { _id: orderReqId, userId, status: 'pending' },
+      { _id: orderReqId, userId, status: { $in: ['pending', 'confirmed', 'waiting'] } },
       { status: 'cancelled', cancelledBy: 'User' },
       { new: true }
     );
