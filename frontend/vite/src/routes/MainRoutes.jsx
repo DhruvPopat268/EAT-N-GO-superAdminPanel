@@ -10,13 +10,11 @@ import RestaurentRoutes from './RestaurentRoutes';
 import ActivityLogRoutes from './ActivityLogRoutes';
 
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated');
-  return isAuthenticated ? children : <Navigate to="/auth/login" replace />;
+  return children;
 };
 
 const RootRedirect = () => {
-  const isAuthenticated = localStorage.getItem('isAuthenticated');
-  return isAuthenticated ? <Navigate to="/dashboard/default" replace /> : <Navigate to="/auth/login" replace />;
+  return <Navigate to="/dashboard/default" replace />;
 };
 
 const MainRoutes = {

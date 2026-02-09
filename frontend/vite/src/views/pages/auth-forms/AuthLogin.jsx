@@ -63,7 +63,6 @@ export default function AuthLogin() {
       const result = await response.json();
 
       if (result.success) {
-        localStorage.setItem('isAuthenticated', 'true');
         navigate('/dashboard/default');
       } else {
         console.log('Login failed:', result.message);

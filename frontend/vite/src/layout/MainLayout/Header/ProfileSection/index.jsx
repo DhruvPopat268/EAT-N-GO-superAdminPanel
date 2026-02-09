@@ -60,7 +60,6 @@ export default function ProfileSection() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
     navigate('/auth/login');
   };
 

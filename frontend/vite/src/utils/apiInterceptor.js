@@ -7,7 +7,6 @@ const handleUnauthorized = () => {
   if (!isRedirecting) {
     isRedirecting = true;
     localStorage.removeItem('user');
-    localStorage.removeItem('isAuthenticated');
     window.location.href = '/auth/login';
   }
 };
