@@ -21,7 +21,6 @@ window.fetch = async (...args) => {
     if (response.status === 401) {
       handleUnauthorized();
     }
-    
     return response;
   } catch (error) {
     throw error;

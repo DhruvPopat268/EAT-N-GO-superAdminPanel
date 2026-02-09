@@ -92,8 +92,9 @@ router.post('/login', async (req, res) => {
 
     res.cookie('RestaurantToken', token, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
+      domain: process.env.NODE_ENV === 'production' ? '.eatngo.in' : undefined,
       maxAge: process.env.RESTAURANT_COOKIE_MAX_AGE
     });
 

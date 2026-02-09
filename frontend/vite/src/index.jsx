@@ -9,6 +9,9 @@ import { ConfigProvider } from 'contexts/ConfigContext';
 // style + assets
 import 'assets/scss/style.scss';
 
+// API interceptor for global 401 handling
+import 'utils/apiInterceptor';
+
 // google-fonts
 import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/500.css';

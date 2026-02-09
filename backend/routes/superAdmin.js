@@ -63,7 +63,8 @@ router.post('/login', async (req, res) => {
     res.cookie('AdminToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'none',
+      domain: process.env.NODE_ENV === 'production' ? '.eatngo.in' : undefined,
       maxAge: process.env.SUPER_ADMIN_COOKIE_MAX_AGE
     });
     
