@@ -522,4 +522,66 @@ router.get('/:orderId', verifyToken, async (req, res) => {
   }
 });
 
+// Cancel order
+router.post('/cancel', verifyToken, async (req, res) => {
+  try {
+    const { orderId, cancellationReason } = req.body;
+    const userId = req.user.userId;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required' });
+    }
+
+    const order = await Order.findOne({ _id: orderId, userId });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if order is already cancelled or completed
+    if (order.status === 'cancelled' || order.status === 'refunded') {
+      return res.status(400).json({ success: false, message: 'Order is already cancelled', code: 'ALREADY_CANCELLED' });
+    }
+
+    if (order.status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Cannot cancel completed order', code: 'ORDER_COMPLETED' });
+    }
+
+    // Only allow free cancellation for 'confirmed' status
+    if (order.status === 'confirmed') {
+      await Order.findByIdAndUpdate(orderId, {
+        $set: {
+          status: 'cancelled',
+          cancelledBy: 'User',
+          cancellationReason,
+          refundAmount: order.totalAmount
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: 'Order cancelled successfully. Full refund will be processed.',
+        refundAmount: order.totalAmount
+      });
+    }
+
+    // For other statuses, return error with appropriate message
+    const errorMessages = {
+      preparing: 'Cannot cancel order. Cooking has started. Partial refund (20-80%) may apply - please contact restaurant.',
+      ready: 'Cannot cancel order. Food is already prepared. No refund available.',
+      served: 'Cannot cancel order. Order has been served.'
+    };
+
+    return res.status(400).json({
+      success: false,
+      message: errorMessages[order.status] || 'Cannot cancel order at this stage',
+      code: 'CANCELLATION_NOT_ALLOWED',
+      currentStatus: order.status
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

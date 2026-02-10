@@ -91,7 +91,10 @@ const orderRequestSchema = new mongoose.Schema(
       enum: ['User', 'Restaurant', 'System']
     },
 
-    waitingTime: Number,
+    waitingTime: {
+      startTime: String,
+      endTime: String
+    },
 
     orderReqReasonId: {
       type: mongoose.Schema.Types.ObjectId,
