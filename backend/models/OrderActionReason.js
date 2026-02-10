@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const orderStatusReasonSchema = new mongoose.Schema(
+const orderActionReasonSchema = new mongoose.Schema(
   {
     restaurantId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -10,7 +10,7 @@ const orderStatusReasonSchema = new mongoose.Schema(
     
     reasonType: {
       type: String,
-      enum: ['waiting', 'rejected'],
+      enum: ['waiting', 'rejected', 'cancelled'],
       required: true
     },
     
@@ -24,12 +24,6 @@ const orderStatusReasonSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
-    },
-    
-    createdBy: {
-      type: String,
-      enum: ['restaurant', 'admin'],
-      required: true
     }
   },
   {
@@ -37,6 +31,6 @@ const orderStatusReasonSchema = new mongoose.Schema(
   }
 );
 
-orderStatusReasonSchema.index({ restaurantId: 1, reasonType: 1, isActive: 1 });
+orderActionReasonSchema.index({ restaurantId: 1, reasonType: 1, isActive: 1 });
 
-module.exports = mongoose.model('OrderStatusReason', orderStatusReasonSchema);
+module.exports = mongoose.model('OrderActionReason', orderActionReasonSchema);

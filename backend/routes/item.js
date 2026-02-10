@@ -38,6 +38,7 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
         _id: attr.attribute?._id,
         name: attr.attribute?.name,
         price: attr.price,
+        basePrice: attr.basePrice || 0
       })),
     }));
 
@@ -388,6 +389,7 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
           _id: attr.attribute?._id,
           name: attr.attribute?.name,
           price: attr.price,
+          basePrice: attr.basePrice || 0
         }))
       };
     });

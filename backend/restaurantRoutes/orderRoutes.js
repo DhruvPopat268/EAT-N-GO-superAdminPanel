@@ -1031,19 +1031,27 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
 });
 
 // Cancel order
-router.patch('/cancel/:orderId', restaurantAuthMiddleware, async (req, res) => {
+router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const { orderId } = req.params;
+    const { orderId, cancellationReasonId } = req.body;
     const restaurantId = req.restaurant.restaurantId;
 
+    if (!orderId || !cancellationReasonId) {
+      return res.status(400).json({ success: false, message: 'orderId and cancellationReasonId are required' });
+    }
+
     const order = await Order.findOneAndUpdate(
-      { _id: orderId, restaurantId, status: { $in: ['confirmed', 'preparing'] } },
-      { status: 'cancelled' },
+      { _id: orderId, restaurantId, status: { $in: ['confirmed', 'preparing', 'ready', 'served'] } },
+      { 
+        status: 'cancelled',
+        cancelledBy: 'Restaurant',
+        cancellationReasonId
+      },
       { new: true }
     );
 
     if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found or cannot be cancelled' });
+      return res.status(404).json({ success: false, message: 'Order not found or cannot be cancelled from current status' });
     }
 
     res.json({

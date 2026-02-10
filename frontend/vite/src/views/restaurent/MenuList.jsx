@@ -482,7 +482,7 @@ export default function MenuList() {
                   <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Subcategory</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Attributes</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Selling Price</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Popular</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>

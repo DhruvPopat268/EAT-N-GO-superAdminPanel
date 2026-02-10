@@ -95,7 +95,7 @@ const orderRequestSchema = new mongoose.Schema(
 
     orderReqReasonId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'OrderStatusReason'
+      ref: 'OrderActionReason'
     },
 
     paymentMethod: {

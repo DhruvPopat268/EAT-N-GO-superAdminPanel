@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const OrderRequest = require('../usersModels/OrderRequest');
-const OrderStatusReason = require('../models/orderReqActionReason');
+const OrderActionReason = require('../models/OrderActionReason');
 
 // Get all order requests for restaurant
 router.get('/all', restaurantAuthMiddleware, async (req, res) => {
@@ -90,7 +90,7 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 })
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -193,7 +193,7 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 })
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -296,7 +296,7 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 })
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -399,7 +399,7 @@ router.get('/rejected', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 })
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -502,7 +502,7 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 })
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -605,7 +605,7 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 })
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -704,7 +704,7 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 })
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -805,11 +805,10 @@ router.post('/action-reasons', restaurantAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: 'reasonType and reasonText are required' });
     }
 
-    const reason = new OrderStatusReason({
+    const reason = new OrderActionReason({
       restaurantId,
       reasonType,
-      reasonText,
-      createdBy: 'restaurant'
+      reasonText
     });
 
     await reason.save();
@@ -836,10 +835,10 @@ router.get('/action-reasons', restaurantAuthMiddleware, async (req, res) => {
     const filter = { restaurantId};
     if (reasonType) filter.reasonType = reasonType;
 
-    const totalCount = await OrderStatusReason.countDocuments(filter);
+    const totalCount = await OrderActionReason.countDocuments(filter);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const reasons = await OrderStatusReason.find(filter)
+    const reasons = await OrderActionReason.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -869,7 +868,7 @@ router.get('/active-reasons', restaurantAuthMiddleware, async (req, res) => {
     const filter = { restaurantId, isActive: true };
     if (reasonType) filter.reasonType = reasonType;
 
-    const reasons = await OrderStatusReason.find(filter).sort({ createdAt: -1 });
+    const reasons = await OrderActionReason.find(filter).sort({ createdAt: -1 });
 
     res.json({
       success: true,
@@ -896,7 +895,7 @@ router.patch('/action-reasons/:reasonId', restaurantAuthMiddleware, async (req, 
       return res.status(400).json({ success: false, message: 'No valid fields to update' });
     }
 
-    const reason = await OrderStatusReason.findOneAndUpdate(
+    const reason = await OrderActionReason.findOneAndUpdate(
       { _id: reasonId, restaurantId },
       { $set: updateData },
       { new: true }
@@ -961,7 +960,7 @@ router.patch('/reject', restaurantAuthMiddleware, async (req, res) => {
     }
 
     // Validate reason ownership, type, and active status
-    const reason = await OrderStatusReason.findOne({
+    const reason = await OrderActionReason.findOne({
       _id: orderReqReasonId,
       restaurantId,
       isActive: true,
@@ -1012,7 +1011,7 @@ router.patch('/waiting', restaurantAuthMiddleware, async (req, res) => {
     }
 
     // Validate reason ownership, type, and active status
-    const reason = await OrderStatusReason.findOne({
+    const reason = await OrderActionReason.findOne({
       _id: orderReqReasonId,
       restaurantId,
       isActive: true,
@@ -1060,7 +1059,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     }
 
     // Validate reason ownership, type, and active status
-    const reason = await OrderStatusReason.findOne({
+    const reason = await OrderActionReason.findOne({
       _id: orderReqReasonId,
       restaurantId,
       isActive: true,

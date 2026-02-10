@@ -160,6 +160,14 @@ const orderSchema = new mongoose.Schema(
     completedAt: { type: Date },
 
     // Cancellation/refund info
+    cancelledBy: {
+      type: String,
+      enum: ['Restaurant', 'User']
+    },
+    cancellationReasonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'OrderActionReason'
+    },
     cancellationReason: { type: String },
     refundAmount: { type: Number },
   },

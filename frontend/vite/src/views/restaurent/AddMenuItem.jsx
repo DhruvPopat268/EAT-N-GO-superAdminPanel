@@ -61,6 +61,7 @@ export default function AddMenuItem() {
     customizations: []
   });
   const [currentAttribute, setCurrentAttribute] = useState({
+    basePrice: '',
     value: '',
     unit: null
   });
@@ -113,6 +114,7 @@ export default function AddMenuItem() {
         const attributeOption = attributes.find(a => a.name === attr.name);
         return {
           id: Date.now() + index,
+          basePrice: attr.basePrice?.toString() || '',
           value: attr.price?.toString() || '',
           unit: attributeOption ? { id: attributeOption._id, name: attributeOption.name } : null
         };
@@ -404,6 +406,7 @@ export default function AddMenuItem() {
         description: formData.description,
         attributes: formData.attributes.map(attr => ({
           attribute: attr.unit.id,
+          basePrice: parseFloat(attr.basePrice || 0),
           price: parseFloat(attr.value)
         })),
         addons: formData.addons,
@@ -594,6 +597,7 @@ export default function AddMenuItem() {
         subcategory: formData.subcategory?.id,
         attributes: formData.attributes.map(attr => ({
           attribute: attr.unit.id,
+          basePrice: parseFloat(attr.basePrice || 0),
           price: parseFloat(attr.value)
         })),
         addons: formData.addons,
@@ -746,7 +750,7 @@ export default function AddMenuItem() {
         ...prev,
         attributes: [...prev.attributes, { ...currentAttribute, id: Date.now() }]
       }));
-      setCurrentAttribute({ value: '', unit: null });
+      setCurrentAttribute({ basePrice: '', value: '', unit: null });
     }
   };
 
@@ -759,6 +763,7 @@ export default function AddMenuItem() {
 
   const editAttribute = (attr) => {
     setCurrentAttribute({
+      basePrice: attr.basePrice,
       value: attr.value,
       unit: attr.unit
     });
@@ -1315,7 +1320,7 @@ export default function AddMenuItem() {
               <h4 className="text-md font-medium text-gray-900 mb-4">Attributes</h4>
 
               {/* Add New Attribute */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="mb-4">
                 <CustomDropdown
                   label="Attribute"
                   value={currentAttribute.unit}
@@ -1325,17 +1330,27 @@ export default function AddMenuItem() {
                   isOpen={showUnitDropdown}
                   setIsOpen={setShowUnitDropdown}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Attribute Value
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Value"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
-                    value={currentAttribute.value}
-                    onChange={(e) => setCurrentAttribute(prev => ({ ...prev, value: e.target.value }))}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Base Price</label>
+                    <input
+                      type="number"
+                      placeholder="Base Price"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
+                      value={currentAttribute.basePrice}
+                      onChange={(e) => setCurrentAttribute(prev => ({ ...prev, basePrice: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Selling Price</label>
+                    <input
+                      type="number"
+                      placeholder="Price"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-gray-400 transition-colors"
+                      value={currentAttribute.value}
+                      onChange={(e) => setCurrentAttribute(prev => ({ ...prev, value: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1360,12 +1375,11 @@ export default function AddMenuItem() {
                   </label>
                   {formData.attributes.map((attr) => (
                     <div key={attr.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                      <span className="text-sm text-gray-700">
-                        {attr.unit.name}
-                      </span>
-                      <span>
-                        {attr.value} {formData.currency.symbol}
-                      </span>
+                      <span className="text-sm text-gray-700">{attr.unit.name}</span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs text-gray-500">Base: {attr.basePrice} {formData.currency.symbol}</span>
+                        <span className="font-semibold">{attr.value} {formData.currency.symbol}</span>
+                      </div>
                       <div className="flex gap-2">
                         <button
                           type="button"

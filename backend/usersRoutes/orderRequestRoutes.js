@@ -207,7 +207,7 @@ router.get('/', verifyToken, async (req, res) => {
         model: 'Attribute',
         select: 'name'
       })
-      .sort({ createdAt: -1 });
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 });
 
     const processedOrderRequests = orderRequests.map(order => order.toObject());
 
@@ -231,7 +231,7 @@ router.get('/in-progress/list', verifyToken, async (req, res) => {
       status: { $in: ['pending', 'confirmed', 'waiting'] } 
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
-      .sort({ createdAt: -1 });
+      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 });
 
     const orderRequestsWithItemsCount = orderRequests.map(orderReq => {
       const orderReqObj = orderReq.toObject();

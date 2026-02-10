@@ -1659,12 +1659,20 @@ router.get('/recommendations', verifyToken, async (req, res) => {
 });
 
 // Get last ordered items
-router.get('/last-orders-items', verifyToken, async (req, res) => {
+router.post('/last-orders-items', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
+    const { restaurantId } = req.body;
 
-    // Get last 4-5 orders
-    const lastOrders = await Order.find({ userId })
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant ID is required'
+      });
+    }
+
+    // Get last 5 orders for specific restaurant
+    const lastOrders = await Order.find({ userId, restaurantId })
       .sort({ createdAt: -1 })
       .limit(5)
       .select('items');
