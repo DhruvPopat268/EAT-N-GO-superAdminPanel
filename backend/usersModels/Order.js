@@ -146,10 +146,10 @@ const orderSchema = new mongoose.Schema(
       default: 'confirmed',
     },
 
-    // Waiting time in minutes
+    // Waiting time
     waitingTime: {
-      type: Number,
-      min: 0
+      startTime: String,
+      endTime: String
     },
 
     // Timestamps for status changes

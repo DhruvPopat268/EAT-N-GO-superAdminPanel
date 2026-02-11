@@ -134,13 +134,14 @@ export default function WaitingOrderRequests() {
   const filteredOrderRequests = getFilteredOrderRequests();
 
   const getWaitingTimeChip = (waitingTime) => {
-    if (!waitingTime) return <Chip label="N/A" size="small" variant="outlined" />;
+    if (!waitingTime?.startTime || !waitingTime?.endTime) {
+      return <Chip label="N/A" size="small" variant="outlined" />;
+    }
     
-    const color = waitingTime > 60 ? 'error' : waitingTime > 30 ? 'warning' : 'info';
     return (
       <Chip 
-        label={`${waitingTime} min`}
-        color={color}
+        label={`${waitingTime.startTime} - ${waitingTime.endTime}`}
+        color="warning"
         variant="filled"
         size="small"
         icon={<AccessTime sx={{ fontSize: 16 }} />}
@@ -378,7 +379,9 @@ export default function WaitingOrderRequests() {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            {orderRequest.waitingTime ? `${orderRequest.waitingTime} min` : 'N/A'}
+                            {orderRequest.waitingTime?.startTime && orderRequest.waitingTime?.endTime 
+                              ? `${orderRequest.waitingTime.startTime} - ${orderRequest.waitingTime.endTime}` 
+                              : 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

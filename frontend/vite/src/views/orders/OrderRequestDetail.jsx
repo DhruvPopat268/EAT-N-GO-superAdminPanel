@@ -191,14 +191,26 @@ export default function OrderRequestDetail() {
                     </Box>
                   )}
 
+                     {/* Eat Timings */}
+                  {orderRequest.orderType === 'dine-in' && orderRequest.eatTimings && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Eat Timings
+                      </Typography>
+                      <Typography variant="body1" color="text.primary">
+                        {orderRequest.eatTimings.startTime} - {orderRequest.eatTimings.endTime}
+                      </Typography>
+                    </Box>
+                  )}
+
                   {/* Waiting Time */}
-                  {orderRequest.waitingTime && (
+                  {orderRequest.waitingTime?.startTime && orderRequest.waitingTime?.endTime && (
                     <Box>
                       <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
                         Waiting Time
                       </Typography>
                       <Typography variant="body1" color="text.primary">
-                        {orderRequest.waitingTime} Mins
+                        {orderRequest.waitingTime.startTime} - {orderRequest.waitingTime.endTime}
                       </Typography>
                     </Box>
                   )}

@@ -300,7 +300,7 @@ export default function OrderRequestManagement() {
                         {status === 'waiting' && (
                           <TableCell>
                             <Typography variant="body2" color="warning.main" fontWeight="bold">
-                              {orderRequest.waitingTime ? `${orderRequest.waitingTime} min` : 'N/A'}
+                              {orderRequest.waitingTime?.startTime && orderRequest.waitingTime?.endTime ? `${orderRequest.waitingTime.startTime} - ${orderRequest.waitingTime.endTime}` : 'N/A'}
                             </Typography>
                           </TableCell>
                         )}

@@ -196,7 +196,8 @@ router.post('/place', verifyToken, async (req, res) => {
       paymentMethod,
       totalAmount: cartTotal,
       cartTotal,
-      status: 'confirmed'
+      status: 'confirmed',
+      waitingTime: orderRequest.waitingTime
     });
 
     await order.save();

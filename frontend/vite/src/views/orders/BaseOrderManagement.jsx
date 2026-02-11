@@ -377,7 +377,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            {order.waitingTime ? `${order.waitingTime} min` : 'N/A'}
+                            {order.waitingTime?.startTime && order.waitingTime?.endTime ? `${order.waitingTime.startTime} - ${order.waitingTime.endTime}` : 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
