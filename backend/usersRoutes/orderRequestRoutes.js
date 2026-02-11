@@ -498,6 +498,9 @@ router.post('/cancel', verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order request not found or cannot be cancelled' });
     }
 
+    // Delete the cart
+    await Cart.findOneAndDelete({ userId });
+
     res.json({
       success: true,
       message: 'Order request cancelled successfully',

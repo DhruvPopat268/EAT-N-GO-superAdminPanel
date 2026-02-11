@@ -3,6 +3,7 @@ const router = express.Router();
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const OrderRequest = require('../usersModels/OrderRequest');
 const OrderActionReason = require('../models/OrderActionReason');
+const Cart = require('../usersModels/Cart');
 
 // Get all order requests for restaurant
 router.get('/all', restaurantAuthMiddleware, async (req, res) => {
@@ -986,6 +987,9 @@ router.patch('/reject', restaurantAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order request not found or cannot be rejected from current status' });
     }
 
+    // Delete the cart
+    await Cart.findOneAndDelete({ userId: orderRequest.userId });
+
     res.json({
       success: true,
       message: 'Order request rejected successfully',
@@ -1085,6 +1089,9 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     if (!orderRequest) {
       return res.status(404).json({ success: false, message: 'Order request not found or cannot be cancelled from current status' });
     }
+
+    // Delete the cart
+    await Cart.findOneAndDelete({ userId: orderRequest.userId });
 
     res.json({
       success: true,
