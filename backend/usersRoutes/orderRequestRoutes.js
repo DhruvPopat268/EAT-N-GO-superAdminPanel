@@ -230,7 +230,44 @@ router.get('/in-progress/list', verifyToken, async (req, res) => {
       userId, 
       status: { $in: ['pending', 'confirmed', 'waiting'] } 
     })
+      .populate('userId', 'fullName phone')
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select: 'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          {
+            path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'addons',
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes'
+          }
+        ]
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'category name description images currency isAvailable attributes',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute'
+        }
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
       .populate('orderReqReasonId', 'reasonType reasonText')
       .sort({ createdAt: -1 });
 
@@ -242,14 +279,12 @@ router.get('/in-progress/list', verifyToken, async (req, res) => {
       });
     }
 
-    const orderReqObj = orderRequest.toObject();
-    orderReqObj.itemsCount = orderReqObj.items ? orderReqObj.items.length : 0;
-    delete orderReqObj.items;
+    const processedOrderRequest = orderRequest.toObject();
 
     res.json({
       success: true,
       message: 'In-progress order request retrieved successfully',
-      data: orderReqObj
+      data: processedOrderRequest
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
