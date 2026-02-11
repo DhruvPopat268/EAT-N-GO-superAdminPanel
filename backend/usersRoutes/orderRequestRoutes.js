@@ -221,29 +221,35 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-// Get in-progress order requests
+// Get in-progress order request
 router.get('/in-progress/list', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const orderRequests = await OrderRequest.find({ 
+    const orderRequest = await OrderRequest.findOne({ 
       userId, 
       status: { $in: ['pending', 'confirmed', 'waiting'] } 
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
-      .populate('orderReqReasonId', 'reasonType reasonText').sort({ createdAt: -1 });
+      .populate('orderReqReasonId', 'reasonType reasonText')
+      .sort({ createdAt: -1 });
 
-    const orderRequestsWithItemsCount = orderRequests.map(orderReq => {
-      const orderReqObj = orderReq.toObject();
-      orderReqObj.itemsCount = orderReqObj.items ? orderReqObj.items.length : 0;
-      delete orderReqObj.items;
-      return orderReqObj;
-    });
+    if (!orderRequest) {
+      return res.json({
+        success: true,
+        message: 'No in-progress order request found',
+        data: null
+      });
+    }
+
+    const orderReqObj = orderRequest.toObject();
+    orderReqObj.itemsCount = orderReqObj.items ? orderReqObj.items.length : 0;
+    delete orderReqObj.items;
 
     res.json({
       success: true,
-      message: 'In-progress order requests retrieved successfully',
-      data: orderRequestsWithItemsCount
+      message: 'In-progress order request retrieved successfully',
+      data: orderReqObj
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
