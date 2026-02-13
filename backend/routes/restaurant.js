@@ -15,6 +15,7 @@ const router = express.Router();
 const Item = require('../models/Item');
 const orderRequestRoutes = require('../restaurantRoutes/orderRequestRoutes');
 const orderRoutes = require('../restaurantRoutes/orderRoutes');
+const orderCancelRefundRoutes = require('../restaurantRoutes/orderCancelRefund');
 const axios = require('axios');
 
 const uploadToCloudinary = (buffer, folder) => {
@@ -493,6 +494,15 @@ router.get('/rejected', authMiddleware, async (req, res) => {
   }
 });
 
+// Use order cancel refund routes (MUST be before /:id route)
+router.use('/order-cancel-refund', orderCancelRefundRoutes);
+
+// Use order request routes (MUST be before /:id route)
+router.use('/order-requests', orderRequestRoutes);
+
+// Use order routes (MUST be before /:id route)
+router.use('/orders', orderRoutes);
+
 // Get restaurant by ID
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
@@ -808,11 +818,5 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     });
   }
 });
-
-// Use order request routes
-router.use('/order-requests', orderRequestRoutes);
-
-// Use order routes
-router.use('/orders', orderRoutes);
 
 module.exports = router;
