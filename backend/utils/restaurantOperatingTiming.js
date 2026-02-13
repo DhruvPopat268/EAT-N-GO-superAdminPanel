@@ -21,10 +21,11 @@ const getCurrentISTTime = () => {
  * Check if restaurant is currently open based on IST time
  * @param {string} openTime - Opening time in "HH:MM" format
  * @param {string} closeTime - Closing time in "HH:MM" format
+ * @param {boolean} isManuallyClosed - Whether restaurant is manually closed
  * @returns {boolean} True if restaurant is open, false otherwise
  */
-const isRestaurantOpen = (openTime, closeTime) => {
-  if (!openTime || !closeTime) {
+const isRestaurantOpen = (openTime, closeTime, isManuallyClosed = false) => {
+  if (!openTime || !closeTime || isManuallyClosed) {
     return false;
   }
 

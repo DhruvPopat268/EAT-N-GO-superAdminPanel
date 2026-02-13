@@ -49,7 +49,6 @@ const restaurantSchema = new mongoose.Schema({
     restaurantImages: [{ type: String }]
   },
 
-
   // Login Credentials
   tempPassword: { type: String, required: true },
 
@@ -58,7 +57,10 @@ const restaurantSchema = new mongoose.Schema({
   
   // Rejection Details
   rejectionReason: { type: String },
-  rejectedFormFields: [{ type: String }]
+  rejectedFormFields: [{ type: String }],
+
+  // Manual Closure
+  isManuallyClosed: { type: Boolean, default: false }
 }, {
   timestamps: true
 });

@@ -291,7 +291,8 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       // Calculate if restaurant is open
       const isOpen = isRestaurantOpen(
         restaurant.basicInfo.operatingHours?.openTime,
-        restaurant.basicInfo.operatingHours?.closeTime
+        restaurant.basicInfo.operatingHours?.closeTime,
+        restaurant.isManuallyClosed
       );
       
       return {

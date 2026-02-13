@@ -122,7 +122,7 @@ router.get('/status', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant?.restaurantId;
 
-    const restaurentData = await Restaurant.findById(restaurantId).select('status rejectedFormFields rejectionReason');
+    const restaurentData = await Restaurant.findById(restaurantId).select('status rejectedFormFields rejectionReason isManuallyClosed');
 
     res.status(200).json({
       success: true,
@@ -231,6 +231,35 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
 });
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Restaurent <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+// Update isManuallyClosed status
+router.patch('/manuallyClosed', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const { isManuallyClosed } = req.body;
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      req.restaurant.restaurantId,
+      { isManuallyClosed },
+      { new: true }
+    );
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: 'Status updated successfully',
+      data: { isManuallyClosed: restaurant.isManuallyClosed }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating status',
+      error: error.message
+    });
+  }
+});
 
 // Get current restaurant details (using restaurant middleware)
 router.get('/details', restaurantAuthMiddleware, async (req, res) => {

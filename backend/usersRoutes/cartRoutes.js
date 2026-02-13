@@ -164,7 +164,7 @@ router.post('/add', verifyToken, async (req, res) => {
 
     const { openTime, closeTime } = restaurant.basicInfo?.operatingHours || {};
     if (openTime && closeTime) {
-      if (!isRestaurantOpen(openTime, closeTime)) {
+      if (!isRestaurantOpen(openTime, closeTime, restaurant.isManuallyClosed)) {
         return res.status(400).json({
           success: false,
           code: 'RESTAURANT_CLOSED',
@@ -582,7 +582,7 @@ router.post('/replace', verifyToken, async (req, res) => {
 
     const { openTime, closeTime } = restaurant.basicInfo?.operatingHours || {};
     if (openTime && closeTime) {
-      if (!isRestaurantOpen(openTime, closeTime)) {
+      if (!isRestaurantOpen(openTime, closeTime, restaurant.isManuallyClosed)) {
         return res.status(400).json({
           success: false,
           message: `Restaurant is closed. Operating hours: ${openTime} - ${closeTime}`

@@ -400,6 +400,12 @@ router.post('/create', verifyToken, async (req, res) => {
     // Check operating hours
     const { openTime, closeTime } = restaurant.basicInfo.operatingHours || {};
     if (openTime && closeTime) {
+      if (restaurant.isManuallyClosed) {
+        return res.status(400).json({
+          success: false,
+          message: 'Restaurant is temporarily closed'
+        });
+      }
       if (orderType === 'dine-in') {
         // For dine-in, check both start and end times
         const startTime = eatTimings?.startTime;

@@ -102,7 +102,8 @@ router.get('/search', verifyToken, async (req, res) => {
     const restaurantsWithStatus = restaurants.map(restaurant => {
       const isOpen = isRestaurantOpen(
         restaurant.basicInfo.operatingHours?.openTime,
-        restaurant.basicInfo.operatingHours?.closeTime
+        restaurant.basicInfo.operatingHours?.closeTime,
+        restaurant.isManuallyClosed
       );
       
       return {
