@@ -105,7 +105,7 @@ router.get('/:orderReqId', verifyToken, async (req, res) => {
     const userId = req.user.userId;
 
     const orderRequest = await OrderRequest.findOne({ _id: orderReqId, userId })
-      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory')
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory businessDetails.currency')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -231,7 +231,7 @@ router.get('/in-progress/list', verifyToken, async (req, res) => {
       status: { $in: ['pending', 'confirmed', 'waiting'] } 
     })
       .populate('userId', 'fullName phone')
-      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage')
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
       .populate({
         path: 'items.itemId',
         model: 'Item',
