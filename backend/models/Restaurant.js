@@ -34,7 +34,8 @@ const restaurantSchema = new mongoose.Schema({
     gstNumber: { type: String, required: true },
     bankAccount: { type: String, required: true },
     ifscCode: { type: String, required: true },
-    description: { type: String }
+    description: { type: String },
+    currency: { type: String }
   },
 
   // Documents

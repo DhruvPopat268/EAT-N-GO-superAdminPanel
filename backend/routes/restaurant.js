@@ -10,6 +10,7 @@ const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
 const { sendUserCredentials } = require('../services/emailService');
 const { getJwtConfig } = require('../utils/jwtConfig');
+const { getCurrencyFromCountry } = require('../utils/countryToCurrencyConverter');
 const router = express.Router();
 const Item = require('../models/Item');
 const orderRequestRoutes = require('../restaurantRoutes/orderRequestRoutes');
@@ -555,6 +556,9 @@ router.post(
       const tempPassword = generateTempPassword(restaurantData.email);
       const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
 
+      // Get currency from country
+      const currency = await getCurrencyFromCountry(restaurantData.country);
+
       // Upload files
       const documents = {};
       let restaurantImages = [];
@@ -596,7 +600,8 @@ router.post(
           gstNumber: restaurantData.gstNumber,
           bankAccount: restaurantData.bankAccount,
           ifscCode: restaurantData.ifscCode,
-          description: restaurantData.description
+          description: restaurantData.description,
+          currency: currency
         },
         documents: { ...documents, restaurantImages },
         tempPassword: hashedTempPassword // store only hashed version in DB

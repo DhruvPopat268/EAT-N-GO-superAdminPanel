@@ -309,6 +309,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
           latitude: restaurant.contactDetails.latitude,
           longitude: restaurant.contactDetails.longitude
         },
+        currency: restaurant.businessDetails?.currency,
         primaryImage: restaurant.documents?.primaryImage || null,
         distanceFromCurrentLocation: `${distanceInKm} km`,
         isOpen: isOpen
