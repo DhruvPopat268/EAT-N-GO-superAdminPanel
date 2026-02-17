@@ -11,6 +11,7 @@ const restaurentRoutes = require('./restaurentRoutes');
 const cartRoutes = require('./cartRoutes');
 const orderRequestRoutes = require('./orderRequestRoutes');
 const orderRoutes = require('./orderRoutes');
+const couponRoutes = require('./couponRoutes');
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -341,6 +342,9 @@ router.use('/restaurents', restaurentRoutes);
 
 // Use cart routes
 router.use('/cart', cartRoutes);
+
+// Use coupon routes
+router.use('/coupons', couponRoutes);
 
 // Use order request routes
 router.use('/order-request', orderRequestRoutes);

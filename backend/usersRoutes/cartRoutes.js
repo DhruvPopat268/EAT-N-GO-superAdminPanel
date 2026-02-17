@@ -6,9 +6,17 @@ const Attribute = require('../models/Attribute');
 const AddonItem = require('../models/AddonItem');
 const Restaurant = require('../models/Restaurant');
 const Order = require('../usersModels/Order');
+const OrderRequest = require('../usersModels/OrderRequest');
 const { verifyToken } = require('../middleware/userAuth');
 const { findExistingCartItem } = require('../utils/cartHelpers');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
+
+// Helper function to update cart totals
+function updateCartTotals(cart) {
+  const total = cart.items.reduce((sum, item) => sum + (item.itemTotal || 0), 0);
+  cart.baseCartTotal = total;
+  cart.cartTotal = cart.appliedCoupon?.savedAmount ? total - cart.appliedCoupon.savedAmount : total;
+}
 
 // Get user cart
 router.get('/', verifyToken, async (req, res) => {
@@ -16,6 +24,11 @@ router.get('/', verifyToken, async (req, res) => {
     const userId = req.user.userId;
 
     const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'restaurantId',
+        model: 'Restaurant',
+        select: 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address'
+      })
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -57,6 +70,11 @@ router.get('/', verifyToken, async (req, res) => {
         path: 'items.selectedAddons.selectedAttribute',
         model: 'Attribute',
         select: 'name'
+      })
+      .populate({
+        path: 'appliedCoupon.couponId',
+        model: 'Coupon',
+        select: 'name description couponCode discountType amount maxDiscount minOrderTotal'
       });
 
     if (!cart || !cart.items.length) {
@@ -125,6 +143,19 @@ router.get('/summary', verifyToken, async (req, res) => {
 router.post('/add', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
+
+    // Check if user has active order request
+    const activeOrderRequest = await OrderRequest.findOne({
+      userId,
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+
+    if (activeOrderRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot modify cart while you have an active order request'
+      });
+    }
 
     const {
       restaurantId,
@@ -382,7 +413,7 @@ router.post('/add', verifyToken, async (req, res) => {
       existingItem.itemTotal = (basePrice * existingItem.quantity) + newCustomizationTotal + newAddonTotal;
       
       // Recalculate cart total
-      cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
+      updateCartTotals(cart);
       
       await cart.save();
       
@@ -476,11 +507,7 @@ router.post('/add', verifyToken, async (req, res) => {
       });
       
       // Calculate cart total
-      let cartTotal = 0;
-      cart.items.forEach(item => {
-        cartTotal += item.itemTotal || 0;
-      });
-      cart.cartTotal = cartTotal;
+      updateCartTotals(cart);
       
       await cart.save();
     }
@@ -552,6 +579,19 @@ router.post('/add', verifyToken, async (req, res) => {
 router.post('/replace', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
+
+    // Check if user has active order request
+    const activeOrderRequest = await OrderRequest.findOne({
+      userId,
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+
+    if (activeOrderRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot modify cart while you have an active order request'
+      });
+    }
 
     const {
       restaurantId,
@@ -785,6 +825,7 @@ router.post('/replace', verifyToken, async (req, res) => {
         customizationTotal,
         addonTotal
       }],
+      baseCartTotal: itemTotal,
       cartTotal: itemTotal
     });
 
@@ -850,6 +891,20 @@ router.post('/replace', verifyToken, async (req, res) => {
 router.put('/increase', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
+
+    // Check if user has active order request
+    const activeOrderRequest = await OrderRequest.findOne({
+      userId,
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+
+    if (activeOrderRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot modify cart while you have an active order request'
+      });
+    }
+
     const {
       restaurantId,
       cartItemId,
@@ -941,7 +996,7 @@ router.put('/increase', verifyToken, async (req, res) => {
       cartItem.itemTotal = (basePrice * cartItem.quantity) + newCustomizationTotal + newAddonTotal;
       
       // Recalculate cart total
-      cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
+      updateCartTotals(cart);
       
       await cart.save();
     } else if (itemRepeatationStatus === 'i_will_choose') {
@@ -1037,7 +1092,7 @@ router.put('/increase', verifyToken, async (req, res) => {
         duplicateItem.itemTotal = (basePrice + customizationTotal + addonTotal) * duplicateItem.quantity;
         
         // Recalculate cart total
-        cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
+        updateCartTotals(cart);
       } else {
         console.log('No duplicate found, adding new item');
         
@@ -1130,7 +1185,7 @@ router.put('/increase', verifyToken, async (req, res) => {
         });
         
         // Recalculate cart total
-        cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
+        updateCartTotals(cart);
       }
       await cart.save();
     }
@@ -1180,6 +1235,20 @@ router.put('/increase', verifyToken, async (req, res) => {
 router.put('/decrease', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
+
+    // Check if user has active order request
+    const activeOrderRequest = await OrderRequest.findOne({
+      userId,
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+
+    if (activeOrderRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot modify cart while you have an active order request'
+      });
+    }
+
     const { restaurantId, cartItemId, quantity } = req.body;
 
     if (!restaurantId || !cartItemId) {
@@ -1264,7 +1333,7 @@ router.put('/decrease', verifyToken, async (req, res) => {
     }
     
     // Recalculate cart total
-    cart.cartTotal = cart.items.reduce((total, item) => total + (item.itemTotal || 0), 0);
+    updateCartTotals(cart);
 
     await cart.save();
 
@@ -1314,6 +1383,19 @@ router.delete('/clear', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
 
+    // Check if user has active order request
+    const activeOrderRequest = await OrderRequest.findOne({
+      userId,
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+
+    if (activeOrderRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot clear cart while you have an active order request'
+      });
+    }
+
     await Cart.findOneAndDelete({ userId });
 
     res.json({
@@ -1333,6 +1415,20 @@ router.delete('/clear', verifyToken, async (req, res) => {
 router.put('/update', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
+
+    // Check if user has active order request
+    const activeOrderRequest = await OrderRequest.findOne({
+      userId,
+      status: { $in: ['pending', 'confirmed', 'waiting'] }
+    });
+
+    if (activeOrderRequest) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot modify cart while you have an active order request'
+      });
+    }
+
     const {
       restaurantId,
       cartItemId,
@@ -1525,11 +1621,7 @@ router.put('/update', verifyToken, async (req, res) => {
     }
     
     // Recalculate cart total
-    let cartTotal = 0;
-    cart.items.forEach(item => {
-      cartTotal += item.itemTotal || 0;
-    });
-    cart.cartTotal = cartTotal;
+    updateCartTotals(cart);
 
     await cart.save();
 

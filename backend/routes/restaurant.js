@@ -16,6 +16,7 @@ const Item = require('../models/Item');
 const orderRequestRoutes = require('../restaurantRoutes/orderRequestRoutes');
 const orderRoutes = require('../restaurantRoutes/orderRoutes');
 const orderCancelRefundRoutes = require('../restaurantRoutes/orderCancelRefund');
+const couponRoutes = require('../restaurantRoutes/couponRoutes');
 const axios = require('axios');
 
 const uploadToCloudinary = (buffer, folder) => {
@@ -531,6 +532,9 @@ router.use('/order-requests', orderRequestRoutes);
 
 // Use order routes (MUST be before /:id route)
 router.use('/orders', orderRoutes);
+
+// Use coupon routes (MUST be before /:id route)
+router.use('/coupons', couponRoutes);
 
 // Get restaurant by ID
 router.get('/:id', authMiddleware, async (req, res) => {

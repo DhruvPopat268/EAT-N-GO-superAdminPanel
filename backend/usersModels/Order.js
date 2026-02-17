@@ -128,15 +128,24 @@ const orderSchema = new mongoose.Schema(
       required: true
     },
 
+    baseTotalAmount: {
+      type: Number,
+      required: true
+    },
+
     totalAmount: {
       type: Number,
       required: true
     },
-    
-    // Order level totals for security
-    cartTotal: {
-      type: Number,
-      default: 0
+
+    appliedCoupon: {
+      couponId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Coupon'
+      },
+      savedAmount: {
+        type: Number
+      }
     },
 
     // Order status

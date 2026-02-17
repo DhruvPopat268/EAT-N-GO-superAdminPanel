@@ -877,7 +877,8 @@ router.get('/detail/:orderId', restaurantAuthMiddleware, async (req, res) => {
         path: 'items.selectedAddons.selectedAttribute',
         model: 'Attribute',
         select: 'name'
-      });
+      })
+      .populate('appliedCoupon.couponId', 'name couponCode discountType amount maxDiscount');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });

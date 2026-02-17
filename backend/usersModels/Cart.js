@@ -96,9 +96,24 @@ const cartSchema = new mongoose.Schema({
   }],
   
   // Cart level totals for security
+  baseCartTotal: {
+    type: Number,
+    default: 0
+  },
   cartTotal: {
     type: Number,
     default: 0
+  },
+  
+  // Applied coupon
+  appliedCoupon: {
+    couponId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Coupon'
+    },
+    savedAmount: {
+      type: Number
+    }
   }
 }, { 
   timestamps: true 

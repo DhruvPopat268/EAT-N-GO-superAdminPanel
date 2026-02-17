@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/userAuth');
 const Cart = require('../usersModels/Cart');
+const Coupon = require('../usersModels/Coupon');
+const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
 const Restaurant = require('../models/Restaurant');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
@@ -392,6 +394,72 @@ router.post('/create', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
 
+    // Validate applied coupon if exists
+    if (cart.appliedCoupon && cart.appliedCoupon.couponId) {
+      const coupon = await Coupon.findOne({
+        _id: cart.appliedCoupon.couponId,
+        status: true
+      });
+
+      if (!coupon) {
+        return res.status(400).json({
+          success: false,
+          message: 'Applied coupon is no longer valid'
+        });
+      }
+
+      // Check if coupon belongs to same restaurant as cart
+      if (coupon.restaurantId.toString() !== cart.restaurantId.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Applied coupon does not belong to the restaurant'
+        });
+      }
+
+      // Check minimum order total
+      if (cart.baseCartTotal < coupon.minOrderTotal) {
+        return res.status(400).json({
+          success: false,
+          message: `Minimum order total of ${coupon.minOrderTotal} required for this coupon`
+        });
+      }
+
+      // Check total usage limit
+      if (coupon.totalUsageLimit !== -1 && coupon.usageCount >= coupon.totalUsageLimit) {
+        return res.status(400).json({
+          success: false,
+          message: 'Coupon usage limit exceeded'
+        });
+      }
+
+      // Check user usage limit
+      if (coupon.userUsageLimit !== -1) {
+        const userUsageCount = await Order.countDocuments({
+          userId,
+          restaurantId: cart.restaurantId,
+          'appliedCoupon.couponId': coupon._id
+        });
+
+        if (userUsageCount >= coupon.userUsageLimit) {
+          return res.status(400).json({
+            success: false,
+            message: 'You have already used this coupon maximum times'
+          });
+        }
+      }
+
+      // Check first order only
+      if (coupon.firstOrderOnly) {
+        const orderCount = await Order.countDocuments({ userId, restaurantId: cart.restaurantId });
+        if (orderCount > 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'This coupon is only valid for first order'
+          });
+        }
+      }
+    }
+
     // Get restaurant
     const restaurant = await Restaurant.findById(cart.restaurantId);
     if (!restaurant) {
@@ -459,7 +527,9 @@ router.post('/create', verifyToken, async (req, res) => {
       dineInstructions,
       takeawayTimings,
       takeawayInstructions,
-      cartTotal: cart.cartTotal
+      baseCartTotal: cart.baseCartTotal,
+      cartTotal: cart.cartTotal,
+      appliedCoupon: cart.appliedCoupon
     });
 
     await orderRequest.save();

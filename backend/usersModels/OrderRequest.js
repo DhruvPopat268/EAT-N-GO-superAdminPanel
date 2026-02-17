@@ -111,7 +111,18 @@ const orderRequestSchema = new mongoose.Schema(
       ref: 'Order'
     },
 
+    baseCartTotal: { type: Number, default: 0 },
     cartTotal: { type: Number, default: 0 },
+
+    appliedCoupon: {
+      couponId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Coupon'
+      },
+      savedAmount: {
+        type: Number
+      }
+    },
 
     expireAt: { type: Date }
   },
