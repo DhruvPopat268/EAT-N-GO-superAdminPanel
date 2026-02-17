@@ -105,7 +105,7 @@ router.get('/:orderReqId', verifyToken, async (req, res) => {
     const userId = req.user.userId;
 
     const orderRequest = await OrderRequest.findOne({ _id: orderReqId, userId })
-      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory businessDetails.currency')
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory businessDetails.currency contactDetails.latitude contactDetails.longitude')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -147,7 +147,8 @@ router.get('/:orderReqId', verifyToken, async (req, res) => {
         path: 'items.selectedAddons.selectedAttribute',
         model: 'Attribute',
         select: 'name'
-      });
+      })
+      .populate('orderReqReasonId', 'reasonType reasonText');
 
     if (!orderRequest) {
       return res.status(404).json({ success: false, message: 'Order request not found' });
