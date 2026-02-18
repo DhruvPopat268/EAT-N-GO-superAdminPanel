@@ -12,6 +12,7 @@ const cartRoutes = require('./cartRoutes');
 const orderRequestRoutes = require('./orderRequestRoutes');
 const orderRoutes = require('./orderRoutes');
 const couponRoutes = require('./couponRoutes');
+const userRatingRoutes = require('./userRatingRoutes');
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -351,5 +352,8 @@ router.use('/order-request', orderRequestRoutes);
 
 // Use order routes
 router.use('/orders', orderRoutes);
+
+// Use user rating routes
+router.use('/ratings', userRatingRoutes);
 
 module.exports = router;

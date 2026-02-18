@@ -179,6 +179,11 @@ const orderSchema = new mongoose.Schema(
     },
     cancellationReason: { type: String },
     refundAmount: { type: Number },
+
+    isUserRated: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
