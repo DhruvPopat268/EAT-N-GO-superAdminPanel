@@ -6,6 +6,7 @@ const Coupon = require('../usersModels/Coupon');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
 const Restaurant = require('../models/Restaurant');
+const User = require('../usersModels/usersModel');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 const { emitToRestaurant } = require('../utils/socketUtils');
 
@@ -299,6 +300,16 @@ router.post('/create', verifyToken, async (req, res) => {
   try {
     const { orderType, numberOfGuests, eatTimings, dineInstructions, takeawayTimings, takeawayInstructions } = req.body;
     const userId = req.user.userId;
+
+    // Check if user has fullName
+    const user = await User.findById(userId).select('fullName');
+    if (!user || !user.fullName) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please complete your profile by adding your full name before creating an order request',
+        code: 'FULLNAME_REQUIRED'
+      });
+    }
 
     // Validate orderType
     if (!orderType || !['dine-in', 'takeaway'].includes(orderType)) {

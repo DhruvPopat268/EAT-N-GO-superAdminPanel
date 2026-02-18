@@ -51,6 +51,7 @@ export default function CouponManagement() {
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCoupons, setTotalCoupons] = useState(0);
@@ -103,7 +104,7 @@ export default function CouponManagement() {
         limit: rowsPerPage
       };
       if (selectedRestaurant !== 'all') params.restaurantId = selectedRestaurant;
-      if (searchTerm) params.search = searchTerm;
+      if (appliedSearchTerm) params.search = appliedSearchTerm;
       
       const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/coupons`, {
         params,
@@ -258,45 +259,30 @@ export default function CouponManagement() {
   });
 
   const handleSearch = () => {
+    setAppliedSearchTerm(searchTerm);
     setPage(0);
-    fetchCoupons();
   };
 
-  const handleClearFilters = async () => {
+  useEffect(() => {
+    if (appliedSearchTerm !== undefined) {
+      fetchCoupons();
+    }
+  }, [appliedSearchTerm]);
+
+  const handleClearFilters = () => {
     setSearchTerm('');
+    setAppliedSearchTerm('');
     setStatusFilter('all');
     setPage(0);
-    
-    // Fetch with cleared filters
-    try {
-      setLoading(true);
-      const params = {
-        page: 1,
-        limit: rowsPerPage
-      };
-      
-      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/coupons`, {
-        params,
-        withCredentials: true
-      });
-      if (response.data.success) {
-        setCoupons(response.data.data);
-        setTotalCoupons(response.data.pagination?.totalCount || 0);
-      }
-    } catch (error) {
-      console.error('Error fetching coupons:', error);
-      toast.error('Failed to fetch coupons');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
-      setPage(0);
-      fetchCoupons();
+      handleSearch();
     }
   };
+
+  const hasActiveFilters = appliedSearchTerm || statusFilter !== 'all';
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -362,19 +348,21 @@ export default function CouponManagement() {
             >
               Search
             </Button>
-            <Button
-              variant="outlined"
-              onClick={handleClearFilters}
-              sx={{
-                borderRadius: 1,
-                px: 4,
-                py: 1.5,
-                textTransform: 'none',
-                fontWeight: 600
-              }}
-            >
-              Clear
-            </Button>
+            {hasActiveFilters && (
+              <Button
+                variant="outlined"
+                onClick={handleClearFilters}
+                sx={{
+                  borderRadius: 1,
+                  px: 4,
+                  py: 1.5,
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
+              >
+                Clear
+              </Button>
+            )}
           </Box>
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
             <FormControl sx={{ minWidth: 150 }}>

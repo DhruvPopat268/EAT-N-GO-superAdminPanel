@@ -66,6 +66,16 @@ router.post('/place', verifyToken, async (req, res) => {
     const { orderReqId, paymentMethod } = req.body;
     const userId = req.user.userId;
 
+    // Check if user has fullName
+    const user = await User.findById(userId).select('fullName');
+    if (!user || !user.fullName) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please complete your profile by adding your full name before placing an order',
+        code: 'FULLNAME_REQUIRED'
+      });
+    }
+
     if (!orderReqId || !paymentMethod) {
       return res.status(400).json({ success: false, message: 'orderReqId and paymentMethod are required' });
     }
