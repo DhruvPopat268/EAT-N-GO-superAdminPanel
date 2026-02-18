@@ -9,6 +9,7 @@ import subscription from './subscription';
 import customers from './customers';
 import support from './support';
 import activityLogs from './activityLogs';
+import coupons from './coupons';
 
 // ==============================|| MENU ITEMS ||============================== //
 
@@ -19,6 +20,7 @@ const menuItems = {
      orders,
     // payments,
     // customers,
+    coupons,
     rbac,
     activityLogs,
     // subscription,

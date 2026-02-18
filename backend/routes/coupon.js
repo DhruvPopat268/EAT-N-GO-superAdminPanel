@@ -1,18 +1,21 @@
 const express = require('express');
 const Coupon = require('../usersModels/Coupon');
-const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
+const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
-// Get all coupons for restaurant
-router.get('/', restaurantAuthMiddleware, async (req, res) => {
+// Get all coupons (admin can see all restaurants)
+router.get('/', authMiddleware, async (req, res) => {
   try {
-    const restaurantId = req.restaurant.restaurantId;
-    const { search } = req.query;
+    const { search, restaurantId } = req.query;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
     
-    let query = { restaurantId };
+    let query = {};
+    
+    if (restaurantId) {
+      query.restaurantId = restaurantId;
+    }
     
     if (search) {
       query.$or = [
@@ -49,15 +52,10 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
   }
 });
 
-// Create coupon
-router.post('/', restaurantAuthMiddleware, async (req, res) => {
+// Create coupon for any restaurant
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const restaurantId = req.restaurant.restaurantId;
-    
-    const coupon = new Coupon({
-      ...req.body,
-      restaurantId
-    });
+    const coupon = new Coupon(req.body);
     await coupon.save();
     
     res.status(201).json({
@@ -75,12 +73,10 @@ router.post('/', restaurantAuthMiddleware, async (req, res) => {
 });
 
 // Update coupon
-router.put('/:id', restaurantAuthMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const restaurantId = req.restaurant.restaurantId;
-    
-    const coupon = await Coupon.findOneAndUpdate(
-      { _id: req.params.id, restaurantId },
+    const coupon = await Coupon.findByIdAndUpdate(
+      req.params.id,
       req.body,
       { new: true, runValidators: true }
     ).populate('restaurantId', 'basicInfo.restaurantName');
@@ -107,13 +103,12 @@ router.put('/:id', restaurantAuthMiddleware, async (req, res) => {
 });
 
 // Update coupon status
-router.patch('/:id/status', restaurantAuthMiddleware, async (req, res) => {
+router.patch('/:id/status', authMiddleware, async (req, res) => {
   try {
-    const restaurantId = req.restaurant.restaurantId;
     const { status } = req.body;
     
-    const coupon = await Coupon.findOneAndUpdate(
-      { _id: req.params.id, restaurantId },
+    const coupon = await Coupon.findByIdAndUpdate(
+      req.params.id,
       { status },
       { new: true }
     ).populate('restaurantId', 'basicInfo.restaurantName');
@@ -134,6 +129,31 @@ router.patch('/:id/status', restaurantAuthMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating coupon status',
+      error: error.message
+    });
+  }
+});
+
+// Delete coupon
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const coupon = await Coupon.findByIdAndDelete(req.params.id);
+    
+    if (!coupon) {
+      return res.status(404).json({
+        success: false,
+        message: 'Coupon not found'
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Coupon deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting coupon',
       error: error.message
     });
   }
