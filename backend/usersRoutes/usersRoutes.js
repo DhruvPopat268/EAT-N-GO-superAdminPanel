@@ -48,11 +48,9 @@ router.post('/verify-otp', async (req, res) => {
     if (!mobileNo || !otp) {
       return res.status(400).json({ success: false, message: 'Mobile number and OTP are required' });
     }
-   console.log("mobileNo, otp", mobileNo, otp);
-   console.log(await UserOtpSession.find({}));
+
     // Find OTP session
     const otpSession = await UserOtpSession.findOne({ mobileNo, otp });
-    console.log("otpSession", otpSession);
     if (!otpSession) {
       return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
     }
@@ -171,14 +169,19 @@ router.post('/refresh-token', async (req, res) => {
 // Update user profile
 router.put('/profile', verifyToken, async (req, res) => {
   try {
-    console.log("Request body:", req.body);
-    console.log("User from token:", req.user);
+    const { fullName } = req.body;
+
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Full name is required' 
+      });
+    }
     
-    const updateData = { ...req.body }; // Create a copy to avoid modifying original
-    delete updateData.phone; // Prevent phone number update
+    const updateData = { ...req.body };
+    delete updateData.phone;
 
     const userId = req.user.userId;
-    console.log("Updating user:", userId, updateData);
     
     const user = await User.findByIdAndUpdate(
       userId,
@@ -196,7 +199,6 @@ router.put('/profile', verifyToken, async (req, res) => {
       data: user 
     });
   } catch (error) {
-    console.error('Update profile error:', error);
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
