@@ -359,18 +359,30 @@ router.post('/create', verifyToken, async (req, res) => {
 
     // Validate timing - user cannot create order request with current time in the time range
     const now = new Date();
-    const currentTime = new Date().toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }); // HH:MM format in IST
+    const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
     
     if (orderType === 'dine-in' && eatTimings) {
-      const startTime = eatTimings.startTime.slice(0, 5);
-      const endTime = eatTimings.endTime.slice(0, 5);
+      const [startHour, startMin] = eatTimings.startTime.split(':').map(Number);
+      const [endHour, endMin] = eatTimings.endTime.split(':').map(Number);
       
-      if (currentTime >= startTime && currentTime <= endTime) {
+      let slotStart = new Date(nowIST);
+      slotStart.setHours(startHour, startMin, 0, 0);
+      
+      let slotEnd = new Date(nowIST);
+      slotEnd.setHours(endHour, endMin, 0, 0);
+      
+      // If end time < start time, slot spans midnight (next day)
+      if (slotEnd <= slotStart) {
+        slotEnd.setDate(slotEnd.getDate() + 1);
+      }
+      
+      // If slot is in the past, assume next day
+      if (slotEnd < nowIST) {
+        slotStart.setDate(slotStart.getDate() + 1);
+        slotEnd.setDate(slotEnd.getDate() + 1);
+      }
+      
+      if (nowIST >= slotStart && nowIST <= slotEnd) {
         return res.status(400).json({
           success: false,
           message: `You cannot create order request for current time slot (${eatTimings.startTime} - ${eatTimings.endTime}). Please select a future time.`,
@@ -378,10 +390,27 @@ router.post('/create', verifyToken, async (req, res) => {
         });
       }
     } else if (orderType === 'takeaway' && takeawayTimings) {
-      const startTime = takeawayTimings.startTime.slice(0, 5);
-      const endTime = takeawayTimings.endTime.slice(0, 5);
+      const [startHour, startMin] = takeawayTimings.startTime.split(':').map(Number);
+      const [endHour, endMin] = takeawayTimings.endTime.split(':').map(Number);
       
-      if (currentTime >= startTime && currentTime <= endTime) {
+      let slotStart = new Date(nowIST);
+      slotStart.setHours(startHour, startMin, 0, 0);
+      
+      let slotEnd = new Date(nowIST);
+      slotEnd.setHours(endHour, endMin, 0, 0);
+      
+      // If end time < start time, slot spans midnight (next day)
+      if (slotEnd <= slotStart) {
+        slotEnd.setDate(slotEnd.getDate() + 1);
+      }
+      
+      // If slot is in the past, assume next day
+      if (slotEnd < nowIST) {
+        slotStart.setDate(slotStart.getDate() + 1);
+        slotEnd.setDate(slotEnd.getDate() + 1);
+      }
+      
+      if (nowIST >= slotStart && nowIST <= slotEnd) {
         return res.status(400).json({
           success: false,
           message: `You cannot create order request for current time slot (${takeawayTimings.startTime} - ${takeawayTimings.endTime}). Please select a future time.`,

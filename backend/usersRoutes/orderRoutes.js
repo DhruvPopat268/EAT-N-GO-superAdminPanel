@@ -100,14 +100,6 @@ router.post('/place', verifyToken, async (req, res) => {
     }
 
     // Validate timing - user cannot place order during their specified time slot
-    const now = new Date();
-    const currentTime = new Date().toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }); // HH:MM format in IST
-    
     let timings;
     if (orderRequest.orderType === 'dine-in') {
       timings = orderRequest.eatTimings;
@@ -116,17 +108,37 @@ router.post('/place', verifyToken, async (req, res) => {
     }
 
     if (timings && timings.startTime && timings.endTime) {
-      const startTime = timings.startTime.slice(0, 5); // Extract HH:MM
-      const endTime = timings.endTime.slice(0, 5); // Extract HH:MM
+      const now = new Date();
+      const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      
+      // Get order request creation date in IST
+      const orderReqDate = new Date(orderRequest.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      
+      // Build slot start/end Date objects
+      const [startHour, startMin] = timings.startTime.split(':').map(Number);
+      const [endHour, endMin] = timings.endTime.split(':').map(Number);
+      
+      let slotStart = new Date(orderReqDate);
+      slotStart.setHours(startHour, startMin, 0, 0);
+      
+      let slotEnd = new Date(orderReqDate);
+      slotEnd.setHours(endHour, endMin, 0, 0);
+      
+      // If end time < start time, slot spans midnight (next day)
+      if (slotEnd <= slotStart) {
+        slotEnd.setDate(slotEnd.getDate() + 1);
+      }
+      
+      // If slot is in the past relative to order creation, assume next day
+      if (slotEnd < orderReqDate) {
+        slotStart.setDate(slotStart.getDate() + 1);
+        slotEnd.setDate(slotEnd.getDate() + 1);
+      }
 
       // Check if current time is within the specified time slot
-      if (currentTime >= startTime && currentTime <= endTime) {
-        // Auto-cancel the order request
+      if (nowIST >= slotStart && nowIST <= slotEnd) {
         await OrderRequest.findByIdAndUpdate(orderReqId, {
-          $set: {
-            status: 'cancelled',
-            cancelledBy: 'System'
-          }
+          $set: { status: 'cancelled', cancelledBy: 'System' }
         });
 
         return res.status(400).json({
@@ -137,13 +149,9 @@ router.post('/place', verifyToken, async (req, res) => {
       }
 
       // Check if the time slot has already passed
-      if (currentTime > endTime) {
-        // Auto-cancel the order request
+      if (nowIST > slotEnd) {
         await OrderRequest.findByIdAndUpdate(orderReqId, {
-          $set: {
-            status: 'cancelled',
-            cancelledBy: 'System'
-          }
+          $set: { status: 'cancelled', cancelledBy: 'System' }
         });
 
         return res.status(400).json({
