@@ -108,11 +108,12 @@ router.post('/place', verifyToken, async (req, res) => {
     }
 
     if (timings && timings.startTime && timings.endTime) {
+      // Get current time in IST (UTC+5:30)
       const now = new Date();
-      const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const nowIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
       
-      // Get order request creation date in IST
-      const orderReqDate = new Date(orderRequest.createdAt.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      // Get order request creation time in IST
+      const orderReqDate = new Date(orderRequest.createdAt.getTime() + (5.5 * 60 * 60 * 1000));
       
       // Build slot start/end Date objects
       const [startHour, startMin] = timings.startTime.split(':').map(Number);

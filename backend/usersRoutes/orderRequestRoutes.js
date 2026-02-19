@@ -358,8 +358,9 @@ router.post('/create', verifyToken, async (req, res) => {
     }
 
     // Validate timing - user cannot create order request with current time in the time range
+    // Get current time in IST (UTC+5:30)
     const now = new Date();
-    const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const nowIST = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
     
     if (orderType === 'dine-in' && eatTimings) {
       const [startHour, startMin] = eatTimings.startTime.split(':').map(Number);
