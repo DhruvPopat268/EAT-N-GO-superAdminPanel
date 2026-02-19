@@ -48,6 +48,50 @@ app.use('/api/order-requests', require('./routes/orderReqRoute'));
 app.use('/api/orders', require('./routes/orderRoute'));
 app.use('/api/users', require('./usersRoutes/usersRoutes'));
 
+// Test API - Get current server time and IST time
+app.get('/api/test/time', (req, res) => {
+  const now = new Date();
+  
+  // Server timezone time
+  const serverTime = now.toTimeString().slice(0, 8); // HH:MM:SS
+  const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
+  // IST time
+  const istTime = now.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const istFullDateTime = now.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'full',
+    timeStyle: 'long'
+  });
+  
+  res.json({
+    success: true,
+    data: {
+      serverTime: {
+        time: serverTime,
+        timezone: serverTimezone,
+        fullDateTime: now.toString()
+      },
+      istTime: {
+        time: istTime,
+        timezone: 'Asia/Kolkata (IST)',
+        fullDateTime: istFullDateTime
+      },
+      utcTime: {
+        time: now.toISOString(),
+        timezone: 'UTC'
+      }
+    }
+  });
+});
+
 // Sample file download route
 app.get('/api/sample/menu-items', (req, res) => {
   const path = require('path');

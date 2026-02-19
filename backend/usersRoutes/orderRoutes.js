@@ -99,24 +99,14 @@ router.post('/place', verifyToken, async (req, res) => {
       });
     }
 
-    // Check if user has other active order requests
-    const otherActiveOrderReq = await OrderRequest.findOne({
-      userId,
-      _id: { $ne: orderReqId },
-      status: { $in: ['pending', 'confirmed', 'waiting'] }
-    });
-
-    if (otherActiveOrderReq) {
-      return res.status(400).json({
-        success: false,
-        message: `You have another order request (${otherActiveOrderReq.status}) that needs attention. Please complete or cancel that order request first.`,
-        code: 'OTHER_ORDER_REQUEST_ACTIVE'
-      });
-    }
-
     // Validate timing - user cannot place order during their specified time slot
     const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+    const currentTime = new Date().toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }); // HH:MM format in IST
     
     let timings;
     if (orderRequest.orderType === 'dine-in') {

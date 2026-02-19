@@ -359,7 +359,12 @@ router.post('/create', verifyToken, async (req, res) => {
 
     // Validate timing - user cannot create order request with current time in the time range
     const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+    const currentTime = new Date().toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }); // HH:MM format in IST
     
     if (orderType === 'dine-in' && eatTimings) {
       const startTime = eatTimings.startTime.slice(0, 5);
