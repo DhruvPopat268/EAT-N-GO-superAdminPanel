@@ -96,7 +96,7 @@ router.get('/search', verifyToken, async (req, res) => {
     const restaurants = await Restaurant.find({ 
       'basicInfo.restaurantName': { $regex: query, $options: 'i' },
       status: 'approved'
-    }, 'basicInfo contactDetails documents.primaryImage');
+    }, 'basicInfo contactDetails documents.primaryImage isManuallyClosed');
 
     // Add isOpen calculation to each restaurant
     const restaurantsWithStatus = restaurants.map(restaurant => {

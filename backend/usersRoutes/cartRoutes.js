@@ -7,6 +7,7 @@ const AddonItem = require('../models/AddonItem');
 const Restaurant = require('../models/Restaurant');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
+const Coupon = require('../usersModels/Coupon');
 const { verifyToken } = require('../middleware/userAuth');
 const { findExistingCartItem } = require('../utils/cartHelpers');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
@@ -89,6 +90,62 @@ router.get('/', verifyToken, async (req, res) => {
     }
 
     const cartObj = cart.toObject();
+
+    // Validate applied coupon if exists
+    if (cartObj.appliedCoupon?.couponId) {
+      const coupon = await Coupon.findById(cartObj.appliedCoupon.couponId._id);
+      
+      if (coupon) {
+        let isEligible = true;
+        let toEligible = '';
+
+        // Check minimum order total
+        if (cart.baseCartTotal < coupon.minOrderTotal) {
+          isEligible = false;
+          const amountNeeded = coupon.minOrderTotal - cart.baseCartTotal;
+          toEligible = `Add items worth ${amountNeeded.toFixed(2)} more to use this coupon`;
+        }
+
+        // Check total usage limit
+        if (isEligible && coupon.totalUsageLimit !== -1 && coupon.usageCount >= coupon.totalUsageLimit) {
+          isEligible = false;
+          toEligible = 'Coupon usage limit exceeded';
+        }
+
+        // Check user usage limit
+        if (isEligible && coupon.userUsageLimit !== -1) {
+          const userUsageCount = await Order.countDocuments({
+            userId,
+            restaurantId: cart.restaurantId,
+            'appliedCoupon.couponId': coupon._id
+          });
+          if (userUsageCount >= coupon.userUsageLimit) {
+            isEligible = false;
+            toEligible = 'You have already used this coupon maximum times';
+          }
+        }
+
+        // Check first order only
+        if (isEligible && coupon.firstOrderOnly) {
+          const orderCount = await Order.countDocuments({ userId, restaurantId: cart.restaurantId });
+          if (orderCount > 0) {
+            isEligible = false;
+            toEligible = 'This coupon is only valid for first order';
+          }
+        }
+
+        // Add validation result to appliedCoupon
+        cartObj.appliedCoupon.isEligible = isEligible;
+        if (!isEligible) {
+          cartObj.appliedCoupon.toEligible = toEligible;
+          // Remove discount from cartTotal if coupon is not eligible
+          cartObj.cartTotal = cartObj.baseCartTotal;
+        } else {
+          // Ensure discount is applied if coupon is eligible
+          cartObj.cartTotal = cartObj.baseCartTotal - cartObj.appliedCoupon.savedAmount;
+        }
+      }
+    }
 
     res.json({
       success: true,

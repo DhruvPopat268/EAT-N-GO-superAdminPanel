@@ -19,7 +19,7 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Find order
-    const order = await Order.findOne({ _id: orderId, userId, restaurantId }).select('status isUserRated');
+    const order = await Order.findOne({ _id: orderId, userId, restaurantId }).select('status userRatingId');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -31,7 +31,7 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Check if already rated
-    if (order.isUserRated) {
+    if (order.userRatingId) {
       return res.status(400).json({ success: false, message: 'Order already rated' });
     }
 
@@ -46,11 +46,8 @@ router.post('/', verifyToken, async (req, res) => {
 
     await userRating.save();
 
-    // Update order
-    await Order.findOneAndUpdate(
-      { _id: orderId, userId, restaurantId },
-      { isUserRated: true }
-    );
+    // Update order with rating reference
+    await Order.findByIdAndUpdate(orderId, { userRatingId: userRating._id });
 
     res.status(201).json({
       success: true,

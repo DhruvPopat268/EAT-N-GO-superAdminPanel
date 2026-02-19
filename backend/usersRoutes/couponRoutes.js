@@ -82,7 +82,8 @@ router.get('/eligible/:restaurantId', verifyToken, async (req, res) => {
 
       const couponData = {
         ...coupon.toObject(),
-        isEligible
+        isEligible,
+        isApplied: cart.appliedCoupon?.couponId?.toString() === coupon._id.toString()
       };
 
       // Remove internal fields

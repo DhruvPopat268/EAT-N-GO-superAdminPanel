@@ -180,9 +180,9 @@ const orderSchema = new mongoose.Schema(
     cancellationReason: { type: String },
     refundAmount: { type: Number },
 
-    isUserRated: {
-      type: Boolean,
-      default: false,
+    userRatingId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'userRating'
     },
   },
   {

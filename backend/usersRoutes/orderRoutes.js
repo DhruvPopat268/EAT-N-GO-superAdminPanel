@@ -6,7 +6,9 @@ const Coupon = require('../usersModels/Coupon');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
 const User = require('../usersModels/usersModel');
+const Restaurant = require('../models/Restaurant');
 const { emitOrderToRestaurant } = require('../utils/socketUtils');
+const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
@@ -175,6 +177,24 @@ router.post('/place', verifyToken, async (req, res) => {
         success: false,
         message: 'Cart restaurant does not match order request restaurant',
         code: 'RESTAURANT_MISMATCH'
+      });
+    }
+
+    // Check if restaurant is open and not manually closed
+    const restaurant = await Restaurant.findById(cart.restaurantId).select('basicInfo.operatingHours isManuallyClosed');
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    const { openTime, closeTime } = restaurant.basicInfo.operatingHours || {};
+    if (!isRestaurantOpen(openTime, closeTime, restaurant.isManuallyClosed)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant is currently closed',
+        code: 'RESTAURANT_CLOSED'
       });
     }
 

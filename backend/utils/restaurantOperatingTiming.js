@@ -25,6 +25,7 @@ const getCurrentISTTime = () => {
  * @returns {boolean} True if restaurant is open, false otherwise
  */
 const isRestaurantOpen = (openTime, closeTime, isManuallyClosed = false) => {
+  console.log(`DEBUG: openTime=${openTime}, closeTime=${closeTime}, isManuallyClosed=${isManuallyClosed}`)
   if (!openTime || !closeTime || isManuallyClosed) {
     return false;
   }
