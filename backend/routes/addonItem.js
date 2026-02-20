@@ -14,11 +14,29 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
+    const search = req.query.search?.trim() || '';
+    const category = req.query.category?.trim() || '';
+    const subcategory = req.query.subcategory?.trim() || '';
+    const status = req.query.status?.trim() || '';
 
-    const totalCount = await AddonItem.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const query = { restaurantId: req.restaurant.restaurantId };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+    if (category) {
+      query.category = category;
+    }
+    if (subcategory) {
+      query.subcategory = subcategory;
+    }
+    if (status) {
+      query.isAvailable = status === 'available';
+    }
+
+    const totalCount = await AddonItem.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const addonItems = await AddonItem.find({ restaurantId: req.restaurant.restaurantId })
+    const addonItems = await AddonItem.find(query)
     .populate([
       {
         path: 'subcategory',
@@ -136,6 +154,11 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 // Get all addon items from all restaurants
 router.get('/admin/all', authMiddleware, async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+    const { addonName, category, subcategory, isAvailable } = req.query;
+
     const addonItems = await AddonItem.find({})
       .populate('restaurantId', 'basicInfo.restaurantName')
       .populate([
@@ -150,8 +173,7 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
     ])
       .sort({ createdAt: -1 });
     
-    // Transform the data to include restaurantName and restaurantId
-    const transformedAddonItems = addonItems.map(addonItem => {
+    let transformedAddonItems = addonItems.map(addonItem => {
       const addonItemObj = addonItem.toObject();
       return {
         ...addonItemObj,
@@ -159,8 +181,39 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
         restaurantId: addonItemObj.restaurantId._id
       };
     });
+
+    if (addonName) {
+      transformedAddonItems = transformedAddonItems.filter(a => 
+        a.name.toLowerCase().includes(addonName.toLowerCase())
+      );
+    }
+
+    if (category) {
+      transformedAddonItems = transformedAddonItems.filter(a => 
+        a.category.toLowerCase() === category.toLowerCase()
+      );
+    }
+
+    if (subcategory) {
+      transformedAddonItems = transformedAddonItems.filter(a => 
+        a.subcategory?.name === subcategory
+      );
+    }
+
+    if (isAvailable !== undefined && isAvailable !== '') {
+      const statusFilter = isAvailable === 'true';
+      transformedAddonItems = transformedAddonItems.filter(a => a.isAvailable === statusFilter);
+    }
+
+    const totalCount = transformedAddonItems.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedData = transformedAddonItems.slice(skip, skip + limit);
     
-    res.json({ success: true, data: transformedAddonItems });
+    res.json({ 
+      success: true, 
+      data: paginatedData,
+      pagination: { page, limit, totalCount, totalPages }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -169,9 +222,49 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
 // Get all addon items for restaurant
 router.post('/admin/list', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.body;
-    const addonItems = await AddonItem.find({ restaurantId }).populate('subcategory').sort({ createdAt: -1 });
-    res.json({ success: true, data: addonItems });
+    const { restaurantId, page = 1, limit = 20, addonName, category, subcategory, isAvailable } = req.body;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
+    }
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = { restaurantId };
+    if (addonName) {
+      query.name = { $regex: addonName, $options: 'i' };
+    }
+    if (category) {
+      query.category = category;
+    }
+    if (subcategory) {
+      const subcategoryDoc = await require('../models/Subcategory').findOne({ name: subcategory, restaurantId });
+      if (subcategoryDoc) {
+        query.subcategory = subcategoryDoc._id;
+      }
+    }
+    if (isAvailable !== undefined && isAvailable !== '') {
+      query.isAvailable = isAvailable;
+    }
+
+    const totalCount = await AddonItem.countDocuments(query);
+    const addonItems = await AddonItem.find(query)
+      .populate('subcategory')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    res.json({ 
+      success: true, 
+      data: addonItems,
+      pagination: { 
+        page: pageNum, 
+        limit: limitNum, 
+        totalCount, 
+        totalPages: Math.ceil(totalCount / limitNum) 
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

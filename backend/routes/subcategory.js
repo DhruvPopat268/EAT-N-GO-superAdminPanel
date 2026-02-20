@@ -14,11 +14,25 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
+    const search = req.query.search?.trim() || '';
+    const category = req.query.category?.trim() || '';
+    const status = req.query.status?.trim() || '';
 
-    const totalCount = await Subcategory.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const query = { restaurantId: req.restaurant.restaurantId };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+    if (category) {
+      query.category = category;
+    }
+    if (status) {
+      query.isAvailable = status === 'available';
+    }
+
+    const totalCount = await Subcategory.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const subcategories = await Subcategory.find({ restaurantId: req.restaurant.restaurantId })
+    const subcategories = await Subcategory.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -163,12 +177,16 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 // Get all subcategories from all restaurants
 router.get('/admin/all', authMiddleware, async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+    const { subcategoryName } = req.query;
+
     const subcategories = await Subcategory.find({})
       .populate('restaurantId', 'basicInfo.restaurantName')
       .sort({ createdAt: -1 });
     
-    // Transform the data to include restaurantName and restaurantId
-    const transformedSubcategories = subcategories.map(subcategory => {
+    let transformedSubcategories = subcategories.map(subcategory => {
       const subcategoryObj = subcategory.toObject();
       return {
         ...subcategoryObj,
@@ -176,8 +194,22 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
         restaurantId: subcategoryObj.restaurantId._id
       };
     });
+
+    if (subcategoryName) {
+      transformedSubcategories = transformedSubcategories.filter(s => 
+        s.name.toLowerCase().includes(subcategoryName.toLowerCase())
+      );
+    }
+
+    const totalCount = transformedSubcategories.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedData = transformedSubcategories.slice(skip, skip + limit);
     
-    res.json({ success: true, data: transformedSubcategories });
+    res.json({ 
+      success: true, 
+      data: paginatedData,
+      pagination: { page, limit, totalCount, totalPages }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -186,12 +218,36 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
 // Get all subcategories for restaurant
 router.post('/admin/get', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.body;
+    const { restaurantId, page = 1, limit = 20, subcategoryName } = req.body;
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
     }
-    const subcategories = await Subcategory.find({ restaurantId }).sort({ createdAt: -1 });
-    res.json({ success: true, data: subcategories });
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = { restaurantId };
+    if (subcategoryName) {
+      query.name = { $regex: subcategoryName, $options: 'i' };
+    }
+
+    const totalCount = await Subcategory.countDocuments(query);
+    const subcategories = await Subcategory.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    res.json({ 
+      success: true, 
+      data: subcategories,
+      pagination: { 
+        page: pageNum, 
+        limit: limitNum, 
+        totalCount, 
+        totalPages: Math.ceil(totalCount / limitNum) 
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

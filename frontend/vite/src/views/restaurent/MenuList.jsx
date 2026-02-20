@@ -30,10 +30,11 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Grid
+  Grid,
+  TablePagination
 } from '@mui/material';
 import { Edit, Delete, Visibility, CloudUpload } from '@mui/icons-material';
-import { IconBuildingStore, IconSearch, IconChefHat } from '@tabler/icons-react';
+import { IconBuildingStore, IconSearch, IconChefHat, IconFilterOff, IconX } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
@@ -63,9 +64,12 @@ export default function MenuList() {
   const [selectedSubcategory, setSelectedSubcategory] = useState({ id: 'all', name: 'All Subcategories', category: 'all' });
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -76,6 +80,15 @@ export default function MenuList() {
   React.useEffect(() => {
     fetchRestaurantNames();
   }, []);
+
+  // Debounce search term
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   React.useEffect(() => {
     fetchMenuItems();
@@ -278,6 +291,16 @@ export default function MenuList() {
     }
   };
 
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedRestaurant({ restaurantId: 'all', name: 'All Restaurants' });
+    setSelectedCategory(categoryOptions[0]);
+    setSelectedSubcategory({ id: 'all', name: 'All Subcategories', category: 'all' });
+    setSelectedStatus('All Status');
+  };
+
+  const hasActiveFilters = searchTerm || selectedRestaurant?.restaurantId !== 'all' || selectedCategory?.id !== 'all' || selectedSubcategory?.id !== 'all' || selectedStatus !== 'All Status';
+
   const handleSaveEdit = () => {
     setMenuItems(prevItems => {
       const updatedItems = { ...prevItems };
@@ -321,11 +344,11 @@ export default function MenuList() {
       items = items.filter(item => item.isAvailable === statusValue);
     }
     
-    // Filter by search term
-    if (searchTerm) {
+    // Filter by search term (use debounced)
+    if (debouncedSearchTerm) {
       items = items.filter(item =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+        item.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
     
@@ -333,6 +356,16 @@ export default function MenuList() {
   };
 
   const filteredItems = getFilteredItems();
+  const paginatedItems = filteredItems.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -361,8 +394,46 @@ export default function MenuList() {
           }}
         >
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
-            <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
-              <Autocomplete
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <TextField
+                  placeholder="Search menu items..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  sx={{ minWidth: 300 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconSearch size={20} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchTerm && (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => setSearchTerm('')}
+                        >
+                          <IconX size={18} />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                {hasActiveFilters && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<IconFilterOff size={18} />}
+                    onClick={handleClearFilters}
+                    sx={{ minWidth: 120 }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Autocomplete
                 sx={{ minWidth: 250 }}
                 options={[{ restaurantId: 'all', name: 'All Restaurants' }, ...restaurants]}
                 getOptionLabel={(option) => option.name}
@@ -449,22 +520,9 @@ export default function MenuList() {
                       <MenuItem value="inactive">Unavailable</MenuItem>
                     </Select>
                   </FormControl>
-
-                  <TextField
-                    placeholder="Search menu items..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    sx={{ minWidth: 300 }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconSearch size={20} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
                 </>
               )}
+              </Box>
             </Stack>
           </Box>
           
@@ -472,7 +530,7 @@ export default function MenuList() {
             <Table sx={{ minWidth: 800 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
-                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>#</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Image</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Item</TableCell>
                   {selectedRestaurant?.restaurantId === 'all' && (
@@ -519,10 +577,10 @@ export default function MenuList() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredItems.map((item, index) => (
+                  paginatedItems.map((item, index) => (
                     <Fade in timeout={1200 + index * 100} key={item._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
-                        <TableCell>#{index + 1}</TableCell>
+                        <TableCell>#{page * rowsPerPage + index + 1}</TableCell>
                         <TableCell>
                           <Avatar 
                             src={item.images?.[0]} 
@@ -685,6 +743,16 @@ export default function MenuList() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={filteredItems.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </Card>
       </Fade>
 

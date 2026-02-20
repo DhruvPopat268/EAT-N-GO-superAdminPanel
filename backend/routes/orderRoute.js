@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const Order = require('../usersModels/Order');
+const User = require('../usersModels/usersModel');
+const Restaurant = require('../models/Restaurant');
 const { buildOrderQuery, orderPopulateConfig } = require('../utils/orderPopulate');
 
 // Get all orders for restaurant
@@ -41,11 +43,28 @@ router.get('/all', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);
@@ -103,11 +122,28 @@ router.get('/waiting', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);
@@ -165,11 +201,28 @@ router.get('/confirmed', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);
@@ -227,11 +280,28 @@ router.get('/preparing', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);
@@ -289,11 +359,28 @@ router.get('/ready', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);
@@ -351,11 +438,28 @@ router.get('/served', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);
@@ -413,11 +517,28 @@ router.get('/completed', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);
@@ -475,11 +596,28 @@ router.get('/cancelled', authMiddleware, async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map(u => u._id);
+      
+      const matchingRestaurants = await Restaurant.find({
+        'basicInfo.restaurantName': { $regex: searchRegex }
+      }).select('_id');
+      const restaurantIds = matchingRestaurants.map(r => r._id);
+      
+      const searchConditions = [
+        { userId: { $in: userIds } },
+        { restaurantId: { $in: restaurantIds } }
       ];
+      const numericSearch = parseInt(search);
+      if (!isNaN(numericSearch)) {
+        searchConditions.push({ orderNo: numericSearch });
+      }
+      filter.$or = searchConditions;
     }
     
     const totalCount = await Order.countDocuments(filter);

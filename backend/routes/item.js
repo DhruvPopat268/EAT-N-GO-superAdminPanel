@@ -20,11 +20,29 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
+    const search = req.query.search?.trim() || '';
+    const category = req.query.category?.trim() || '';
+    const subcategory = req.query.subcategory?.trim() || '';
+    const status = req.query.status?.trim() || '';
 
-    const totalCount = await Item.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const query = { restaurantId: req.restaurant.restaurantId };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+    if (category) {
+      query.category = category;
+    }
+    if (subcategory) {
+      query.subcategory = subcategory;
+    }
+    if (status) {
+      query.isAvailable = status === 'available';
+    }
+
+    const totalCount = await Item.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const items = await Item.find({ restaurantId: req.restaurant.restaurantId })
+    const items = await Item.find(query)
       .populate('subcategory', 'name')
       .populate('attributes.attribute', 'name')
       .sort({ createdAt: -1 })

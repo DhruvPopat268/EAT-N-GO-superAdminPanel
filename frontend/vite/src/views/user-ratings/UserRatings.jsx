@@ -170,22 +170,35 @@ const UserRatings = () => {
         <Card sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
-              <TextField
-                placeholder="Search by customer name, phone, or restaurant..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(0);
-                }}
-                sx={{ minWidth: 300 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconSearch size={20} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <TextField
+                  placeholder="Search by customer name, phone, or restaurant..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 300 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconSearch size={20} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                {hasActiveFilters && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<IconFilterOff size={18} />}
+                    onClick={handleClearFilters}
+                    sx={{ minWidth: 120 }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </Box>
               
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Autocomplete
@@ -259,18 +272,6 @@ const UserRatings = () => {
                   InputLabelProps={{ shrink: true }}
                   inputProps={{ style: { cursor: 'pointer' } }}
                 />
-
-                {hasActiveFilters && (
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<IconFilterOff size={18} />}
-                    onClick={handleClearFilters}
-                    sx={{ minWidth: 120 }}
-                  >
-                    Clear
-                  </Button>
-                )}
               </Box>
             </Stack>
           </Box>

@@ -12,11 +12,21 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
+    const search = req.query.search?.trim() || '';
+    const status = req.query.status?.trim() || '';
 
-    const totalCount = await Attribute.countDocuments({ restaurantId: req.restaurant.restaurantId });
+    const query = { restaurantId: req.restaurant.restaurantId };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+    if (status) {
+      query.isAvailable = status === 'available';
+    }
+
+    const totalCount = await Attribute.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const attributes = await Attribute.find({ restaurantId: req.restaurant.restaurantId })
+    const attributes = await Attribute.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -102,12 +112,16 @@ router.delete('/delete', restaurantAuthMiddleware, async (req, res) => {
 // Get all attributes from all restaurants
 router.get('/admin/all', authMiddleware, async (req, res) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+    const { attributeName, isAvailable } = req.query;
+
     const attributes = await Attribute.find({})
       .populate('restaurantId', 'basicInfo.restaurantName')
       .sort({ createdAt: -1 });
     
-    // Transform the data to include restaurantName and restaurantId
-    const transformedAttributes = attributes.map(attribute => {
+    let transformedAttributes = attributes.map(attribute => {
       const attributeObj = attribute.toObject();
       return {
         ...attributeObj,
@@ -115,8 +129,27 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
         restaurantId: attributeObj.restaurantId._id
       };
     });
+
+    if (attributeName) {
+      transformedAttributes = transformedAttributes.filter(a => 
+        a.name.toLowerCase().includes(attributeName.toLowerCase())
+      );
+    }
+
+    if (isAvailable !== undefined && isAvailable !== '') {
+      const statusFilter = isAvailable === 'true';
+      transformedAttributes = transformedAttributes.filter(a => a.isAvailable === statusFilter);
+    }
+
+    const totalCount = transformedAttributes.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedData = transformedAttributes.slice(skip, skip + limit);
     
-    res.json({ success: true, data: transformedAttributes });
+    res.json({ 
+      success: true, 
+      data: paginatedData,
+      pagination: { page, limit, totalCount, totalPages }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -125,12 +158,39 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
 // Get all attributes for restaurant
 router.post('/admin/get', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.body;
+    const { restaurantId, page = 1, limit = 20, attributeName, isAvailable } = req.body;
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: 'Restaurant ID is required' });
     }
-    const attributes = await Attribute.find({ restaurantId }).sort({ createdAt: -1 });
-    res.json({ success: true, data: attributes });
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (pageNum - 1) * limitNum;
+
+    const query = { restaurantId };
+    if (attributeName) {
+      query.name = { $regex: attributeName, $options: 'i' };
+    }
+    if (isAvailable !== undefined && isAvailable !== '') {
+      query.isAvailable = isAvailable;
+    }
+
+    const totalCount = await Attribute.countDocuments(query);
+    const attributes = await Attribute.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    res.json({ 
+      success: true, 
+      data: attributes,
+      pagination: { 
+        page: pageNum, 
+        limit: limitNum, 
+        totalCount, 
+        totalPages: Math.ceil(totalCount / limitNum) 
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

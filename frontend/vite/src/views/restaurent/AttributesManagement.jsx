@@ -28,10 +28,12 @@ import {
   Switch,
   Snackbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  InputAdornment,
+  TablePagination
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
-import { IconAdjustments, IconPlus } from '@tabler/icons-react';
+import { IconAdjustments, IconPlus, IconSearch, IconFilterOff } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
@@ -47,9 +49,15 @@ export default function AttributesManagement() {
   const [editMode, setEditMode] = useState(false);
   const [selectedAttribute, setSelectedAttribute] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [formData, setFormData] = useState({ name: '', restaurantId: '' });
 
   useEffect(() => {
@@ -57,8 +65,15 @@ export default function AttributesManagement() {
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchAttributes();
-  }, [selectedRestaurant]);
+  }, [selectedRestaurant, page, rowsPerPage, debouncedSearchTerm, statusFilter]);
 
   const fetchRestaurants = async () => {
     try {
@@ -76,13 +91,28 @@ export default function AttributesManagement() {
     try {
       let response;
       if (selectedRestaurant === 'all') {
-        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/all`, { withCredentials: true });
+        let url = `${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/all?page=${page + 1}&limit=${rowsPerPage}`;
+        if (debouncedSearchTerm) {
+          url += `&attributeName=${encodeURIComponent(debouncedSearchTerm)}`;
+        }
+        if (statusFilter !== 'all') {
+          url += `&isAvailable=${statusFilter === 'Available'}`;
+        }
+        response = await axios.get(url, { withCredentials: true });
       } else {
-        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/get`, {
-          restaurantId: selectedRestaurant
-        }, { withCredentials: true });
+        const payload = {
+          restaurantId: selectedRestaurant,
+          page: page + 1,
+          limit: rowsPerPage,
+          attributeName: debouncedSearchTerm || undefined
+        };
+        if (statusFilter !== 'all') {
+          payload.isAvailable = statusFilter === 'Available';
+        }
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/get`, payload, { withCredentials: true });
       }
       setAttributes(response.data.data || []);
+      setTotalCount(response.data.pagination?.totalCount || 0);
     } catch (error) {
       console.error('Error fetching attributes:', error);
       toast.error('Failed to load attributes');
@@ -129,7 +159,7 @@ export default function AttributesManagement() {
       await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/attributes/admin/status`, {
         id,
         isAvailable: newStatus,
-        restaurantId: selectedRestaurant
+        restaurantId: attribute.restaurantId
       }, { withCredentials: true });
       setAttributes(prev => prev.map(item =>
         item._id === id ? { ...item, isAvailable: newStatus } : item
@@ -140,6 +170,24 @@ export default function AttributesManagement() {
       toast.error('Failed to update status');
     }
   };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedRestaurant('all');
+    setStatusFilter('all');
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchTerm || selectedRestaurant !== 'all' || statusFilter !== 'all';
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -201,26 +249,74 @@ export default function AttributesManagement() {
 
       <Fade in timeout={900}>
         <Card sx={{ mb: 3, p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
-          <Stack direction="row" spacing={3} alignItems="center">
-            <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Restaurant</InputLabel>
-              <Select
-                value={selectedRestaurant}
-                label="Restaurant"
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <TextField
+                placeholder="Search by attribute name..."
+                value={searchTerm}
                 onChange={(e) => {
-                  setFilterLoading(true);
-                  setSelectedRestaurant(e.target.value);
-                  setTimeout(() => setFilterLoading(false), 300);
+                  setSearchTerm(e.target.value);
+                  setPage(0);
                 }}
-              >
-                <MenuItem value="all">All Restaurants</MenuItem>
-                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
-                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
-                    {restaurant.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                sx={{ minWidth: 300 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconSearch size={20} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              {hasActiveFilters && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<IconFilterOff size={18} />}
+                  onClick={handleClearFilters}
+                  sx={{ minWidth: 120 }}
+                >
+                  Clear
+                </Button>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel>Restaurant</InputLabel>
+                <Select
+                  value={selectedRestaurant}
+                  label="Restaurant"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setSelectedRestaurant(e.target.value);
+                    setPage(0);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Restaurants</MenuItem>
+                  {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                    <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                      {restaurant.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setStatusFilter(e.target.value);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="Available">Available</MenuItem>
+                  <MenuItem value="Unavailable">Unavailable</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </Stack>
         </Card>
       </Fade>
@@ -238,7 +334,7 @@ export default function AttributesManagement() {
             <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
-                  <TableCell sx={{ fontWeight: 700, py: 3 }}>id</TableCell>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>#</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Attribute Name</TableCell>
                   {selectedRestaurant === 'all' && (
                     <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
@@ -279,7 +375,7 @@ export default function AttributesManagement() {
                   attributes.map((attribute, index) => (
                     <Fade in timeout={1200 + index * 100} key={attribute._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
-                        <TableCell>#{index + 1}</TableCell>
+                        <TableCell>#{page * rowsPerPage + index + 1}</TableCell>
                         <TableCell>
                           <Typography variant="subtitle1" fontWeight="bold">
                             {attribute.name}
@@ -333,6 +429,16 @@ export default function AttributesManagement() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </Card>
       </Fade>
 

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const OrderRequest = require('../usersModels/OrderRequest');
-const { buildOrderQuery, orderPopulateConfig } = require('../utils/orderPopulate');
+const { buildOrderQuery, orderRequestPopulateConfig } = require('../utils/orderPopulate');
 
 // Get all order requests for restaurant
 router.get('/all', authMiddleware, async (req, res) => {
@@ -33,19 +33,35 @@ router.get('/all', authMiddleware, async (req, res) => {
       }
       if (endDate) {
         const endDateTime = new Date(endDate);
-        endDateTime.setHours(23, 59, 59, 999); // Set to end of day
+        endDateTime.setHours(23, 59, 59, 999);
         filter.createdAt.$lte = endDateTime;
       }
     }
     
     // Add search functionality
     if (search) {
+      const User = require('../usersModels/usersModel');
       const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
-        { 'userId.fullName': { $regex: searchRegex } },
-        { 'userId.phone': { $regex: searchRegex } }
-      ];
+      
+      // Search in users
+      const users = await User.find({
+        $or: [
+          { fullName: { $regex: searchRegex } },
+          { phone: { $regex: searchRegex } }
+        ]
+      }).select('_id');
+      
+      const userIds = users.map(u => u._id);
+      
+      // Check if search is a number for orderRequestNo
+      const searchNumber = parseInt(search);
+      const orConditions = [{ userId: { $in: userIds } }];
+      
+      if (!isNaN(searchNumber)) {
+        orConditions.push({ orderRequestNo: searchNumber });
+      }
+      
+      filter.$or = orConditions;
     }
     
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -396,7 +412,7 @@ router.get('/by-id', authMiddleware, async (req, res) => {
     }
 
     const orderRequest = await OrderRequest.findOne(filter)
-      .populate(orderPopulateConfig);
+      .populate(orderRequestPopulateConfig);
 
     if (!orderRequest) {
       return res.status(404).json({ success: false, message: 'Order request not found' });

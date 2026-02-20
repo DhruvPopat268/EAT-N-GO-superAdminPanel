@@ -29,12 +29,16 @@ import {
   Chip,
   Switch,
   Autocomplete,
-  InputAdornment
+  InputAdornment,
+  TablePagination,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { Edit, Delete, CloudUpload, Add, Remove } from '@mui/icons-material';
 import { CircularProgress } from '@mui/material';
-import { IconPackage, IconPlus } from '@tabler/icons-react';
+import { IconPackage, IconPlus, IconSearch, IconFilterOff } from '@tabler/icons-react';
 import axios from 'axios';
+import { useToast } from '../../utils/toast.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import ConfirmDialog from '../../utils/ConfirmDialog.jsx';
 
@@ -46,6 +50,7 @@ const mockCategories = [
 
 export default function AddonManagement() {
   const theme = useTheme();
+  const toast = useToast();
   const [addons, setAddons] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
@@ -58,6 +63,11 @@ export default function AddonManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [addonToDelete, setAddonToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -82,10 +92,17 @@ export default function AddonManagement() {
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchAddons();
     fetchSubcategories();
     fetchFilterCategories();
-  }, [selectedRestaurant]);
+  }, [selectedRestaurant, page, rowsPerPage, debouncedSearchTerm, categoryFilter, subcategoryFilter, statusFilter]);
 
   const fetchFilterCategories = async () => {
     if (selectedRestaurant === 'all') {
@@ -145,6 +162,7 @@ export default function AddonManagement() {
       setRestaurants(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (error) {
       console.error('Error fetching restaurants:', error);
+      toast.error('Failed to load restaurants');
       setRestaurants([]);
     }
   };
@@ -171,17 +189,31 @@ export default function AddonManagement() {
       setLoading(true);
       let response;
       if (selectedRestaurant === 'all') {
-        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/all`, { withCredentials: true });
+        let url = `${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/all?page=${page + 1}&limit=${rowsPerPage}`;
+        if (debouncedSearchTerm) url += `&addonName=${encodeURIComponent(debouncedSearchTerm)}`;
+        if (categoryFilter !== 'all') url += `&category=${categoryFilter}`;
+        if (subcategoryFilter !== 'all') url += `&subcategory=${encodeURIComponent(subcategoryFilter)}`;
+        if (statusFilter !== 'all') url += `&isAvailable=${statusFilter === 'active'}`;
+        response = await axios.get(url, { withCredentials: true });
       } else {
-        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/list`, {
-          restaurantId: selectedRestaurant
-        }, { withCredentials: true });
+        const payload = {
+          restaurantId: selectedRestaurant,
+          page: page + 1,
+          limit: rowsPerPage,
+          addonName: debouncedSearchTerm || undefined,
+          category: categoryFilter !== 'all' ? categoryFilter : undefined,
+          subcategory: subcategoryFilter !== 'all' ? subcategoryFilter : undefined,
+          isAvailable: statusFilter !== 'all' ? (statusFilter === 'active') : undefined
+        };
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/addon-items/admin/list`, payload, { withCredentials: true });
       }
       if (response.data.success) {
         setAddons(response.data.data);
+        setTotalCount(response.data.pagination?.totalCount || 0);
       }
     } catch (error) {
       console.error('Error fetching addons:', error);
+      toast.error('Failed to load addons');
     } finally {
       setLoading(false);
     }
@@ -314,9 +346,11 @@ export default function AddonManagement() {
       });
       if (response.data.success) {
         setAddons(prev => prev.filter(item => item._id !== addonToDelete._id));
+        toast.success('Addon deleted successfully');
       }
     } catch (error) {
       console.error('Error deleting addon:', error);
+      toast.error('Failed to delete addon');
     } finally {
       setDeleting(false);
       setDeleteDialogOpen(false);
@@ -337,9 +371,11 @@ export default function AddonManagement() {
         setAddons(prev => prev.map(item =>
           item._id === id ? { ...item, isAvailable: newStatus } : item
         ));
+        toast.success(`Addon ${newStatus ? 'activated' : 'deactivated'}`);
       }
     } catch (error) {
       console.error('Error updating status:', error);
+      toast.error('Failed to update status');
     }
   };
 
@@ -386,17 +422,40 @@ export default function AddonManagement() {
       if (response.data.success) {
         if (editMode) {
           fetchAddons(); // Refresh the addon list after edit
+          toast.success('Addon updated successfully');
         } else {
           setAddons(prev => [...prev, response.data.data]);
+          toast.success('Addon created successfully');
         }
         setDialogOpen(false);
       }
     } catch (error) {
       console.error('Error saving addon:', error);
+      toast.error(`Failed to ${editMode ? 'update' : 'create'} addon`);
     } finally {
       setLoading(false);
     }
   };
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedRestaurant('all');
+    setCategoryFilter('all');
+    setSubcategoryFilter('all');
+    setStatusFilter('all');
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchTerm || selectedRestaurant !== 'all' || categoryFilter !== 'all' || subcategoryFilter !== 'all' || statusFilter !== 'all';
+
   const filteredSubcategories = formSubcategories
   .filter(sub =>
     sub.category === availableCategories.find(c => c.id === formData.category?.id)?.name
@@ -405,13 +464,6 @@ export default function AddonManagement() {
   const availableSubcategories = subcategories.filter(sub =>
     categoryFilter === 'all' || sub.category === categoryFilter
   );
-
-  const filteredAddons = addons.filter(addon => {
-    const categoryMatch = categoryFilter === 'all' || addon.category === categoryFilter;
-    const subcategoryMatch = subcategoryFilter === 'all' || addon.subcategory?.name === subcategoryFilter;
-    const statusMatch = statusFilter === 'all' || (statusFilter === 'active' ? addon.isAvailable : !addon.isAvailable);
-    return categoryMatch && subcategoryMatch && statusMatch;
-  });
 
   const getCategoryColor = (category) => {
     switch (category) {
@@ -456,81 +508,116 @@ export default function AddonManagement() {
 
       <Fade in timeout={900}>
         <Card sx={{ mb: 3, p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
-          <Stack direction="row" spacing={3} alignItems="center">
-            <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Restaurant</InputLabel>
-              <Select
-                value={selectedRestaurant}
-                label="Restaurant"
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <TextField
+                placeholder="Search by addon name..."
+                value={searchTerm}
                 onChange={(e) => {
-                  setFilterLoading(true);
-                  setSelectedRestaurant(e.target.value);
-                  setCategoryFilter('all');
-                  setSubcategoryFilter('all');
-                  setTimeout(() => setFilterLoading(false), 300);
+                  setSearchTerm(e.target.value);
+                  setPage(0);
                 }}
-              >
-                <MenuItem value="all">All Restaurants</MenuItem>
-                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
-                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
-                    {restaurant.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 180 }}>
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={categoryFilter}
-                label="Category"
-                onChange={(e) => {
-                  setFilterLoading(true);
-                  setCategoryFilter(e.target.value);
-                  setSubcategoryFilter('all');
-                  setTimeout(() => setFilterLoading(false), 300);
+                sx={{ minWidth: 300 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconSearch size={20} />
+                    </InputAdornment>
+                  ),
                 }}
-              >
-                <MenuItem value="all">All Categories</MenuItem>
-                {filterCategories.map((category) => (
-                  <MenuItem key={category} value={category}>
-                    {category === 'veg' ? 'Veg' : category === 'non-veg' ? 'Non-Veg' : 'Mixed'}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Subcategory</InputLabel>
-              <Select
-                value={subcategoryFilter}
-                label="Subcategory"
-                onChange={(e) => {
-                  setFilterLoading(true);
-                  setSubcategoryFilter(e.target.value);
-                  setTimeout(() => setFilterLoading(false), 300);
-                }}
-              >
-                <MenuItem value="all">All Subcategories</MenuItem>
-                {availableSubcategories.map(sub => (
-                  <MenuItem key={sub.id} value={sub.name}>{sub.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Status"
-                onChange={(e) => {
-                  setFilterLoading(true);
-                  setStatusFilter(e.target.value);
-                  setTimeout(() => setFilterLoading(false), 300);
-                }}
-              >
-                <MenuItem value="all">All Status</MenuItem>
-                <MenuItem value="active">Available</MenuItem>
-                <MenuItem value="inactive">Unavailable</MenuItem>
-              </Select>
-            </FormControl>
+              />
+              {hasActiveFilters && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<IconFilterOff size={18} />}
+                  onClick={handleClearFilters}
+                  sx={{ minWidth: 120 }}
+                >
+                  Clear
+                </Button>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel>Restaurant</InputLabel>
+                <Select
+                  value={selectedRestaurant}
+                  label="Restaurant"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setSelectedRestaurant(e.target.value);
+                    setCategoryFilter('all');
+                    setSubcategoryFilter('all');
+                    setPage(0);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Restaurants</MenuItem>
+                  {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                    <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                      {restaurant.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 180 }}>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={categoryFilter}
+                  label="Category"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setCategoryFilter(e.target.value);
+                    setSubcategoryFilter('all');
+                    setPage(0);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Categories</MenuItem>
+                  {filterCategories.map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {category === 'veg' ? 'Veg' : category === 'non-veg' ? 'Non-Veg' : 'Mixed'}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel>Subcategory</InputLabel>
+                <Select
+                  value={subcategoryFilter}
+                  label="Subcategory"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setSubcategoryFilter(e.target.value);
+                    setPage(0);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Subcategories</MenuItem>
+                  {availableSubcategories.map(sub => (
+                    <MenuItem key={sub._id} value={sub.name}>{sub.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setStatusFilter(e.target.value);
+                    setPage(0);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="active">Available</MenuItem>
+                  <MenuItem value="inactive">Unavailable</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </Stack>
         </Card>
       </Fade>
@@ -541,6 +628,7 @@ export default function AddonManagement() {
             <Table sx={{ minWidth: 800 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>#</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Addon</TableCell>
                   {selectedRestaurant === 'all' && (
                     <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
@@ -556,19 +644,19 @@ export default function AddonManagement() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 9 : 8} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading addons..." />
                     </TableCell>
                   </TableRow>
                 ) : filterLoading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 9 : 8} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading addons..." />
                     </TableCell>
                   </TableRow>
-                ) : filteredAddons.length === 0 ? (
+                ) : addons.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant === 'all' ? 8 : 7} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant === 'all' ? 9 : 8} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconPackage size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -581,9 +669,10 @@ export default function AddonManagement() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAddons.map((addon, index) => (
+                  addons.map((addon, index) => (
                     <Fade in timeout={1200 + index * 100} key={addon._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
+                        <TableCell>#{page * rowsPerPage + index + 1}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Avatar
@@ -701,6 +790,16 @@ export default function AddonManagement() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </Card>
       </Fade>
 
@@ -930,6 +1029,28 @@ export default function AddonManagement() {
         itemName={addonToDelete?.name}
         loading={deleting}
       />
+
+      {toast.toasts.map((toastItem) => (
+        <Snackbar
+          key={toastItem.id}
+          open={true}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 2 }}
+        >
+          <Alert
+            severity={toastItem.severity}
+            variant="filled"
+            sx={{
+              borderRadius: 2,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              minWidth: 300,
+              fontWeight: 500
+            }}
+          >
+            {toastItem.message}
+          </Alert>
+        </Snackbar>
+      ))}
     </Box>
   );
 }

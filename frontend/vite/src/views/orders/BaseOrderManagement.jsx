@@ -19,9 +19,10 @@ import {
   Autocomplete,
   IconButton,
   Tooltip,
-  TablePagination
+  TablePagination,
+  Button
 } from '@mui/material';
-import { IconEye, IconBuildingStore, IconSearch } from '@tabler/icons-react';
+import { IconEye, IconBuildingStore, IconSearch, IconFilterOff, IconX } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { formatDateTime } from '../../utils/dateFormatter.js';
@@ -32,6 +33,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedOrderType, setSelectedOrderType] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -86,8 +88,8 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
         url += `&restaurantId=${selectedRestaurant.restaurantId}`;
       }
       
-      if (searchTerm.trim()) {
-        url += `&search=${encodeURIComponent(searchTerm.trim())}`;
+      if (debouncedSearchTerm.trim()) {
+        url += `&search=${encodeURIComponent(debouncedSearchTerm.trim())}`;
       }
       
       if (selectedStatus) {
@@ -125,9 +127,18 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
     fetchRestaurants();
   }, []);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchOrders();
-  }, [page, rowsPerPage, selectedRestaurant, searchTerm, selectedStatus, selectedOrderType, startDate, endDate]);
+  }, [page, rowsPerPage, selectedRestaurant, debouncedSearchTerm, selectedStatus, selectedOrderType, startDate, endDate]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -137,6 +148,18 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedRestaurant({ restaurantId: 'all', name: 'All Restaurants' });
+    setSelectedStatus('');
+    setSelectedOrderType('');
+    setStartDate('');
+    setEndDate('');
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchTerm || selectedRestaurant?.restaurantId !== 'all' || selectedStatus || selectedOrderType || startDate || endDate;
 
   const getStatusColor = (status) => {
     const statusConfig = {
@@ -195,22 +218,48 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
         <Card sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
-              <TextField
-                placeholder="Search by customer name, phone, or order number..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(0);
-                }}
-                sx={{ minWidth: 400 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconSearch size={20} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <TextField
+                  placeholder="Search by customer name, phone, or order number..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 400 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconSearch size={20} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchTerm && (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setSearchTerm('');
+                            setPage(0);
+                          }}
+                        >
+                          <IconX size={18} />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                {hasActiveFilters && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<IconFilterOff size={18} />}
+                    onClick={handleClearFilters}
+                    sx={{ minWidth: 120 }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </Box>
               
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Autocomplete

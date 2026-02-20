@@ -16,11 +16,25 @@ router.get('/',restaurantAuthMiddleware, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
+    const search = req.query.search?.trim() || '';
+    const category = req.query.category?.trim() || '';
+    const status = req.query.status?.trim() || '';
 
-    const totalCount = await Combo.countDocuments({ restaurantId });
+    const query = { restaurantId };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+    if (category) {
+      query.category = category;
+    }
+    if (status) {
+      query.isAvailable = status === 'available';
+    }
+
+    const totalCount = await Combo.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
 
-    const combos = await Combo.find({ restaurantId })
+    const combos = await Combo.find(query)
       .populate('items.itemId', 'name images')
       .populate('items.attribute', 'name')
       .sort({ createdAt: -1 })
@@ -197,13 +211,24 @@ router.post('/item-attributes', restaurantAuthMiddleware, async (req, res) => {
 // Get all combos from all restaurants
 router.get('/admin/all', authMiddleware, async (req, res) => {
   try {
-    const combos = await Combo.find({})
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+    const search = req.query.search?.trim() || '';
+
+    const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+
+    const totalCount = await Combo.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const combos = await Combo.find(query)
       .populate('restaurantId', 'basicInfo.restaurantName')
       .populate('items.itemId', 'name images')
       .populate('items.attribute', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
     
-    // Transform the data to only include restaurantName and restaurantId
     const transformedCombos = combos.map(combo => {
       const comboObj = combo.toObject();
       return {
@@ -213,7 +238,16 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
       };
     });
     
-    res.json({ success: true, data: transformedCombos });
+    res.json({
+      success: true,
+      data: transformedCombos,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -223,12 +257,36 @@ router.get('/admin/all', authMiddleware, async (req, res) => {
 router.post('/admin',authMiddleware, async (req, res) => {
   try {
     const { restaurantId } = req.body;
-    const combos = await Combo.find({ restaurantId })
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+    const search = req.query.search?.trim() || '';
+
+    const query = { restaurantId };
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
+
+    const totalCount = await Combo.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const combos = await Combo.find(query)
       .populate('items.itemId', 'name images')
       .populate('items.attribute', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
     
-    res.json({ success: true, data: combos });
+    res.json({
+      success: true,
+      data: combos,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

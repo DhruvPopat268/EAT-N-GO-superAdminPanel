@@ -33,7 +33,7 @@ import {
 } from '@mui/material';
 import { Edit, Visibility } from '@mui/icons-material';
 import { CircularProgress, Snackbar, Alert } from '@mui/material';
-import { IconTicket, IconPlus } from '@tabler/icons-react';
+import { IconTicket, IconPlus, IconFilterOff } from '@tabler/icons-react';
 import axios from 'axios';
 import 'utils/apiInterceptor';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
@@ -51,7 +51,7 @@ export default function CouponManagement() {
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [appliedSearchTerm, setAppliedSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCoupons, setTotalCoupons] = useState(0);
@@ -81,9 +81,18 @@ export default function CouponManagement() {
     fetchRestaurants();
   }, []);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchCoupons();
-  }, [selectedRestaurant, page, rowsPerPage]);
+  }, [selectedRestaurant, page, rowsPerPage, debouncedSearchTerm]);
 
   const fetchRestaurants = async () => {
     try {
@@ -104,7 +113,7 @@ export default function CouponManagement() {
         limit: rowsPerPage
       };
       if (selectedRestaurant !== 'all') params.restaurantId = selectedRestaurant;
-      if (appliedSearchTerm) params.search = appliedSearchTerm;
+      if (debouncedSearchTerm) params.search = debouncedSearchTerm;
       
       const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/coupons`, {
         params,
@@ -258,31 +267,14 @@ export default function CouponManagement() {
     return statusMatch;
   });
 
-  const handleSearch = () => {
-    setAppliedSearchTerm(searchTerm);
-    setPage(0);
-  };
-
-  useEffect(() => {
-    if (appliedSearchTerm !== undefined) {
-      fetchCoupons();
-    }
-  }, [appliedSearchTerm]);
-
   const handleClearFilters = () => {
     setSearchTerm('');
-    setAppliedSearchTerm('');
     setStatusFilter('all');
+    setSelectedRestaurant('all');
     setPage(0);
   };
 
-  const handleSearchKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  const hasActiveFilters = appliedSearchTerm || statusFilter !== 'all';
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedRestaurant !== 'all';
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -323,8 +315,10 @@ export default function CouponManagement() {
             <TextField
               placeholder="Search coupons..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={handleSearchKeyPress}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(0);
+              }}
               sx={{ minWidth: 300 }}
               size="medium"
               InputProps={{
@@ -335,30 +329,13 @@ export default function CouponManagement() {
                 ),
               }}
             />
-            <Button
-              variant="contained"
-              onClick={handleSearch}
-              sx={{
-                borderRadius: 1,
-                px: 4,
-                py: 1.5,
-                textTransform: 'none',
-                fontWeight: 600
-              }}
-            >
-              Search
-            </Button>
             {hasActiveFilters && (
               <Button
                 variant="outlined"
+                color="error"
+                startIcon={<IconFilterOff size={18} />}
                 onClick={handleClearFilters}
-                sx={{
-                  borderRadius: 1,
-                  px: 4,
-                  py: 1.5,
-                  textTransform: 'none',
-                  fontWeight: 600
-                }}
+                sx={{ minWidth: 120 }}
               >
                 Clear
               </Button>

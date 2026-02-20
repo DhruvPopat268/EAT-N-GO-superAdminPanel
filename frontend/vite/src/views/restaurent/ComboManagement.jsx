@@ -32,10 +32,12 @@ import {
   Alert,
   CircularProgress,
   Autocomplete,
-  Grid
+  Grid,
+  InputAdornment,
+  TablePagination
 } from '@mui/material';
 import { Edit, Delete, CloudUpload, Add, Remove, Visibility } from '@mui/icons-material';
-import { IconPackage, IconPlus } from '@tabler/icons-react';
+import { IconPackage, IconPlus, IconSearch, IconFilterOff } from '@tabler/icons-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../utils/toast.jsx';
@@ -57,8 +59,13 @@ export default function ComboManagement() {
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -80,12 +87,18 @@ export default function ComboManagement() {
 
   useEffect(() => {
     fetchRestaurants();
-    fetchCombos(); // Fetch all combos on initial load
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchCombos();
-  }, [selectedRestaurant]);
+  }, [selectedRestaurant, page, rowsPerPage, debouncedSearchTerm]);
 
   const fetchRestaurants = async () => {
     try {
@@ -102,14 +115,17 @@ export default function ComboManagement() {
     setLoading(true);
     try {
       let response;
+      const params = `page=${page + 1}&limit=${rowsPerPage}${debouncedSearchTerm ? `&search=${encodeURIComponent(debouncedSearchTerm)}` : ''}`;
+      
       if (selectedRestaurant === 'all') {
-        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/all`, { withCredentials: true });
+        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin/all?${params}`, { withCredentials: true });
       } else {
-        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin`, {
+        response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/combos/admin?${params}`, {
           restaurantId: selectedRestaurant
         }, { withCredentials: true });
       }
       setCombos(response.data.data || []);
+      setTotalCount(response.data.pagination?.totalCount || 0);
     } catch (error) {
       console.error('Error fetching combos:', error);
       toast.error('Failed to load combos');
@@ -382,6 +398,25 @@ export default function ComboManagement() {
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedRestaurant('all');
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchTerm || selectedRestaurant !== 'all' || categoryFilter !== 'all' || statusFilter !== 'all';
+
   const filteredCombos = combos.filter(item => {
     const categoryMatch = categoryFilter === 'all' || item.category === categoryFilter;
     const statusMatch = statusFilter === 'all' || (statusFilter === 'Available' ? item.isAvailable : !item.isAvailable);
@@ -431,55 +466,89 @@ export default function ComboManagement() {
 
       <Fade in timeout={900}>
         <Card sx={{ mb: 3, p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
-          <Stack direction="row" spacing={3} alignItems="center">
-            <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Restaurant</InputLabel>
-              <Select
-                value={selectedRestaurant}
-                label="Restaurant"
-                onChange={(e) => setSelectedRestaurant(e.target.value)}
-              >
-                <MenuItem value="all">All Restaurants</MenuItem>
-                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
-                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
-                    {restaurant.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 180 }}>
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={categoryFilter}
-                label="Category"
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <TextField
+                placeholder="Search by combo name..."
+                value={searchTerm}
                 onChange={(e) => {
-                  setFilterLoading(true);
-                  setCategoryFilter(e.target.value);
-                  setTimeout(() => setFilterLoading(false), 300);
+                  setSearchTerm(e.target.value);
+                  setPage(0);
                 }}
-              >
-                <MenuItem value="all">All Categories</MenuItem>
-                <MenuItem value="Veg">Veg</MenuItem>
-                <MenuItem value="Non-Veg">Non-Veg</MenuItem>
-                <MenuItem value="Mixed">Mixed</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Status"
-                onChange={(e) => {
-                  setFilterLoading(true);
-                  setStatusFilter(e.target.value);
-                  setTimeout(() => setFilterLoading(false), 300);
+                sx={{ minWidth: 300 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconSearch size={20} />
+                    </InputAdornment>
+                  ),
                 }}
-              >
-                <MenuItem value="all">All Status</MenuItem>
-                <MenuItem value="Available">Available</MenuItem>
-                <MenuItem value="Unavailable">Unavailable</MenuItem>
-              </Select>
-            </FormControl>
+              />
+              {hasActiveFilters && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<IconFilterOff size={18} />}
+                  onClick={handleClearFilters}
+                  sx={{ minWidth: 120 }}
+                >
+                  Clear
+                </Button>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel>Restaurant</InputLabel>
+                <Select
+                  value={selectedRestaurant}
+                  label="Restaurant"
+                  onChange={(e) => {
+                    setSelectedRestaurant(e.target.value);
+                    setPage(0);
+                  }}
+                >
+                  <MenuItem value="all">All Restaurants</MenuItem>
+                  {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                    <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                      {restaurant.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 180 }}>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={categoryFilter}
+                  label="Category"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setCategoryFilter(e.target.value);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Categories</MenuItem>
+                  <MenuItem value="Veg">Veg</MenuItem>
+                  <MenuItem value="Non-Veg">Non-Veg</MenuItem>
+                  <MenuItem value="Mixed">Mixed</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setStatusFilter(e.target.value);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="Available">Available</MenuItem>
+                  <MenuItem value="Unavailable">Unavailable</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </Stack>
         </Card>
       </Fade>
@@ -497,7 +566,7 @@ export default function ComboManagement() {
             <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
-                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>#</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Combo</TableCell>
                   {selectedRestaurant === 'all' && (
                     <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
@@ -540,7 +609,7 @@ export default function ComboManagement() {
                   filteredCombos.map((combo, index) => (
                     <Fade in timeout={1200 + index * 100} key={combo._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
-                        <TableCell>#{index + 1}</TableCell>
+                        <TableCell>#{page * rowsPerPage + index + 1}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Avatar
@@ -634,6 +703,16 @@ export default function ComboManagement() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </Card>
       </Fade>
 

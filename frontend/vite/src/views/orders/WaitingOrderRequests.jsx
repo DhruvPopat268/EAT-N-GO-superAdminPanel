@@ -19,10 +19,11 @@ import {
   Autocomplete,
   IconButton,
   Tooltip,
-  TablePagination
+  TablePagination,
+  Button
 } from '@mui/material';
 import { Visibility, AccessTime } from '@mui/icons-material';
-import { IconBuildingStore, IconSearch, IconHourglass } from '@tabler/icons-react';
+import { IconBuildingStore, IconSearch, IconHourglass, IconFilterOff, IconX } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
@@ -36,6 +37,7 @@ export default function WaitingOrderRequests() {
   const [restaurants, setRestaurants] = useState([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState({ restaurantId: 'all', name: 'All Restaurants' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedOrderType, setSelectedOrderType] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -53,12 +55,20 @@ export default function WaitingOrderRequests() {
 
   useEffect(() => {
     fetchRestaurantNames();
-    fetchOrderRequests();
   }, []);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     fetchOrderRequests();
-  }, [selectedRestaurant, page, rowsPerPage, searchTerm, selectedOrderType, startDate, endDate]);
+  }, [selectedRestaurant, page, rowsPerPage, debouncedSearchTerm, selectedOrderType, startDate, endDate]);
 
   const fetchRestaurantNames = async () => {
     try {
@@ -84,8 +94,8 @@ export default function WaitingOrderRequests() {
         url += `&restaurantId=${selectedRestaurant.restaurantId}`;
       }
       
-      if (searchTerm.trim()) {
-        url += `&search=${encodeURIComponent(searchTerm.trim())}`;
+      if (debouncedSearchTerm.trim()) {
+        url += `&search=${encodeURIComponent(debouncedSearchTerm.trim())}`;
       }
       
       if (selectedOrderType) {
@@ -116,6 +126,17 @@ export default function WaitingOrderRequests() {
       setLoading(false);
     }
   };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedRestaurant({ restaurantId: 'all', name: 'All Restaurants' });
+    setSelectedOrderType('');
+    setStartDate('');
+    setEndDate('');
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchTerm || selectedRestaurant?.restaurantId !== 'all' || selectedOrderType || startDate || endDate;
 
   const getFilteredOrderRequests = () => {
     let filtered = orderRequests || [];
@@ -180,22 +201,48 @@ export default function WaitingOrderRequests() {
         <Card sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden', background: 'white' }}>
           <Box sx={{ p: 4, borderBottom: '1px solid #e5e7eb' }}>
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
-              <TextField
-                placeholder="Search by customer name, phone, or order number..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(0);
-                }}
-                sx={{ minWidth: 400 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <IconSearch size={20} />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <TextField
+                  placeholder="Search by customer name, phone, or order number..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(0);
+                  }}
+                  sx={{ minWidth: 400 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconSearch size={20} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: searchTerm && (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setSearchTerm('');
+                            setPage(0);
+                          }}
+                        >
+                          <IconX size={18} />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                {hasActiveFilters && (
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<IconFilterOff size={18} />}
+                    onClick={handleClearFilters}
+                    sx={{ minWidth: 120 }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </Box>
               
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Autocomplete

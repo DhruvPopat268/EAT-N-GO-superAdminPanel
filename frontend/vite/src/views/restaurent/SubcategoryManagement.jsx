@@ -31,10 +31,12 @@ import {
   Switch,
   Snackbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  InputAdornment,
+  TablePagination
 } from '@mui/material';
 import { Edit, Delete, CloudUpload } from '@mui/icons-material';
-import { IconCategory, IconPlus } from '@tabler/icons-react';
+import { IconCategory, IconPlus, IconSearch, IconFilterOff } from '@tabler/icons-react';
 import axios from 'axios';
 import { useToast } from '../../utils/toast.jsx';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
@@ -56,6 +58,11 @@ export default function SubcategoryManagement() {
   const [loading, setLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -74,9 +81,16 @@ export default function SubcategoryManagement() {
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
     fetchSubcategories();
     fetchFilterCategories();
-  }, [selectedRestaurant]);
+  }, [selectedRestaurant, page, rowsPerPage, debouncedSearchTerm]);
 
   const fetchFilterCategories = async () => {
     if (selectedRestaurant === 'all') {
@@ -112,13 +126,21 @@ export default function SubcategoryManagement() {
     try {
       let response;
       if (selectedRestaurant === 'all') {
-        response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/all`, { withCredentials: true });
+        let url = `${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/all?page=${page + 1}&limit=${rowsPerPage}`;
+        if (debouncedSearchTerm) {
+          url += `&subcategoryName=${encodeURIComponent(debouncedSearchTerm)}`;
+        }
+        response = await axios.get(url, { withCredentials: true });
       } else {
         response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/get`, {
-          restaurantId: selectedRestaurant
+          restaurantId: selectedRestaurant,
+          page: page + 1,
+          limit: rowsPerPage,
+          subcategoryName: debouncedSearchTerm || undefined
         }, { withCredentials: true });
       }
       setSubcategories(response.data.data || []);
+      setTotalCount(response.data.pagination?.totalCount || 0);
     } catch (error) {
       console.error('Error fetching subcategories:', error);
       toast.error('Failed to load subcategories');
@@ -199,7 +221,7 @@ export default function SubcategoryManagement() {
       await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/subcategories/admin/status`, {
         id,
         isAvailable: newStatus,
-        restaurantId: selectedRestaurant
+        restaurantId: subcategory.restaurantId
       }, { withCredentials: true });
       setSubcategories(prev => prev.map(item =>
         item._id === id ? { ...item, isAvailable: newStatus } : item
@@ -243,6 +265,25 @@ export default function SubcategoryManagement() {
       setSubmitting(false);
     }
   };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSelectedRestaurant('all');
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setPage(0);
+  };
+
+  const hasActiveFilters = searchTerm || selectedRestaurant !== 'all' || categoryFilter !== 'all' || statusFilter !== 'all';
 
   const filteredSubcategories = subcategories.filter(item => {
     const categoryMatch = categoryFilter === 'all' || item.category === categoryFilter;
@@ -293,60 +334,92 @@ export default function SubcategoryManagement() {
 
       <Fade in timeout={900}>
         <Card sx={{ mb: 3, p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.06)' }}>
-          <Stack direction="row" spacing={3} alignItems="center">
-            <FormControl sx={{ minWidth: 200 }}>
-              <InputLabel>Restaurant</InputLabel>
-              <Select
-                value={selectedRestaurant}
-                label="Restaurant"
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" justifyContent="space-between">
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <TextField
+                placeholder="Search by subcategory name..."
+                value={searchTerm}
                 onChange={(e) => {
-                  setFilterLoading(true);
-                  setSelectedRestaurant(e.target.value);
-                  setCategoryFilter('all');
-                  setTimeout(() => setFilterLoading(false), 300);
+                  setSearchTerm(e.target.value);
+                  setPage(0);
                 }}
-              >
-                <MenuItem value="all">All Restaurants</MenuItem>
-                {Array.isArray(restaurants) && restaurants.map((restaurant) => (
-                  <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
-                    {restaurant.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 180 }}>
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={categoryFilter}
-                label="Category"
-                onChange={(e) => {
-                  setFilterLoading(true);
-                  setCategoryFilter(e.target.value);
-                  setTimeout(() => setFilterLoading(false), 300);
+                sx={{ minWidth: 300 }}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <IconSearch size={20} />
+                    </InputAdornment>
+                  ),
                 }}
-              >
-                <MenuItem value="all">All Categories</MenuItem>
-                {filterCategories.map((category) => (
-                  <MenuItem key={category} value={category}>{category}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl sx={{ minWidth: 150 }}>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Status"
-                onChange={(e) => {
-                  setFilterLoading(true);
-                  setStatusFilter(e.target.value);
-                  setTimeout(() => setFilterLoading(false), 300);
-                }}
-              >
-                <MenuItem value="all">All Status</MenuItem>
-                <MenuItem value="Available">Available</MenuItem>
-                <MenuItem value="Unavailable">Unavailable</MenuItem>
-              </Select>
-            </FormControl>
+              />
+              {hasActiveFilters && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<IconFilterOff size={18} />}
+                  onClick={handleClearFilters}
+                  sx={{ minWidth: 120 }}
+                >
+                  Clear
+                </Button>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <FormControl sx={{ minWidth: 200 }}>
+                <InputLabel>Restaurant</InputLabel>
+                <Select
+                  value={selectedRestaurant}
+                  label="Restaurant"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setSelectedRestaurant(e.target.value);
+                    setCategoryFilter('all');
+                    setPage(0);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Restaurants</MenuItem>
+                  {Array.isArray(restaurants) && restaurants.map((restaurant) => (
+                    <MenuItem key={restaurant.restaurantId} value={restaurant.restaurantId}>
+                      {restaurant.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 180 }}>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={categoryFilter}
+                  label="Category"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setCategoryFilter(e.target.value);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Categories</MenuItem>
+                  {filterCategories.map((category) => (
+                    <MenuItem key={category} value={category}>{category}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl sx={{ minWidth: 150 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(e) => {
+                    setFilterLoading(true);
+                    setStatusFilter(e.target.value);
+                    setTimeout(() => setFilterLoading(false), 300);
+                  }}
+                >
+                  <MenuItem value="all">All Status</MenuItem>
+                  <MenuItem value="Available">Available</MenuItem>
+                  <MenuItem value="Unavailable">Unavailable</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </Stack>
         </Card>
       </Fade>
@@ -364,7 +437,7 @@ export default function SubcategoryManagement() {
             <Table sx={{ minWidth: 650 }}>
               <TableHead>
                 <TableRow sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.04) }}>
-                  <TableCell sx={{ fontWeight: 700, py: 3 }}>Id</TableCell>
+                  <TableCell sx={{ fontWeight: 700, py: 3 }}>#</TableCell>
                   <TableCell sx={{ fontWeight: 700, py: 3 }}>Subcategory</TableCell>
                   {selectedRestaurant === 'all' && (
                     <TableCell sx={{ fontWeight: 700 }}>Restaurant</TableCell>
@@ -406,7 +479,7 @@ export default function SubcategoryManagement() {
                   filteredSubcategories.map((subcategory, index) => (
                     <Fade in timeout={1200 + index * 100} key={subcategory._id}>
                       <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
-                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Avatar
@@ -483,6 +556,16 @@ export default function SubcategoryManagement() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={totalCount}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </Card>
       </Fade>
 
