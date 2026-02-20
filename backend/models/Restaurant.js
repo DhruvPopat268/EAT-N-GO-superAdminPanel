@@ -60,7 +60,26 @@ const restaurantSchema = new mongoose.Schema({
   rejectedFormFields: [{ type: String }],
 
   // Manual Closure
-  isManuallyClosed: { type: Boolean, default: false }
+  isManuallyClosed: { type: Boolean, default: false },
+
+  // User Ratings
+  userRatings: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 }
+  }],
+
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+
+  totalRatings: {
+    type: Number,
+    default: 0,
+    min: 0
+  }
 }, {
   timestamps: true
 });

@@ -299,6 +299,12 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         restaurant.isManuallyClosed
       );
       
+      // Calculate average rating
+      const ratings = restaurant.userRatings || [];
+      const avgRating = ratings.length > 0 
+        ? (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length).toFixed(1)
+        : 0;
+      
       return {
         _id: restaurant._id,
         basicInfo: {
@@ -317,7 +323,9 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         currency: restaurant.businessDetails?.currency,
         primaryImage: restaurant.documents?.primaryImage || null,
         distanceFromCurrentLocation: `${distanceInKm} km`,
-        isOpen: isOpen
+        isOpen: isOpen,
+        averageRating: parseFloat(avgRating),
+        totalRatings: ratings.length
       };
     });
 

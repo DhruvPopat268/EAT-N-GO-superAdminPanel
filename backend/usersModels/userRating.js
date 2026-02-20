@@ -20,12 +20,26 @@ const ratingSchema = new mongoose.Schema(
       required: true,
     },
 
-    rating: {
+    restaurantRating: {
       type: Number,
       required: true,
       min: 1,
-      max: 5,
+      max: 5
     },
+
+    itemRatings: [{
+      itemId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "MenuItem",
+        required: true
+      },
+      rating: {
+        type: Number,
+        required: true,
+        min: 1,
+        max: 5
+      }
+    }],
 
     feedback: {
       type: String,
