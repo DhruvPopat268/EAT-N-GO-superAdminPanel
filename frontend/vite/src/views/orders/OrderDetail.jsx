@@ -11,7 +11,8 @@ import {
   Stack,
   alpha,
   Button,
-  Divider
+  Divider,
+  Rating
 } from '@mui/material';
 import { ArrowBack, Person, Restaurant, Print, Phone, Email, LocationOn } from '@mui/icons-material';
 import { IconClipboardList } from '@tabler/icons-react';
@@ -263,6 +264,27 @@ export default function OrderDetail() {
                       {formatDate(order.createdAt)}
                     </Typography>
                   </Box>
+
+                  {/* User Rating */}
+                  {order.userRatingId && (
+                    <>
+                      <Divider sx={{ my: 1 }} />
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 1 }}>
+                          User Rating
+                        </Typography>
+                        <Rating value={order.userRatingId.rating} readOnly size="small" sx={{ mb: 1 }} />
+                        {order.userRatingId.feedback && (
+                          <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic', mb: 1 }}>
+                            "{order.userRatingId.feedback}"
+                          </Typography>
+                        )}
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                          {formatDateTime(order.userRatingId.createdAt)}
+                        </Typography>
+                      </Box>
+                    </>
+                  )}
                 </Stack>
               </Box>
           </Card>

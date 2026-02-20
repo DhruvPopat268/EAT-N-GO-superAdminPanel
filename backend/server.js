@@ -46,6 +46,7 @@ app.use('/api/combos', require('./routes/combo'));
 app.use('/api/coupons', require('./routes/coupon'));
 app.use('/api/order-requests', require('./routes/orderReqRoute'));
 app.use('/api/orders', require('./routes/orderRoute'));
+app.use('/api/user-ratings', require('./routes/userRatingRoutes'));
 app.use('/api/users', require('./usersRoutes/usersRoutes'));
 
 // Test API - Get current server time and IST time
