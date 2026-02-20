@@ -72,7 +72,7 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Find order
-    const order = await Order.findOne({ _id: orderId, userId }).select('status userRatingId restaurantId');
+    const order = await Order.findOne({ _id: orderId, userId }).select('status userRatingId restaurantId items');
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
@@ -86,6 +86,14 @@ router.post('/', verifyToken, async (req, res) => {
     // Check if already rated
     if (order.userRatingId) {
       return res.status(400).json({ success: false, message: 'Order already rated' });
+    }
+
+    // Validate that all rated items belong to this order
+    const orderItemIds = order.items.map(item => item.itemId.toString());
+    for (const itemRating of itemRatings) {
+      if (!orderItemIds.includes(itemRating.itemId)) {
+        return res.status(400).json({ success: false, message: `Item ${itemRating.itemId} does not belong to this order` });
+      }
     }
 
     const restaurantId = order.restaurantId;
