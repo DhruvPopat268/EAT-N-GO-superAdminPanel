@@ -166,14 +166,21 @@ router.get('/', verifyToken, async (req, res) => {
 router.get('/summary', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const cart = await Cart.findOne({ userId });
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'restaurantId',
+        model: 'Restaurant',
+        select: 'basicInfo.restaurantName'
+      });
 
     if (!cart || !cart.items.length) {
       return res.json({
         success: true,
         data: {
           totalItems: 0,
-          cartTotal: 0
+          cartTotal: 0,
+          restaurantId: null,
+          restaurantName: null
         }
       });
     }
@@ -184,7 +191,9 @@ router.get('/summary', verifyToken, async (req, res) => {
       success: true,
       data: {
         totalItems,
-        cartTotal: cart.cartTotal || 0
+        cartTotal: cart.cartTotal || 0,
+        restaurantId: cart.restaurantId?._id,
+        restaurantName: cart.restaurantId?.basicInfo?.restaurantName
       }
     });
   } catch (error) {
