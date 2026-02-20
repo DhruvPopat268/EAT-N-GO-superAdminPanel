@@ -53,6 +53,7 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -156,6 +157,7 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -259,6 +261,7 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -362,6 +365,7 @@ router.get('/preparing', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -465,6 +469,7 @@ router.get('/ready', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -568,6 +573,7 @@ router.get('/served', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -671,6 +677,7 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -774,6 +781,7 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',
@@ -841,6 +849,7 @@ router.get('/detail/:orderId', restaurantAuthMiddleware, async (req, res) => {
 
     const order = await Order.findOne({ _id: orderId, restaurantId })
       .populate('userId', 'fullName phone')
+      .populate('userRatingId', 'rating feedback createdAt')
       .populate({
         path: 'items.itemId',
         model: 'Item',

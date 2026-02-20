@@ -17,7 +17,8 @@ const orderPopulateConfig = [
     select: 'category name description images currency isAvailable attributes',
     populate: { path: 'attributes.attribute', model: 'Attribute' }
   },
-  { path: 'items.selectedAddons.selectedAttribute', model: 'Attribute', select: 'name' }
+  { path: 'items.selectedAddons.selectedAttribute', model: 'Attribute', select: 'name' },
+  { path: 'userRatingId' }
 ];
 
 const buildOrderQuery = (Model, filter, { page, limit }) => {

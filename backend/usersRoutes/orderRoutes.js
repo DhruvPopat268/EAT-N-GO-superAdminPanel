@@ -398,6 +398,7 @@ router.get('/', verifyToken, async (req, res) => {
         model: 'Item',
         select: 'category name description images'
       })
+      .populate('userRatingId')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -433,6 +434,7 @@ router.get('/inprogress', verifyToken, async (req, res) => {
       status: { $in: ['confirmed', 'waiting', 'preparing', 'ready'] }
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
+      .populate('userRatingId')
       .sort({ createdAt: -1 });
 
     // Transform orders to include itemsCount instead of items array
@@ -467,6 +469,7 @@ router.get('/active', verifyToken, async (req, res) => {
       status: { $nin: ['completed', 'cancelled'] }
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
+      .populate('userRatingId')
       .sort({ createdAt: -1 });
 
     const ordersWithItemsCount = orders.map(order => {
@@ -500,6 +503,7 @@ router.get('/completed', verifyToken, async (req, res) => {
       status: 'completed'
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
+      .populate('userRatingId')
       .sort({ createdAt: -1 });
 
     const ordersWithItemsCount = orders.map(order => {
@@ -533,6 +537,7 @@ router.get('/cancelled', verifyToken, async (req, res) => {
       status: 'cancelled'
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
+      .populate('userRatingId')
       .sort({ createdAt: -1 });
 
     const ordersWithItemsCount = orders.map(order => {
@@ -605,7 +610,8 @@ router.get('/:orderId', verifyToken, async (req, res) => {
         path: 'items.selectedAddons.selectedAttribute',
         model: 'Attribute',
         select: 'name'
-      });
+      })
+      .populate('userRatingId');
 
     if (!order) {
       return res.status(404).json({
