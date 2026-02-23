@@ -55,8 +55,9 @@ const comboSchema = new mongoose.Schema(
     },
 
     currency: {
-      type: String,
-      default: 'INR',
+      code: { type: String },
+      name: { type: String },
+      symbol: { type: String }
     },
     isAvailable: {
       type: Boolean,

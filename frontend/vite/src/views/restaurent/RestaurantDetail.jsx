@@ -433,7 +433,11 @@ export default function RestaurantDetail() {
                     <div style={styles.infoIcon}>💰</div>
                     <div>
                       <div style={styles.infoLabel}>Currency</div>
-                      <div style={styles.infoValue}>{(restaurant.contactDetails?.country || restaurant.country) === 'India' ? 'INR (₹)' : (restaurant.contactDetails?.country || restaurant.country) === 'United States' ? 'USD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'United Kingdom' ? 'GBP (£)' : (restaurant.contactDetails?.country || restaurant.country) === 'Canada' ? 'CAD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'Australia' ? 'AUD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'Germany' ? 'EUR (€)' : (restaurant.contactDetails?.country || restaurant.country) === 'France' ? 'EUR (€)' : (restaurant.contactDetails?.country || restaurant.country) === 'Japan' ? 'JPY (¥)' : (restaurant.contactDetails?.country || restaurant.country) === 'Singapore' ? 'SGD ($)' : (restaurant.contactDetails?.country || restaurant.country) === 'UAE' ? 'AED (د.إ)' : 'USD ($)'}</div>
+                      <div style={styles.infoValue}>
+                        {restaurant.businessDetails?.currency 
+                          ? `${restaurant.businessDetails.currency.name} (${restaurant.businessDetails.currency.symbol})`
+                          : 'INR (₹)'}
+                      </div>
                     </div>
                   </div>
                 </div>

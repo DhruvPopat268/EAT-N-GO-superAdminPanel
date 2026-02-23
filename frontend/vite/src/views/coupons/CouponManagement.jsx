@@ -49,6 +49,7 @@ export default function CouponManagement() {
   const [editMode, setEditMode] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
+  const [restaurantCurrency, setRestaurantCurrency] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -102,6 +103,24 @@ export default function CouponManagement() {
       console.error('Error fetching restaurants:', error);
       toast.error('Failed to fetch restaurants');
       setRestaurants([]);
+    }
+  };
+
+  const fetchRestaurantCurrency = async (restaurantId) => {
+    if (!restaurantId) {
+      setRestaurantCurrency(null);
+      return;
+    }
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/usefullDetails`, {
+        restaurantId
+      }, { withCredentials: true });
+      if (response.data.success) {
+        setRestaurantCurrency(response.data.data.currency || null);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant currency:', error);
+      setRestaurantCurrency(null);
     }
   };
 
@@ -451,12 +470,12 @@ export default function CouponManagement() {
                           <Typography variant="body2" fontWeight="bold">
                             {coupon.discountType === 'percentage' 
                               ? `${coupon.amount}%` 
-                              : `₹${coupon.amount}`}
+                              : `${coupon.currency?.symbol || '₹'}${coupon.amount}`}
                           </Typography>
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            ₹{coupon.minOrderTotal}
+                            {coupon.currency?.symbol || '₹'}{coupon.minOrderTotal}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -571,6 +590,7 @@ export default function CouponManagement() {
               value={formData.restaurant}
               onChange={(event, newValue) => {
                 setFormData({ ...formData, restaurant: newValue });
+                fetchRestaurantCurrency(newValue?.restaurantId);
               }}
               renderInput={(params) => (
                 <TextField {...params} label="Restaurant" required />
@@ -623,7 +643,7 @@ export default function CouponManagement() {
                 onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">
-                    {formData.discountType === 'percentage' ? '%' : '₹'}
+                    {formData.discountType === 'percentage' ? '%' : (restaurantCurrency?.symbol || '₹')}
                   </InputAdornment>,
                 }}
                 required
@@ -638,7 +658,7 @@ export default function CouponManagement() {
                 value={formData.minOrderTotal}
                 onChange={(e) => setFormData({ ...formData, minOrderTotal: e.target.value })}
                 InputProps={{
-                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  startAdornment: <InputAdornment position="start">{restaurantCurrency?.symbol || '₹'}</InputAdornment>,
                 }}
                 required
               />
@@ -650,7 +670,7 @@ export default function CouponManagement() {
                   value={formData.maxDiscount}
                   onChange={(e) => setFormData({ ...formData, maxDiscount: e.target.value })}
                   InputProps={{
-                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                    startAdornment: <InputAdornment position="start">{restaurantCurrency?.symbol || '₹'}</InputAdornment>,
                   }}
                 />
               )}
@@ -782,7 +802,7 @@ export default function CouponManagement() {
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="caption" color="text.secondary">Discount Amount</Typography>
                   <Typography variant="body1" fontWeight="bold">
-                    {viewCoupon.discountType === 'percentage' ? `${viewCoupon.amount}%` : `₹${viewCoupon.amount}`}
+                    {viewCoupon.discountType === 'percentage' ? `${viewCoupon.amount}%` : `${viewCoupon.currency?.symbol || '₹'}${viewCoupon.amount}`}
                   </Typography>
                 </Box>
               </Box>
@@ -790,12 +810,12 @@ export default function CouponManagement() {
               <Box sx={{ display: 'flex', gap: 3 }}>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="caption" color="text.secondary">Min Order Total</Typography>
-                  <Typography variant="body1" fontWeight="bold">₹{viewCoupon.minOrderTotal}</Typography>
+                  <Typography variant="body1" fontWeight="bold">{viewCoupon.currency?.symbol || '₹'}{viewCoupon.minOrderTotal}</Typography>
                 </Box>
                 {viewCoupon.maxDiscount > 0 && (
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="caption" color="text.secondary">Max Discount</Typography>
-                    <Typography variant="body1" fontWeight="bold">₹{viewCoupon.maxDiscount}</Typography>
+                    <Typography variant="body1" fontWeight="bold">{viewCoupon.currency?.symbol || '₹'}{viewCoupon.maxDiscount}</Typography>
                   </Box>
                 )}
               </Box>

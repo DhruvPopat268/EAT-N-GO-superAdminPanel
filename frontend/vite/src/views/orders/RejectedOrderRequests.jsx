@@ -426,7 +426,7 @@ export default function RejectedOrderRequests() {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black" sx={{ textDecoration: 'line-through' }}>
-                            ₹{orderRequest.cartTotal?.toFixed(2) || '0.00'}
+                            {orderRequest.currency?.symbol || '₹'}{orderRequest.cartTotal?.toFixed(2) || '0.00'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

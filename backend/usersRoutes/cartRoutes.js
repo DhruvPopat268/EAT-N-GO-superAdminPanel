@@ -400,6 +400,9 @@ router.post('/add', verifyToken, async (req, res) => {
     let cart = await Cart.findOne({ userId, restaurantId });
     if (!cart) {
       cart = new Cart({ userId, restaurantId, items: [] });
+      if (restaurant?.businessDetails?.currency) {
+        cart.currency = restaurant.businessDetails.currency;
+      }
     }
 
     // Check if item with same configuration already exists
@@ -894,6 +897,10 @@ router.post('/replace', verifyToken, async (req, res) => {
       baseCartTotal: itemTotal,
       cartTotal: itemTotal
     });
+    
+    if (restaurant?.businessDetails?.currency) {
+      cart.currency = restaurant.businessDetails.currency;
+    }
 
     await cart.save();
 

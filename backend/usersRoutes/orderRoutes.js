@@ -294,6 +294,7 @@ router.post('/place', verifyToken, async (req, res) => {
       baseTotalAmount: baseTotal,
       totalAmount: finalTotal,
       appliedCoupon: cart.appliedCoupon,
+      currency: cart.currency,
       status: 'confirmed',
       waitingTime: orderRequest.waitingTime
     });

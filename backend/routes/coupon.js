@@ -1,5 +1,6 @@
 const express = require('express');
 const Coupon = require('../usersModels/Coupon');
+const Restaurant = require('../models/Restaurant');
 const authMiddleware = require('../middleware/auth');
 const router = express.Router();
 
@@ -55,7 +56,28 @@ router.get('/', authMiddleware, async (req, res) => {
 // Create coupon for any restaurant
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const coupon = new Coupon(req.body);
+    const existingCoupon = await Coupon.findOne({
+      couponCode: req.body.couponCode?.toUpperCase(),
+      restaurantId: req.body.restaurantId
+    });
+    
+    if (existingCoupon) {
+      return res.status(400).json({
+        success: false,
+        message: 'Coupon code already exists for this restaurant'
+      });
+    }
+    
+    const couponData = { ...req.body };
+    
+    if (req.body.discountType === 'fixed') {
+      const restaurant = await Restaurant.findById(req.body.restaurantId);
+      if (restaurant?.businessDetails?.currency) {
+        couponData.currency = restaurant.businessDetails.currency;
+      }
+    }
+    
+    const coupon = new Coupon(couponData);
     await coupon.save();
     
     res.status(201).json({

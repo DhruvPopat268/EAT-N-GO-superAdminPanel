@@ -10,13 +10,6 @@ const attributeUnits = [
   'ml', 'grams', 'pieces', 'kg', 'liters', 'small', 'medium', 'large', 'regular', 'family pack'
 ];
 
-const currencyOptions = [
-  { id: 'INR', name: 'INR', symbol: '₹' },
-  { id: 'USD', name: 'USD', symbol: '$' },
-  { id: 'EUR', name: 'EUR', symbol: '€' },
-  { id: 'GBP', name: 'GBP', symbol: '£' }
-];
-
 const foodTypeOptions = ['Regular', 'Jain', 'Swaminarayan'];
 const unitOptions = ['GM', 'ML', 'unit'];
 
@@ -53,7 +46,7 @@ export default function AddMenuItem() {
     attributes: [],
     addons: [],
     price: '',
-    currency: currencyOptions[0],
+    currency: null,
     category: null,
     subcategory: null,
     foodTypes: [],
@@ -159,9 +152,10 @@ export default function AddMenuItem() {
       const result = await response.json();
       if (result.success) {
         setRestaurantDetails(result.data);
-        // Set default currency based on country
-        const defaultCurrency = result.data.country === 'India' ? currencyOptions[0] : currencyOptions[1];
-        setFormData(prev => ({ ...prev, currency: defaultCurrency }));
+        // Set currency from restaurant data
+        if (result.data.currency) {
+          setFormData(prev => ({ ...prev, currency: result.data.currency }));
+        }
       }
     } catch (error) {
       console.error('Error fetching restaurant details:', error);
@@ -261,7 +255,7 @@ export default function AddMenuItem() {
         attributes: [], // Will be set when attributes are loaded
         addons: itemData.addons || [],
         price: itemData.attributes?.[0]?.price?.toString() || '',
-        currency: currencyOptions[0], // Will be updated when restaurant details are loaded
+        currency: null, // Will be updated when restaurant details are loaded
         category: null, // Will be set when restaurant details are loaded
         subcategory: null, // Will be set when subcategories are loaded
         foodTypes: itemData.foodTypes || [],
@@ -612,7 +606,7 @@ export default function AddMenuItem() {
             price: opt.price
           }))
         })),
-        currency: formData.currency.name,
+        currency: formData.currency,
         isAvailable: formData.isAvailable,
         restaurantId: selectedRestaurant.restaurantId
       };
@@ -666,7 +660,7 @@ export default function AddMenuItem() {
             attributes: [],
             addons: [],
             price: '',
-            currency: currencyOptions[0],
+            currency: restaurantDetails?.currency || null,
             category: null,
             subcategory: null,
             foodTypes: [],
@@ -1169,7 +1163,7 @@ export default function AddMenuItem() {
                     <div className="space-y-2 mb-3">
                       {currentCustomization.options.map((option, index) => (
                         <div key={option.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                          <span className="text-sm">{option.label} - {option.quantity} {option.unit} - {option.price === 0 ? 'Free' : `${option.price} ${formData.currency.symbol}`}</span>
+                          <span className="text-sm">{option.label} - {option.quantity} {option.unit} - {option.price === 0 ? 'Free' : `${option.price} ${formData.currency?.symbol || ''}`}</span>
                           <div className="flex gap-2">
                             <button
                               type="button"
@@ -1226,7 +1220,7 @@ export default function AddMenuItem() {
                         <div className="space-y-1">
                           {customization.options.map((option, idx) => (
                             <div key={idx} className="flex items-center justify-between text-sm text-gray-600">
-                              <span>• {option.label} - {option.quantity} {option.unit} - {option.price === 0 ? 'Free' : `${option.price} ${formData.currency.symbol}`}</span>
+                              <span>• {option.label} - {option.quantity} {option.unit} - {option.price === 0 ? 'Free' : `${option.price} ${formData.currency?.symbol || ''}`}</span>
                               <button
                                 type="button"
                                 onClick={() => editFinalCustomizationOption(customization.id, option, idx)}
@@ -1377,8 +1371,8 @@ export default function AddMenuItem() {
                     <div key={attr.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                       <span className="text-sm text-gray-700">{attr.unit.name}</span>
                       <div className="flex flex-col items-end">
-                        <span className="text-xs text-gray-500">Base: {attr.basePrice} {formData.currency.symbol}</span>
-                        <span className="font-semibold">{attr.value} {formData.currency.symbol}</span>
+                        <span className="text-xs text-gray-500">Base: {attr.basePrice} {formData.currency?.symbol || ''}</span>
+                        <span className="font-semibold">{attr.value} {formData.currency?.symbol || ''}</span>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -1406,9 +1400,9 @@ export default function AddMenuItem() {
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
               <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
-                {formData.currency.name} ({formData.currency.symbol})
+                {formData.currency ? `${formData.currency.name} (${formData.currency.symbol})` : 'Loading...'}
               </div>
-              <p className="text-xs text-gray-500 mt-1">Currency is automatically set based on restaurant location</p>
+              <p className="text-xs text-gray-500 mt-1">Currency is automatically set based on restaurant settings</p>
             </div>
 
             {/* Available Status Toggle */}
@@ -1455,7 +1449,7 @@ export default function AddMenuItem() {
                 attributes: [],
                 addons: [],
                 price: '',
-                currency: currencyOptions[0],
+                currency: restaurantDetails?.currency || null,
                 category: null,
                 subcategory: null,
                 foodTypes: [],

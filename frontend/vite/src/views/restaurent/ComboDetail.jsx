@@ -184,7 +184,7 @@ export default function ComboDetail() {
                 <div>
                   <label className="text-sm font-medium text-gray-500">Price</label>
                   <p className="text-lg font-semibold text-blue-600">
-                    {combo.currency === 'INR' ? '₹' : '$'}{combo.price}
+                    {combo.currency?.symbol || '₹'}{combo.price}
                   </p>
                 </div>
                 <div>

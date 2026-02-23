@@ -643,7 +643,7 @@ export default function MenuList() {
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                               {item.attributes.map((attr, idx) => (
                                 <Typography key={idx} variant="body2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                  ₹{attr.price}
+                                  {item.currency?.symbol || '₹'}{attr.price}
                                 </Typography>
                               ))}
                             </Box>

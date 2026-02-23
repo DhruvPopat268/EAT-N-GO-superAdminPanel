@@ -72,6 +72,11 @@ router.post('/', restaurantAuthMiddleware, upload.single('image'), async (req, r
     const addonData = JSON.parse(req.body.data || '{}');
     addonData.restaurantId = req.restaurant.restaurantId;
 
+    const restaurant = await Restaurant.findById(req.restaurant.restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      addonData.currency = restaurant.businessDetails.currency;
+    }
+
     if (req.file) {
       const imageUrl = await uploadToCloudinary(req.file.buffer, 'addon-images');
       addonData.image = imageUrl;
@@ -275,6 +280,11 @@ router.post('/admin', authMiddleware, upload.single('image'), async (req, res) =
   try {
     const addonData = JSON.parse(req.body.data || '{}');
 
+    const restaurant = await Restaurant.findById(addonData.restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      addonData.currency = restaurant.businessDetails.currency;
+    }
+
     if (req.file) {
       const imageUrl = await uploadToCloudinary(req.file.buffer, 'addon-images');
       addonData.image = imageUrl;
@@ -284,7 +294,6 @@ router.post('/admin', authMiddleware, upload.single('image'), async (req, res) =
     await addonItem.save();
     await addonItem.populate('subcategory');
     
-    const restaurant = await Restaurant.findById(addonData.restaurantId);
     await createLog(
       req.user,
       'Menu Management',

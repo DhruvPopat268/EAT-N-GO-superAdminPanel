@@ -218,7 +218,7 @@ export default function OrdersManagement() {
                         </TableCell>
                         <TableCell>
                           <Typography variant="h6" fontWeight="bold">
-                            ₹{order.total}
+                            {order.currency?.symbol || '₹'}{order.total}
                           </Typography>
                         </TableCell>
                         <TableCell>

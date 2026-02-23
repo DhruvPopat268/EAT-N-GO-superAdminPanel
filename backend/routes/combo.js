@@ -95,6 +95,8 @@ router.post('/add', restaurantAuthMiddleware, upload.single('image'), async (req
     const hasNonVeg = existingItems.some(item => item.category === 'Non-Veg');
     const category = hasNonVeg ? 'Non-Veg' : 'Veg';
     
+    const restaurant = await Restaurant.findById(restaurantId);
+    
     const combo = new Combo({
       restaurantId,
       name,
@@ -103,6 +105,7 @@ router.post('/add', restaurantAuthMiddleware, upload.single('image'), async (req
       addons: addons || [],
       price,
       category,
+      currency: restaurant?.businessDetails?.currency,
       image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
     });
     
@@ -329,6 +332,8 @@ router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res
     const hasNonVeg = existingItems.some(item => item.category === 'Non-Veg');
     const category = hasNonVeg ? 'Non-Veg' : 'Veg';
     
+    const restaurant = await Restaurant.findById(restaurantId);
+    
     const combo = new Combo({
       restaurantId,
       name,
@@ -337,12 +342,12 @@ router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res
       addons: addons || [],
       price,
       category,
+      currency: restaurant?.businessDetails?.currency,
       image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
     });
     
     await combo.save();
     
-    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
       req.user,
       'Menu Management',

@@ -84,6 +84,7 @@ export default function ComboManagement() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [comboToDelete, setComboToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [restaurantCurrency, setRestaurantCurrency] = useState(null);
 
   useEffect(() => {
     fetchRestaurants();
@@ -174,14 +175,34 @@ export default function ComboManagement() {
     }
   };
 
+  const fetchRestaurantCurrency = async (restaurantId) => {
+    if (!restaurantId) {
+      setRestaurantCurrency(null);
+      return;
+    }
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/usefullDetails`, {
+        restaurantId
+      }, { withCredentials: true });
+      if (response.data.success) {
+        setRestaurantCurrency(response.data.data.currency || null);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurant currency:', error);
+      setRestaurantCurrency(null);
+    }
+  };
+
   const handleRestaurantChangeInDialog = async (restaurantId) => {
     setFormData(prev => ({ ...prev, restaurantId }));
     if (restaurantId) {
       await fetchItems(restaurantId);
       await fetchAddonItems(restaurantId);
+      await fetchRestaurantCurrency(restaurantId);
     } else {
       setItems([]);
       setAddonItems([]);
+      setRestaurantCurrency(null);
     }
     setSelectedItems([]);
     setItemAttributes({});
@@ -655,7 +676,7 @@ export default function ComboManagement() {
                         </TableCell>
                         <TableCell>
                           <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
-                            ₹{combo.price}
+                            {combo.currency?.symbol || '₹'}{combo.price}
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -907,6 +928,9 @@ export default function ComboManagement() {
               type="number"
               value={formData.price}
               onChange={(e) => setFormData(prev => ({ ...prev, price: Number(e.target.value) }))}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">{restaurantCurrency?.symbol || '₹'}</InputAdornment>,
+              }}
             />
 
                    <TextField

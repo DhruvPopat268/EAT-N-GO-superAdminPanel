@@ -32,6 +32,11 @@ const couponSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    currency: {
+      code: { type: String },
+      name: { type: String },
+      symbol: { type: String }
+    },
     maxDiscount: {
       type: Number,
       min: 0,

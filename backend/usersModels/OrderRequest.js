@@ -124,6 +124,12 @@ const orderRequestSchema = new mongoose.Schema(
       }
     },
 
+    currency: {
+      code: { type: String },
+      name: { type: String },
+      symbol: { type: String }
+    },
+
     expireAt: { type: Date }
   },
 

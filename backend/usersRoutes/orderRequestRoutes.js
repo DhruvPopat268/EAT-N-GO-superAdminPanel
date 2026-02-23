@@ -575,7 +575,8 @@ router.post('/create', verifyToken, async (req, res) => {
       takeawayInstructions,
       baseCartTotal: cart.baseCartTotal,
       cartTotal: cart.cartTotal,
-      appliedCoupon: cart.appliedCoupon
+      appliedCoupon: cart.appliedCoupon,
+      currency: cart.currency
     });
 
     await orderRequest.save();

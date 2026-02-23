@@ -154,7 +154,7 @@ export default function ItemDetail() {
                               {option.label} ({option.quantity} {option.unit})
                             </span>
                             <span className="font-medium">
-                              {option.price === 0 ? 'Free' : `${item.currency === 'INR' ? '₹' : '$'}${option.price}`}
+                              {option.price === 0 ? 'Free' : `${item.currency?.symbol || '₹'}${option.price}`}
                             </span>
                           </div>
                         ))}
@@ -216,7 +216,7 @@ export default function ItemDetail() {
                     <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                       <span className="font-medium">{attr.attribute?.name || 'Unknown'}</span>
                       <span className="text-lg font-semibold text-blue-600">
-                        {item.currency === 'INR' ? '₹' : '$'}{attr.price}
+                        {item.currency?.symbol || '₹'}{attr.price}
                       </span>
                     </div>
                   ))}
@@ -266,7 +266,7 @@ export default function ItemDetail() {
                               <div key={idx} className="flex justify-between items-center text-sm">
                                 <span className="text-gray-700">{attr.attribute?.name}</span>
                                 <span className="font-medium text-blue-600">
-                                  {addon.currency === 'INR' ? '₹' : '$'}{attr.price}
+                                  {addon.currency?.symbol || '₹'}{attr.price}
                                 </span>
                               </div>
                             ))}

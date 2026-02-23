@@ -85,6 +85,7 @@ export default function AddonManagement() {
   const [imagePreview, setImagePreview] = useState(null);
   const [availableCategories, setAvailableCategories] = useState([]);
   const [filterCategories, setFilterCategories] = useState([]);
+  const [restaurantCurrency, setRestaurantCurrency] = useState(null);
 
   useEffect(() => {
     fetchRestaurants();
@@ -275,6 +276,7 @@ export default function AddonManagement() {
   const fetchRestaurantCategories = async (restaurantId) => {
     if (!restaurantId) {
       setAvailableCategories([]);
+      setRestaurantCurrency(null);
       return;
     }
     try {
@@ -284,10 +286,12 @@ export default function AddonManagement() {
       if (response.data.success) {
         const categories = response.data.data.foodCategory || [];
         setAvailableCategories(categories.map(cat => ({ id: cat, name: cat })));
+        setRestaurantCurrency(response.data.data.currency || null);
       }
     } catch (error) {
       console.error('Error fetching restaurant categories:', error);
       setAvailableCategories([]);
+      setRestaurantCurrency(null);
     }
   };
 
@@ -727,7 +731,7 @@ export default function AddonManagement() {
                           <Stack spacing={1}>
                             {addon.attributes?.map((attr, i) => (
                               <Typography key={i} variant="body2" sx={{ mb: 0.5, fontWeight: 'bold' }}>
-                                ₹{attr.price}
+                                {addon.currency?.symbol || '₹'}{attr.price}
                               </Typography>
                             ))}
                           </Stack>
@@ -915,7 +919,7 @@ export default function AddonManagement() {
                     value={attr.price}
                     onChange={(e) => handleAttributeChange(index, 'price', e.target.value)}
                     InputProps={{
-                      startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                      startAdornment: <InputAdornment position="start">{restaurantCurrency?.symbol || '₹'}</InputAdornment>,
                     }}
                   />
                   {formData.attributes.length > 1 && (

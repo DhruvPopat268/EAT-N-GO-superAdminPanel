@@ -438,7 +438,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            ₹{order.totalAmount}
+                            {order.currency?.symbol || '₹'}{order.totalAmount}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

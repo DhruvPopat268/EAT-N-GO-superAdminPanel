@@ -29,14 +29,19 @@ const restaurantSchema = new mongoose.Schema({
   },
 
   // Business Details
-  businessDetails: {
-    licenseNumber: { type: String, required: true },
-    gstNumber: { type: String, required: true },
-    bankAccount: { type: String, required: true },
-    ifscCode: { type: String, required: true },
-    description: { type: String },
-    currency: { type: String }
-  },
+businessDetails: {
+  licenseNumber: { type: String, required: true },
+  gstNumber: { type: String, required: true },
+  bankAccount: { type: String, required: true },
+  ifscCode: { type: String, required: true },
+  description: { type: String },
+
+  currency: {
+    code: { type: String },     // e.g., "INR"
+    name: { type: String },     // e.g., "Indian Rupee"
+    symbol: { type: String }    // e.g., "₹"
+  }
+},
 
   // Documents
   documents: {

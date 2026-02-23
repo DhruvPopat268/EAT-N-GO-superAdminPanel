@@ -302,7 +302,7 @@ export default function OrderRequestDetail() {
                             {item.itemId?.name || 'N/A'}
                           </Typography>
                           <Typography variant="h6" fontWeight={600} sx={{ color: '#00a63e' }}>
-                            ₹{item.itemTotal || 0}
+                            {orderRequest.currency?.symbol || '₹'}{item.itemTotal || 0}
                           </Typography>
                         </Box>
                         
@@ -371,7 +371,7 @@ export default function OrderRequestDetail() {
                       Order Request Total
                     </Typography>
                     <Typography variant="h5" fontWeight={700} sx={{ color: '#00a63e' }}>
-                      ₹{orderRequest.cartTotal || 0}
+                      {orderRequest.currency?.symbol || '₹'}{orderRequest.cartTotal || 0}
                     </Typography>
                   </Box>
                 </Box>

@@ -291,7 +291,7 @@ export default function OrderRequestManagement() {
                         </TableCell>
                         <TableCell>
                           <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
-                            ₹{orderRequest.cartTotal?.toFixed(2) || '0.00'}
+                            {orderRequest.currency?.symbol || '₹'}{orderRequest.cartTotal?.toFixed(2) || '0.00'}
                           </Typography>
                         </TableCell>
                         <TableCell>

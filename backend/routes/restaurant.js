@@ -124,11 +124,17 @@ router.get('/status', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant?.restaurantId;
 
-    const restaurentData = await Restaurant.findById(restaurantId).select('status rejectedFormFields rejectionReason isManuallyClosed');
+    const restaurentData = await Restaurant.findById(restaurantId).select('status rejectedFormFields rejectionReason isManuallyClosed businessDetails.currency');
 
     res.status(200).json({
       success: true,
-      data: restaurentData
+      data: {
+        status: restaurentData.status,
+        rejectedFormFields: restaurentData.rejectedFormFields,
+        rejectionReason: restaurentData.rejectionReason,
+        isManuallyClosed: restaurentData.isManuallyClosed,
+        currency: restaurentData.businessDetails?.currency
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -412,7 +418,7 @@ router.patch('/updateData', restaurantAuthMiddleware, upload.array('restaurantIm
 router.post('/admin/usefullDetails', authMiddleware, async (req, res) => {
   try {
     const { restaurantId } = req.body;
-    const restaurant = await Restaurant.findById(restaurantId, 'basicInfo.foodCategory contactDetails.country');
+    const restaurant = await Restaurant.findById(restaurantId, 'basicInfo.foodCategory contactDetails.country businessDetails.currency');
     if (!restaurant) {
       return res.status(404).json({
         success: false,
@@ -427,7 +433,8 @@ router.post('/admin/usefullDetails', authMiddleware, async (req, res) => {
       success: true,
       data: {
         foodCategory: categories,
-        country: restaurant.contactDetails?.country
+        country: restaurant.contactDetails?.country,
+        currency: restaurant.businessDetails?.currency
       }
     });
   } catch (error) {
@@ -576,11 +583,9 @@ router.post(
   ]),
   async (req, res) => {
     try {
-      // console.log('✅ Received request to register restaurant');
-
       const restaurantData = JSON.parse(req.body.data);
-      // console.log('🧾 Parsed restaurant data:', restaurantData);
 
+      // Validate email
       if (!restaurantData.email) {
         return res.status(400).json({
           success: false,
@@ -588,6 +593,7 @@ router.post(
         });
       }
 
+      // Check existing restaurant
       const existingRestaurant = await Restaurant.findOne({
         'contactDetails.email': restaurantData.email
       });
@@ -599,30 +605,40 @@ router.post(
         });
       }
 
-      // Generate temp password (plain + hashed)
+      // Generate temporary password
       const tempPassword = generateTempPassword(restaurantData.email);
       const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
 
-      // Get currency from country
+      // Fetch Currency
       const currency = await getCurrencyFromCountry(restaurantData.country);
 
-      // Upload files
+      // Upload documents
       const documents = {};
       let restaurantImages = [];
 
       if (req.files && Object.keys(req.files).length > 0) {
         for (const [key, files] of Object.entries(req.files)) {
-          if (key === 'restaurantImages' && files) {
+
+          // For multiple restaurant images
+          if (key === 'restaurantImages') {
             restaurantImages = await Promise.all(
               files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
             );
-          } else if (files && files[0]) {
-            const uploadResult = await uploadToCloudinary(files[0].buffer, 'restaurant-documents');
+            continue;
+          }
+
+          // For single files
+          if (files[0]) {
+            const uploadResult = await uploadToCloudinary(
+              files[0].buffer,
+              'restaurant-documents'
+            );
             documents[key] = uploadResult;
           }
         }
       }
 
+      // Prepare final document
       const nestedData = {
         basicInfo: {
           restaurantName: restaurantData.restaurantName,
@@ -648,16 +664,26 @@ router.post(
           bankAccount: restaurantData.bankAccount,
           ifscCode: restaurantData.ifscCode,
           description: restaurantData.description,
-          currency: currency
+
+          // >>> ADDING CURRENCY CORRECTLY <<<
+          currency: {
+            code: currency.code,
+            name: currency.name,
+            symbol: currency.symbol
+          }
         },
-        documents: { ...documents, restaurantImages },
-        tempPassword: hashedTempPassword // store only hashed version in DB
+        documents: {
+          ...documents,
+          restaurantImages
+        },
+        tempPassword: hashedTempPassword
       };
 
+      // Save restaurant
       const restaurant = new Restaurant(nestedData);
       await restaurant.save();
 
-      // Send email (optional)
+      // Email notification
       try {
         await sendUserCredentials(
           restaurantData.email,
@@ -666,10 +692,10 @@ router.post(
           'Restaurant'
         );
       } catch (emailError) {
-        console.error('❌ Email sending failed:', emailError);
+        console.error("Email failed:", emailError);
       }
 
-      // ✅ Include plain tempPassword only in response (not in DB)
+      // Response with plain temp password
       res.status(201).json({
         success: true,
         message: 'Restaurant registered successfully',
@@ -678,8 +704,9 @@ router.post(
           plainTempPassword: tempPassword
         }
       });
+
     } catch (error) {
-      console.error('💥 Error registering restaurant:', error);
+      console.error("Error registering restaurant:", error);
       res.status(400).json({
         success: false,
         message: 'Error registering restaurant',

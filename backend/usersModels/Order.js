@@ -148,6 +148,12 @@ const orderSchema = new mongoose.Schema(
       }
     },
 
+    currency: {
+      code: { type: String },
+      name: { type: String },
+      symbol: { type: String }
+    },
+
     // Order status
     status: {
       type: String,

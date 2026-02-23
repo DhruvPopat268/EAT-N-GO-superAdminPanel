@@ -429,7 +429,7 @@ export default function PendingOrderRequests() {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            ₹{orderRequest.cartTotal?.toFixed(2) || '0.00'}
+                            {orderRequest.currency?.symbol || '₹'}{orderRequest.cartTotal?.toFixed(2) || '0.00'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

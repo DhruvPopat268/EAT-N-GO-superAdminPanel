@@ -114,6 +114,12 @@ const cartSchema = new mongoose.Schema({
     savedAmount: {
       type: Number
     }
+  },
+  
+  currency: {
+    code: { type: String },
+    name: { type: String },
+    symbol: { type: String }
   }
 }, { 
   timestamps: true 

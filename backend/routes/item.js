@@ -88,6 +88,11 @@ router.post('/', restaurantAuthMiddleware, upload.array('images', 5), async (req
       itemData.images = imageUrls;
     }
 
+    const restaurant = await Restaurant.findById(itemData.restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      itemData.currency = restaurant.businessDetails.currency;
+    }
+
     const item = new Item(itemData);
     await item.save();
     await item.populate('subcategory');
@@ -455,13 +460,17 @@ router.post('/admin/create', authMiddleware, upload.array('images', 5), async (r
       itemData.images = imageUrls;
     }
 
+    const restaurant = await Restaurant.findById(itemData.restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      itemData.currency = restaurant.businessDetails.currency;
+    }
+
     const item = new Item(itemData);
     await item.save();
     await item.populate('subcategory');
     await item.populate('attributes.attribute');
     await item.populate('addons');
     
-    const restaurant = await Restaurant.findById(itemData.restaurantId);
     await createLog(
       req.user,
       'Menu Management',
