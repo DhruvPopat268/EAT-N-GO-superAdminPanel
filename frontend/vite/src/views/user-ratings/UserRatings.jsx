@@ -286,7 +286,7 @@ const UserRatings = () => {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order No</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Rating</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Feedback</TableCell>
-                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Created At</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Rated At</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -352,7 +352,7 @@ const UserRatings = () => {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
-                            {formatDateTime(rating.createdAt)}
+                            {formatDateTime(rating.ratedAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

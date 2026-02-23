@@ -1,114 +1,98 @@
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
-const UserRating = require('../usersModels/userRating');
+const Restaurant = require('../models/Restaurant');
 const User = require('../usersModels/usersModel');
+const Order = require('../usersModels/Order');
 
 // Get user ratings for admin
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId, phone, fullName, restaurantName, startDate, endDate, rating, orderNo, page = 1, limit = 10 } = req.query;
+    const { restaurantId, phone, fullName, startDate, endDate, rating, orderNo, page = 1, limit = 10 } = req.query;
 
-    // Build query
-    const query = {};
-    
+    let allRatings = [];
+
     if (restaurantId) {
-      query.restaurantId = restaurantId;
-    }
+      // Get ratings for specific restaurant
+      const restaurant = await Restaurant.findById(restaurantId)
+        .populate('userRatings.userId', 'fullName phone')
+        .populate('userRatings.orderId', 'orderNo orderType createdAt');
 
-    // Rating filter
-    if (rating) {
-      query.rating = parseInt(rating);
-    }
+      if (!restaurant) {
+        return res.status(404).json({ success: false, message: 'Restaurant not found' });
+      }
 
-    // Date range filter
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) {
-        query.createdAt.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.createdAt.$lte = end;
-      }
-    }
+      allRatings = restaurant.userRatings.map(r => ({
+        ...r.toObject(),
+        restaurantId: { _id: restaurant._id, basicInfo: { restaurantName: restaurant.basicInfo.restaurantName } }
+      }));
+    } else {
+      // Get ratings from all restaurants
+      const restaurants = await Restaurant.find()
+        .populate('userRatings.userId', 'fullName phone')
+        .populate('userRatings.orderId', 'orderNo orderType createdAt');
 
-    // If phone, fullName, restaurantName, or orderNo provided, find matching users/orders/restaurants first
-    if (phone || fullName || restaurantName || orderNo) {
-      const Order = require('../usersModels/Order');
-      const Restaurant = require('../models/Restaurant');
-      
-      const matchedUserIds = [];
-      const matchedRestaurantIds = [];
-      const matchedOrderIds = [];
-      
-      // Find restaurants by name if provided
-      if (restaurantName) {
-        const restaurants = await Restaurant.find({
-          'basicInfo.restaurantName': { $regex: restaurantName, $options: 'i' }
-        }).select('_id');
-        
-        matchedRestaurantIds.push(...restaurants.map(r => r._id));
-      }
-      
-      // Find orders by orderNo if provided
-      if (orderNo) {
-        const orderQuery = { orderNo: parseInt(orderNo) };
-        if (restaurantId) orderQuery.restaurantId = restaurantId;
-        
-        const orders = await Order.find(orderQuery).select('_id');
-        matchedOrderIds.push(...orders.map(o => o._id));
-      }
-      
-      // Find users by phone or fullName if provided
-      if (phone || fullName) {
-        const userQuery = { $or: [] };
-        if (phone) userQuery.$or.push({ phone: { $regex: phone, $options: 'i' } });
-        if (fullName) userQuery.$or.push({ fullName: { $regex: fullName, $options: 'i' } });
-
-        const users = await User.find(userQuery).select('_id');
-        matchedUserIds.push(...users.map(u => u._id));
-      }
-      
-      // Build OR query for all matched IDs
-      const orConditions = [];
-      if (matchedUserIds.length > 0) orConditions.push({ userId: { $in: matchedUserIds } });
-      if (matchedRestaurantIds.length > 0) orConditions.push({ restaurantId: { $in: matchedRestaurantIds } });
-      if (matchedOrderIds.length > 0) orConditions.push({ orderId: { $in: matchedOrderIds } });
-      
-      if (orConditions.length === 0) {
-        return res.json({
-          success: true,
-          message: 'No ratings found',
-          data: {
-            ratings: [],
-            totalPages: 0,
-            currentPage: parseInt(page),
-            total: 0
-          }
+      restaurants.forEach(restaurant => {
+        restaurant.userRatings.forEach(r => {
+          allRatings.push({
+            ...r.toObject(),
+            restaurantId: { _id: restaurant._id, basicInfo: { restaurantName: restaurant.basicInfo.restaurantName } }
+          });
         });
-      }
-      
-      query.$or = orConditions;
+      });
     }
 
-    // Fetch ratings with pagination
-    const ratings = await UserRating.find(query)
-      .populate('userId', 'fullName phone')
-      .populate('orderId', 'orderNo orderType createdAt')
-      .populate('restaurantId', 'basicInfo.restaurantName')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    // Filter by rating
+    if (rating) {
+      allRatings = allRatings.filter(r => r.rating === parseInt(rating));
+    }
 
-    const total = await UserRating.countDocuments(query);
+    // Filter by date range
+    if (startDate || endDate) {
+      allRatings = allRatings.filter(r => {
+        const ratingDate = r.ratedAt;
+        if (!ratingDate) return false;
+        if (startDate && ratingDate < new Date(startDate)) return false;
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (ratingDate > end) return false;
+        }
+        return true;
+      });
+    }
+
+    // Filter by phone
+    if (phone) {
+      allRatings = allRatings.filter(r => r.userId?.phone?.includes(phone));
+    }
+
+    // Filter by fullName
+    if (fullName) {
+      allRatings = allRatings.filter(r => r.userId?.fullName?.toLowerCase().includes(fullName.toLowerCase()));
+    }
+
+    // Filter by orderNo
+    if (orderNo) {
+      allRatings = allRatings.filter(r => r.orderId?.orderNo === parseInt(orderNo));
+    }
+
+    // Sort by ratedAt (newest first), handle missing ratedAt
+    allRatings.sort((a, b) => {
+      const dateA = a.ratedAt || new Date(0);
+      const dateB = b.ratedAt || new Date(0);
+      return dateB - dateA;
+    });
+
+    const total = allRatings.length;
+    const startIndex = (page - 1) * limit;
+    const paginatedRatings = allRatings.slice(startIndex, startIndex + parseInt(limit));
 
     res.json({
       success: true,
       message: 'Ratings retrieved successfully',
       data: {
-        ratings,
+        ratings: paginatedRatings,
         totalPages: Math.ceil(total / limit),
         currentPage: parseInt(page),
         total

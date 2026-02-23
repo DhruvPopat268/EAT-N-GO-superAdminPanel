@@ -849,7 +849,15 @@ router.get('/detail/:orderId', restaurantAuthMiddleware, async (req, res) => {
 
     const order = await Order.findOne({ _id: orderId, restaurantId })
       .populate('userId', 'fullName phone')
-      .populate('userRatingId', 'rating feedback createdAt')
+      .populate({
+        path: 'userRatingId',
+        select: 'restaurantRating itemRatings createdAt',
+        populate: {
+          path: 'itemRatings.itemId',
+          model: 'Item',
+          select: 'name'
+        }
+      })
       .populate({
         path: 'items.itemId',
         model: 'Item',

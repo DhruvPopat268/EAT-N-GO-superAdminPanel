@@ -18,7 +18,15 @@ const orderPopulateConfig = [
     populate: { path: 'attributes.attribute', model: 'Attribute' }
   },
   { path: 'items.selectedAddons.selectedAttribute', model: 'Attribute', select: 'name' },
-  { path: 'userRatingId' }
+  {
+    path: 'userRatingId',
+    select: 'restaurantRating itemRatings createdAt',
+    populate: {
+      path: 'itemRatings.itemId',
+      model: 'Item',
+      select: 'name'
+    }
+  }
 ];
 
 const orderRequestPopulateConfig = [

@@ -271,17 +271,30 @@ export default function OrderDetail() {
                       <Divider sx={{ my: 1 }} />
                       <Box>
                         <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 1 }}>
-                          User Rating
+                          Restaurant Rating
                         </Typography>
-                        <Rating value={order.userRatingId.rating} readOnly size="small" sx={{ mb: 1 }} />
-                        {order.userRatingId.feedback && (
-                          <Typography variant="body2" color="text.primary" sx={{ fontStyle: 'italic', mb: 1 }}>
-                            "{order.userRatingId.feedback}"
-                          </Typography>
-                        )}
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                        <Rating value={order.userRatingId.restaurantRating} readOnly size="small" sx={{ mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mb: 2 }}>
                           {formatDateTime(order.userRatingId.createdAt)}
                         </Typography>
+                        
+                        {order.userRatingId.itemRatings?.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 1 }}>
+                              Item Ratings
+                            </Typography>
+                            <Stack spacing={1}>
+                              {order.userRatingId.itemRatings.map((itemRating, idx) => (
+                                <Box key={idx}>
+                                  <Typography variant="body2" color="text.primary" sx={{ fontSize: '0.8rem' }}>
+                                    {itemRating.itemId?.name}
+                                  </Typography>
+                                  <Rating value={itemRating.rating} readOnly size="small" />
+                                </Box>
+                              ))}
+                            </Stack>
+                          </Box>
+                        )}
                       </Box>
                     </>
                   )}

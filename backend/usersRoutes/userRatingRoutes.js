@@ -104,8 +104,7 @@ router.post('/', verifyToken, async (req, res) => {
       restaurantId,
       orderId,
       restaurantRating,
-      itemRatings,
-      feedback: feedback || ''
+      itemRatings
     });
 
     await userRating.save();
@@ -119,7 +118,7 @@ router.post('/', verifyToken, async (req, res) => {
     const newRestaurantAvg = ((restaurant.averageRating * restaurant.totalRatings) + restaurantRating) / newRestaurantTotal;
     
     await Restaurant.findByIdAndUpdate(restaurantId, {
-      $push: { userRatings: { userId, rating: restaurantRating } },
+      $push: { userRatings: { userId, orderId, rating: restaurantRating, feedback: feedback || '', ratedAt: new Date() } },
       averageRating: newRestaurantAvg,
       totalRatings: newRestaurantTotal
     });

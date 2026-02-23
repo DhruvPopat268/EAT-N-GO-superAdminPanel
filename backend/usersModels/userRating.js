@@ -39,13 +39,7 @@ const ratingSchema = new mongoose.Schema(
         min: 1,
         max: 5
       }
-    }],
-
-    feedback: {
-      type: String,
-      trim: true,
-      default: "",
-    }
+    }]
   },
   { timestamps: true }
 );
