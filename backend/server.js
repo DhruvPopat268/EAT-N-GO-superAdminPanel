@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const connectToDb = require('./database/db');
 const initializeSocket = require('./config/socket');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +29,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Support x-www-form-urlencoded
 app.use(cookieParser());
 app.use('/downloads', express.static('public/downloads'));
+app.use('/app/cloud', express.static(path.join(__dirname, 'cloud')));
 
 // Connect to database
 connectToDb();

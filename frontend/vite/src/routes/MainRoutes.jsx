@@ -10,6 +10,7 @@ import RestaurentRoutes from './RestaurentRoutes';
 import ActivityLogRoutes from './ActivityLogRoutes';
 import CouponRoutes from './CouponRoutes';
 import UserRatingRoutes from './UserRatingRoutes';
+import TestRoutes from './TestRoutes';
 
 const ProtectedRoute = ({ children }) => {
   return children;
@@ -38,6 +39,7 @@ const MainRoutes = {
     CouponRoutes,
     ActivityLogRoutes,
     UserRatingRoutes,
+    TestRoutes,
     ...UtilityRoutes
   ]
 };

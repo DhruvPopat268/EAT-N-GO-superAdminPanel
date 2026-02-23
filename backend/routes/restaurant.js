@@ -4,7 +4,6 @@ const jwt = require('jsonwebtoken');
 const Restaurant = require('../models/Restaurant');
 const RestaurantSession = require('../models/RestaurantSession');
 const upload = require('../middleware/upload');
-const cloudinary = require('../config/cloudinary');
 const authMiddleware = require('../middleware/auth');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
@@ -19,21 +18,33 @@ const orderCancelRefundRoutes = require('../restaurantRoutes/orderCancelRefund')
 const couponRoutes = require('../restaurantRoutes/couponRoutes');
 const userRatingRoutes = require('../restaurantRoutes/userRatingRoutes');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs').promises;
+const sharp = require('sharp');
 
-const uploadToCloudinary = (buffer, folder) => {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: 'auto',
-        access_mode: 'public'  // Add this to make files publicly accessible
-      },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result.secure_url);
-      }
-    ).end(buffer);
-  });
+const createdDirs = new Set();
+
+const uploadToServer = async (fileBuffer, filename, isImage = true) => {
+  const folder = isImage ? 'images' : 'documents';
+  const uploadPath = path.join(__dirname, `../cloud/${folder}`);
+
+  if (!createdDirs.has(uploadPath)) {
+    await fs.mkdir(uploadPath, { recursive: true });
+    createdDirs.add(uploadPath);
+  }
+
+  const filePath = path.join(uploadPath, filename);
+
+  if (isImage) {
+    await sharp(fileBuffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .webp({ quality: 70, effort: 1, smartSubsample: true })
+      .toFile(filePath);
+  } else {
+    await fs.writeFile(filePath, fileBuffer);
+  }
+
+  return `${process.env.BACKEND_URL}/app/cloud/${folder}/${filename}`;
 };
 
 // Generate temporary password
@@ -183,10 +194,16 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
       for (const [key, files] of Object.entries(req.files)) {
         if (key === 'restaurantImages' && files) {
           restaurantImages = await Promise.all(
-            files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
+            files.map(file => {
+              const filename = `${key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`;
+              return uploadToServer(file.buffer, filename, true);
+            })
           );
         } else if (files && files[0]) {
-          documents[key] = await uploadToCloudinary(files[0].buffer, 'restaurant-documents');
+          const isImage = files[0].mimetype.startsWith('image/');
+          const ext = isImage ? '.webp' : '.pdf';
+          const filename = `${key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${ext}`;
+          documents[key] = await uploadToServer(files[0].buffer, filename, isImage);
         }
       }
     }
@@ -359,7 +376,10 @@ router.patch('/updateData', restaurantAuthMiddleware, upload.array('restaurantIm
     let newUploadedImages = [];
     if (req.files && req.files.length > 0) {
       newUploadedImages = await Promise.all(
-        req.files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
+        req.files.map(file => {
+          const filename = `restaurantImages_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`;
+          return uploadToServer(file.buffer, filename, true);
+        })
       );
     }
 
@@ -618,22 +638,21 @@ router.post(
 
       if (req.files && Object.keys(req.files).length > 0) {
         for (const [key, files] of Object.entries(req.files)) {
-
-          // For multiple restaurant images
           if (key === 'restaurantImages') {
             restaurantImages = await Promise.all(
-              files.map(file => uploadToCloudinary(file.buffer, 'restaurant-images'))
+              files.map(file => {
+                const filename = `${key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`;
+                return uploadToServer(file.buffer, filename, true);
+              })
             );
             continue;
           }
 
-          // For single files
           if (files[0]) {
-            const uploadResult = await uploadToCloudinary(
-              files[0].buffer,
-              'restaurant-documents'
-            );
-            documents[key] = uploadResult;
+            const isImage = files[0].mimetype.startsWith('image/');
+            const ext = isImage ? '.webp' : '.pdf';
+            const filename = `${key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${ext}`;
+            documents[key] = await uploadToServer(files[0].buffer, filename, isImage);
           }
         }
       }
@@ -821,7 +840,10 @@ router.put('/:id', authMiddleware, upload.fields([
     if (req.files) {
       for (const [key, files] of Object.entries(req.files)) {
         if (files && files[0]) {
-          documents[key] = await uploadToCloudinary(files[0].buffer, 'restaurant-documents');
+          const isImage = files[0].mimetype.startsWith('image/');
+          const ext = isImage ? '.webp' : '.pdf';
+          const filename = `${key}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${ext}`;
+          documents[key] = await uploadToServer(files[0].buffer, filename, isImage);
         }
       }
     }
