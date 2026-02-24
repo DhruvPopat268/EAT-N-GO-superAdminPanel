@@ -8,6 +8,15 @@ const orderRequestSchema = new mongoose.Schema(
       required: true,
     },
 
+    userCurrentLocation: {
+      address: { type: String },
+      latitude: { type: Number },
+      longitude: { type: Number }
+    },
+
+    distanceToReachRestaurant: { type: String },
+    durationToReachRestaurant: { type: String },
+
     restaurantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Restaurant',

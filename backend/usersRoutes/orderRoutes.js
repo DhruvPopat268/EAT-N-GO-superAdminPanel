@@ -9,6 +9,7 @@ const User = require('../usersModels/usersModel');
 const Restaurant = require('../models/Restaurant');
 const { emitOrderToRestaurant } = require('../utils/socketUtils');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
+const { getUserLocationDetails } = require('../utils/googleMapsUtils');
 
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
@@ -65,7 +66,7 @@ function addonsEqual(arr1 = [], arr2 = []) {
 // Place order
 router.post('/place', verifyToken, async (req, res) => {
   try {
-    const { orderReqId, paymentMethod } = req.body;
+    const { orderReqId, paymentMethod, userCurrentLocation } = req.body;
     const userId = req.user.userId;
 
     // Check if user has fullName
@@ -181,12 +182,32 @@ router.post('/place', verifyToken, async (req, res) => {
     }
 
     // Check if restaurant is open and not manually closed
-    const restaurant = await Restaurant.findById(cart.restaurantId).select('basicInfo.operatingHours isManuallyClosed');
+    const restaurant = await Restaurant.findById(cart.restaurantId).select('basicInfo.operatingHours isManuallyClosed contactDetails.latitude contactDetails.longitude');
     if (!restaurant) {
       return res.status(404).json({
         success: false,
         message: 'Restaurant not found'
       });
+    }
+
+    // Fetch updated user location if provided
+    let updatedLocation = orderRequest.userCurrentLocation;
+    let updatedDistance = orderRequest.distanceToReachRestaurant;
+    let updatedDuration = orderRequest.durationToReachRestaurant;
+
+    if (userCurrentLocation?.latitude && userCurrentLocation?.longitude) {
+      const { address, distance, duration } = await getUserLocationDetails(
+        userCurrentLocation,
+        restaurant.contactDetails
+      );
+
+      updatedLocation = {
+        address,
+        latitude: userCurrentLocation.latitude,
+        longitude: userCurrentLocation.longitude
+      };
+      updatedDistance = distance;
+      updatedDuration = duration;
     }
 
     const { openTime, closeTime } = restaurant.basicInfo.operatingHours || {};
@@ -283,6 +304,9 @@ router.post('/place', verifyToken, async (req, res) => {
       userId,
       restaurantId: orderRequest.restaurantId,
       orderRequestId: orderReqId,
+      userCurrentLocation: updatedLocation,
+      distanceToReachRestaurant: updatedDistance,
+      durationToReachRestaurant: updatedDuration,
       items: cart.items,
       orderType: orderRequest.orderType,
       numberOfGuests: orderRequest.numberOfGuests,

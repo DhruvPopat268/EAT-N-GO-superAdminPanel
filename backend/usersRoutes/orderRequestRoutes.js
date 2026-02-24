@@ -9,6 +9,7 @@ const Restaurant = require('../models/Restaurant');
 const User = require('../usersModels/usersModel');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 const { emitToRestaurant } = require('../utils/socketUtils');
+const { getUserLocationDetails } = require('../utils/googleMapsUtils');
 
 // Helper function to check if time is within operating hours using IST
 function isTimeWithinOperatingHours(requestedTime, openTime, closeTime) {
@@ -298,8 +299,13 @@ router.get('/in-progress/list', verifyToken, async (req, res) => {
 // Create order request
 router.post('/create', verifyToken, async (req, res) => {
   try {
-    const { orderType, numberOfGuests, eatTimings, dineInstructions, takeawayTimings, takeawayInstructions } = req.body;
+    const { orderType, numberOfGuests, eatTimings, dineInstructions, takeawayTimings, takeawayInstructions, userCurrentLocation } = req.body;
     const userId = req.user.userId;
+
+    // Validate userCurrentLocation
+    if (!userCurrentLocation?.latitude || !userCurrentLocation?.longitude) {
+      return res.status(400).json({ success: false, message: 'User current location (latitude and longitude) is required' });
+    }
 
     // Check if user has fullName
     const user = await User.findById(userId).select('fullName');
@@ -512,6 +518,12 @@ router.post('/create', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Restaurant not found' });
     }
 
+    // Fetch user location details (address, distance, duration)
+    const { address, distance, duration } = await getUserLocationDetails(
+      userCurrentLocation,
+      restaurant.contactDetails
+    );
+
     // Check operating hours
     const { openTime, closeTime } = restaurant.basicInfo.operatingHours || {};
     if (openTime && closeTime) {
@@ -565,6 +577,13 @@ router.post('/create', verifyToken, async (req, res) => {
     // Create order request with cart data including totals
     const orderRequest = new OrderRequest({
       userId,
+      userCurrentLocation: {
+        address,
+        latitude: userCurrentLocation.latitude,
+        longitude: userCurrentLocation.longitude
+      },
+      distanceToReachRestaurant: distance,
+      durationToReachRestaurant: duration,
       restaurantId: cart.restaurantId,
       items: cart.items,
       orderType,

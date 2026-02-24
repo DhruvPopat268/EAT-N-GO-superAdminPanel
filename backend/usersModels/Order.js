@@ -20,6 +20,15 @@ const orderSchema = new mongoose.Schema(
       required: true,
     },
 
+    userCurrentLocation: {
+      address: { type: String },
+      latitude: { type: Number },
+      longitude: { type: Number }
+    },
+
+    distanceToReachRestaurant: { type: String },
+    durationToReachRestaurant: { type: String },
+
     orderNo: {
       type: Number
     },

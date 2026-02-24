@@ -20,10 +20,14 @@ import {
   IconButton,
   Tooltip,
   TablePagination,
-  Button
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import { Visibility, CheckCircleOutline, Receipt } from '@mui/icons-material';
-import { IconBuildingStore, IconSearch, IconCircleCheckFilled, IconFilterOff, IconX } from '@tabler/icons-react';
+import { IconBuildingStore, IconSearch, IconCircleCheckFilled, IconFilterOff, IconX, IconMapPin } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
@@ -46,6 +50,7 @@ export default function CompletedOrderRequests() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const [locationDialog, setLocationDialog] = useState({ open: false, data: null });
 
   const orderTypeOptions = [
     { value: '', label: 'All Types' },
@@ -329,19 +334,20 @@ export default function CompletedOrderRequests() {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order Req Total</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>CreatedAt</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Updated At</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>User Location</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading completed order requests..." />
                     </TableCell>
                   </TableRow>
                 ) : filteredOrderRequests.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                         <IconCircleCheckFilled size={48} color={theme.palette.text.secondary} />
                         <Typography variant="h6" color="text.secondary">
@@ -443,6 +449,30 @@ export default function CompletedOrderRequests() {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
+                          {orderRequest.userCurrentLocation ? (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<IconMapPin size={16} />}
+                              onClick={() => setLocationDialog({ 
+                                open: true, 
+                                data: {
+                                  ...orderRequest.userCurrentLocation,
+                                  distanceToReachRestaurant: orderRequest.distanceToReachRestaurant,
+                                  durationToReachRestaurant: orderRequest.durationToReachRestaurant
+                                }
+                              })}
+                              sx={{ textTransform: 'none' }}
+                            >
+                              See Location
+                            </Button>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              -
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
                           <Stack direction="row" spacing={1} justifyContent="center">
                             <Tooltip title="View Order Request" arrow>
                             <IconButton
@@ -502,6 +532,51 @@ export default function CompletedOrderRequests() {
           />
         </Card>
       </Fade>
+
+      <Dialog
+        open={locationDialog.open}
+        onClose={() => setLocationDialog({ open: false, data: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconMapPin size={24} color={theme.palette.primary.main} />
+          User Location Details
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Address
+              </Typography>
+              <Typography variant="body1" color="text.primary">
+                {locationDialog.data?.address || '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Distance to Restaurant
+              </Typography>
+              <Typography variant="body1" color="text.primary">
+                {locationDialog.data?.distanceToReachRestaurant || '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Duration to Restaurant
+              </Typography>
+              <Typography variant="body1" color="text.primary">
+                {locationDialog.data?.durationToReachRestaurant || '-'}
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLocationDialog({ open: false, data: null })}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

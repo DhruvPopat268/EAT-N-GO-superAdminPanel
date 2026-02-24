@@ -20,9 +20,13 @@ import {
   IconButton,
   Tooltip,
   TablePagination,
-  Button
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
-import { IconEye, IconBuildingStore, IconSearch, IconFilterOff, IconX } from '@tabler/icons-react';
+import { IconEye, IconBuildingStore, IconSearch, IconFilterOff, IconX, IconMapPin } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { formatDateTime } from '../../utils/dateFormatter.js';
@@ -42,6 +46,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const [locationDialog, setLocationDialog] = useState({ open: false, data: null });
   const navigate = useNavigate();
 
   const statusOptions = [
@@ -368,19 +373,20 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Created At</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Updated At</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>User Location</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading orders..." />
                     </TableCell>
                   </TableRow>
                 ) : orders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 12 : 11} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
                       <Typography variant="h6" color="text.secondary">
                         No orders found
                       </Typography>
@@ -455,6 +461,30 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
+                          {order.userCurrentLocation ? (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<IconMapPin size={16} />}
+                              onClick={() => setLocationDialog({ 
+                                open: true, 
+                                data: {
+                                  ...order.userCurrentLocation,
+                                  distanceToReachRestaurant: order.distanceToReachRestaurant,
+                                  durationToReachRestaurant: order.durationToReachRestaurant
+                                }
+                              })}
+                              sx={{ textTransform: 'none' }}
+                            >
+                              See Location
+                            </Button>
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">
+                              -
+                            </Typography>
+                          )}
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
                           <Tooltip title="View Order">
                             <IconButton 
                               size="small" 
@@ -492,6 +522,51 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
           />
         </Card>
       </Fade>
+
+      <Dialog
+        open={locationDialog.open}
+        onClose={() => setLocationDialog({ open: false, data: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <IconMapPin size={24} color={theme.palette.primary.main} />
+          User Location Details
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Address
+              </Typography>
+              <Typography variant="body1" color="text.primary">
+                {locationDialog.data?.address || '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Distance to Restaurant
+              </Typography>
+              <Typography variant="body1" color="text.primary">
+                {locationDialog.data?.distanceToReachRestaurant || '-'}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Duration to Restaurant
+              </Typography>
+              <Typography variant="body1" color="text.primary">
+                {locationDialog.data?.durationToReachRestaurant || '-'}
+              </Typography>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLocationDialog({ open: false, data: null })}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
