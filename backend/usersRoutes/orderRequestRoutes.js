@@ -372,23 +372,27 @@ router.post('/create', verifyToken, async (req, res) => {
       const [startHour, startMin] = eatTimings.startTime.split(':').map(Number);
       const [endHour, endMin] = eatTimings.endTime.split(':').map(Number);
       
+      // Create slot times in IST by using UTC methods on IST-adjusted date
       let slotStart = new Date(nowIST);
-      slotStart.setHours(startHour, startMin, 0, 0);
+      slotStart.setUTCHours(startHour, startMin, 0, 0);
       
       let slotEnd = new Date(nowIST);
-      slotEnd.setHours(endHour, endMin, 0, 0);
+      slotEnd.setUTCHours(endHour, endMin, 0, 0);
       
-      // If end time < start time, slot spans midnight (next day)
+      // If end time <= start time, slot spans midnight (next day)
       if (slotEnd <= slotStart) {
-        slotEnd.setDate(slotEnd.getDate() + 1);
+        slotEnd.setUTCDate(slotEnd.getUTCDate() + 1);
       }
       
-      // If slot is in the past, assume next day
+      // If slot end is in the past, move entire slot to next day
       if (slotEnd < nowIST) {
-        slotStart.setDate(slotStart.getDate() + 1);
-        slotEnd.setDate(slotEnd.getDate() + 1);
+        slotStart.setUTCDate(slotStart.getUTCDate() + 1);
+        slotEnd.setUTCDate(slotEnd.getUTCDate() + 1);
       }
       
+      console.log('🕐 Time validation (dine-in):', { nowIST, slotStart, slotEnd, isInSlot: nowIST >= slotStart && nowIST <= slotEnd });
+      
+      // Reject if current time is within the slot
       if (nowIST >= slotStart && nowIST <= slotEnd) {
         return res.status(400).json({
           success: false,
@@ -400,23 +404,27 @@ router.post('/create', verifyToken, async (req, res) => {
       const [startHour, startMin] = takeawayTimings.startTime.split(':').map(Number);
       const [endHour, endMin] = takeawayTimings.endTime.split(':').map(Number);
       
+      // Create slot times in IST by using UTC methods on IST-adjusted date
       let slotStart = new Date(nowIST);
-      slotStart.setHours(startHour, startMin, 0, 0);
+      slotStart.setUTCHours(startHour, startMin, 0, 0);
       
       let slotEnd = new Date(nowIST);
-      slotEnd.setHours(endHour, endMin, 0, 0);
+      slotEnd.setUTCHours(endHour, endMin, 0, 0);
       
-      // If end time < start time, slot spans midnight (next day)
+      // If end time <= start time, slot spans midnight (next day)
       if (slotEnd <= slotStart) {
-        slotEnd.setDate(slotEnd.getDate() + 1);
+        slotEnd.setUTCDate(slotEnd.getUTCDate() + 1);
       }
       
-      // If slot is in the past, assume next day
+      // If slot end is in the past, move entire slot to next day
       if (slotEnd < nowIST) {
-        slotStart.setDate(slotStart.getDate() + 1);
-        slotEnd.setDate(slotEnd.getDate() + 1);
+        slotStart.setUTCDate(slotStart.getUTCDate() + 1);
+        slotEnd.setUTCDate(slotEnd.getUTCDate() + 1);
       }
       
+      console.log('🕐 Time validation (takeaway):', { nowIST, slotStart, slotEnd, isInSlot: nowIST >= slotStart && nowIST <= slotEnd });
+      
+      // Reject if current time is within the slot
       if (nowIST >= slotStart && nowIST <= slotEnd) {
         return res.status(400).json({
           success: false,

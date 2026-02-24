@@ -118,26 +118,28 @@ router.post('/place', verifyToken, async (req, res) => {
       // Get order request creation time in IST
       const orderReqDate = new Date(orderRequest.createdAt.getTime() + (5.5 * 60 * 60 * 1000));
       
-      // Build slot start/end Date objects
+      // Build slot start/end Date objects using UTC methods on IST-adjusted dates
       const [startHour, startMin] = timings.startTime.split(':').map(Number);
       const [endHour, endMin] = timings.endTime.split(':').map(Number);
       
       let slotStart = new Date(orderReqDate);
-      slotStart.setHours(startHour, startMin, 0, 0);
+      slotStart.setUTCHours(startHour, startMin, 0, 0);
       
       let slotEnd = new Date(orderReqDate);
-      slotEnd.setHours(endHour, endMin, 0, 0);
+      slotEnd.setUTCHours(endHour, endMin, 0, 0);
       
-      // If end time < start time, slot spans midnight (next day)
+      // If end time <= start time, slot spans midnight (next day)
       if (slotEnd <= slotStart) {
-        slotEnd.setDate(slotEnd.getDate() + 1);
+        slotEnd.setUTCDate(slotEnd.getUTCDate() + 1);
       }
       
-      // If slot is in the past relative to order creation, assume next day
+      // If slot end is in the past relative to order creation, move to next day
       if (slotEnd < orderReqDate) {
-        slotStart.setDate(slotStart.getDate() + 1);
-        slotEnd.setDate(slotEnd.getDate() + 1);
+        slotStart.setUTCDate(slotStart.getUTCDate() + 1);
+        slotEnd.setUTCDate(slotEnd.getUTCDate() + 1);
       }
+
+      console.log('🕐 Place order time validation:', { nowIST, slotStart, slotEnd, orderReqDate, isInSlot: nowIST >= slotStart && nowIST <= slotEnd, isPast: nowIST > slotEnd });
 
       // Check if current time is within the specified time slot
       if (nowIST >= slotStart && nowIST <= slotEnd) {
