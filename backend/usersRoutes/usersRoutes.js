@@ -236,7 +236,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
     console.log('\n=== RESTAURANT ANALYSIS ===');
 
     // Detailed analysis for each restaurant
-    const restaurantAnalysis = allRestaurants.map(restaurant => {
+    const restaurantAnalysis = await Promise.all(allRestaurants.map(async restaurant => {
       const restLat = parseFloat(restaurant.contactDetails.latitude);
       const restLng = parseFloat(restaurant.contactDetails.longitude);
       
@@ -259,7 +259,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         destinationLocation.lat, destinationLocation.lng
       );
       
-      const distanceFromCurrent = calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
+      const distanceFromCurrent = await calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
       const isWithinBuffer = distanceToRoute <= bufferRadius;
       
       console.log(`\n🏪 Restaurant: "${restaurant.basicInfo.restaurantName}"`);
@@ -279,17 +279,18 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         isWithinBuffer,
         willBeIncluded: isAhead && isWithinBuffer
       };
-    }).filter(Boolean);
+    }));
+    const filteredAnalysis = restaurantAnalysis.filter(Boolean);
 
-    const filteredRestaurants = getRestaurantsAlongRoute(
+    const filteredRestaurants = await Promise.all(getRestaurantsAlongRoute(
       allRestaurants, 
       currentLocation, 
       destinationLocation, 
       bufferRadius
-    ).map(restaurant => {
+    ).map(async restaurant => {
       const restLat = parseFloat(restaurant.contactDetails.latitude);
       const restLng = parseFloat(restaurant.contactDetails.longitude);
-      const distanceInMeters = calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
+      const distanceInMeters = await calculateDistance(currentLocation.lat, currentLocation.lng, restLat, restLng);
       const distanceInKm = (distanceInMeters / 1000).toFixed(2);
       
       // Calculate if restaurant is open

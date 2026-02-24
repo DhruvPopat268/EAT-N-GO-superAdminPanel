@@ -1,5 +1,7 @@
-// Haversine distance calculation
-function calculateDistance(lat1, lng1, lat2, lng2) {
+const axios = require('axios');
+
+// Haversine distance calculation (fallback)
+function calculateDistanceHaversine(lat1, lng1, lat2, lng2) {
   const R = 6371000; // Earth's radius in meters
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -10,7 +12,23 @@ function calculateDistance(lat1, lng1, lat2, lng2) {
   return R * c;
 }
 
-// Calculate distance from point to line segment
+// Distance Matrix API calculation
+async function calculateDistance(lat1, lng1, lat2, lng2) {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${lat1},${lng1}&destinations=${lat2},${lng2}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+    const response = await axios.get(url);
+    
+    if (response.data.status === 'OK' && response.data.rows[0]?.elements[0]?.status === 'OK') {
+      return response.data.rows[0].elements[0].distance.value; // Returns distance in meters
+    }
+    return calculateDistanceHaversine(lat1, lng1, lat2, lng2);
+  } catch (error) {
+    console.error('Distance Matrix API error:', error.message);
+    return calculateDistanceHaversine(lat1, lng1, lat2, lng2);
+  }
+}
+
+// Calculate distance from point to line segment (uses Haversine for geometry)
 function distanceToLineSegment(pointLat, pointLng, lat1, lng1, lat2, lng2) {
   const A = pointLat - lat1;
   const B = pointLng - lng1;
@@ -20,7 +38,7 @@ function distanceToLineSegment(pointLat, pointLng, lat1, lng1, lat2, lng2) {
   const dot = A * C + B * D;
   const lenSq = C * C + D * D;
   
-  if (lenSq === 0) return calculateDistance(pointLat, pointLng, lat1, lng1);
+  if (lenSq === 0) return calculateDistanceHaversine(pointLat, pointLng, lat1, lng1);
   
   let param = dot / lenSq;
   
@@ -36,7 +54,7 @@ function distanceToLineSegment(pointLat, pointLng, lat1, lng1, lat2, lng2) {
     yy = lng1 + param * D;
   }
 
-  return calculateDistance(pointLat, pointLng, xx, yy);
+  return calculateDistanceHaversine(pointLat, pointLng, xx, yy);
 }
 
 // Check if restaurant is ahead on route (not backwards)
@@ -72,7 +90,7 @@ function getRestaurantsAlongRoute(restaurants, currentLocation, destinationLocat
       return false;
     }
     
-    // Calculate distance from restaurant to route line
+    // Calculate distance from restaurant to route line (uses Haversine for filtering)
     const distanceToRoute = distanceToLineSegment(restLat, restLng, currentLat, currentLng, destLat, destLng);
     
     // Return true if within buffer radius
@@ -83,6 +101,7 @@ function getRestaurantsAlongRoute(restaurants, currentLocation, destinationLocat
 module.exports = {
   getRestaurantsAlongRoute,
   calculateDistance,
+  calculateDistanceHaversine,
   distanceToLineSegment,
   isAheadOnRoute
 };
