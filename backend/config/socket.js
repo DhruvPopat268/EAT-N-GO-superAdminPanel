@@ -10,7 +10,7 @@ const initializeSocket = (server) => {
         'http://localhost:3003',
         'http://localhost:5173',
         "https://admin.eatngo.in",
-        "https://resturant.eatngo.in"
+        "https://restaurant.eatngo.in"
       ],
       credentials: true
     }
