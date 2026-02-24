@@ -328,7 +328,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         averageRating: parseFloat(avgRating),
         totalRatings: ratings.length
       };
-    });
+    }));
 
     console.log('\n=== FINAL RESULTS ===');
     console.log(`✅ Restaurants included in results: ${filteredRestaurants.length}`);
