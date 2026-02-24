@@ -140,6 +140,7 @@ router.get('/status', restaurantAuthMiddleware, async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
+        restaurantId: restaurantId,
         status: restaurentData.status,
         rejectedFormFields: restaurentData.rejectedFormFields,
         rejectionReason: restaurentData.rejectionReason,

@@ -17,12 +17,19 @@ const initializeSocket = (server) => {
   });
 
   io.on('connection', (socket) => {
-    console.log('Restaurant connected:', socket.id);
+    console.log('✅ Client connected:', socket.id);
 
     // Join restaurant room
     socket.on('join-restaurant', (restaurantId) => {
+      if (!restaurantId) {
+        console.log('❌ No restaurantId provided for socket:', socket.id);
+        socket.emit('error', { message: 'Restaurant ID is required' });
+        return;
+      }
+      
       socket.join(`restaurant-${restaurantId}`);
-      console.log(`Restaurant ${socket.id} joined restaurant-${restaurantId}`);
+      console.log(`✅ Socket ${socket.id} joined restaurant-${restaurantId}`);
+      socket.emit('joined', { restaurantId, room: `restaurant-${restaurantId}` });
     });
 
     // Handle order updates from restaurant
@@ -31,11 +38,12 @@ const initializeSocket = (server) => {
 
       if (restaurantId) {
         socket.to(`restaurant-${restaurantId}`).emit('order-updated', orderData);
+        console.log(`📤 Order update sent to restaurant-${restaurantId}`);
       }
     });
 
     socket.on('disconnect', () => {
-      console.log('Restaurant disconnected:', socket.id);
+      console.log('❌ Client disconnected:', socket.id);
     });
   });
 
