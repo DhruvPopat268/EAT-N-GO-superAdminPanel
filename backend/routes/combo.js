@@ -7,6 +7,30 @@ const upload = require('../middleware/upload');
 const authMiddleware = require('../middleware/auth');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
+const path = require('path');
+const fs = require('fs').promises;
+const sharp = require('sharp');
+
+const createdDirs = new Set();
+
+const uploadToServer = async (fileBuffer, filename) => {
+  const folder = 'images';
+  const uploadPath = path.join(__dirname, `../cloud/${folder}`);
+
+  if (!createdDirs.has(uploadPath)) {
+    await fs.mkdir(uploadPath, { recursive: true });
+    createdDirs.add(uploadPath);
+  }
+
+  const filePath = path.join(uploadPath, filename);
+
+  await sharp(fileBuffer)
+    .resize({ width: 800, withoutEnlargement: true })
+    .webp({ quality: 70, effort: 1, smartSubsample: true })
+    .toFile(filePath);
+
+  return `${process.env.BACKEND_URL}/app/cloud/${folder}/${filename}`;
+};
 
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Restaurent <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -64,7 +88,7 @@ router.post('/detail',restaurantAuthMiddleware, async (req, res) => {
     const combo = await Combo.findOne({ _id: comboId, restaurantId })
       .populate('items.itemId')
       .populate('items.attribute', 'name')
-      .populate('addons');
+      // .populate('addons');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -97,6 +121,13 @@ router.post('/add', restaurantAuthMiddleware, upload.single('image'), async (req
     
     const restaurant = await Restaurant.findById(restaurantId);
     
+    // Upload image to server if provided
+    let imageUrl = null;
+    if (req.file) {
+      const filename = `combo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`;
+      imageUrl = await uploadToServer(req.file.buffer, filename);
+    }
+    
     const combo = new Combo({
       restaurantId,
       name,
@@ -106,7 +137,7 @@ router.post('/add', restaurantAuthMiddleware, upload.single('image'), async (req
       price,
       category,
       currency: restaurant?.businessDetails?.currency,
-      image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
+      image: imageUrl
     });
     
     await combo.save();
@@ -127,8 +158,10 @@ router.put('/update', restaurantAuthMiddleware, upload.single('image'), async (r
     delete updateData.comboId;
     delete updateData.restaurantId;
     
+    // Upload new image to server if provided
     if (req.file) {
-      updateData.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      const filename = `combo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`;
+      updateData.image = await uploadToServer(req.file.buffer, filename);
     }
     
     const combo = await Combo.findOneAndUpdate(
@@ -136,8 +169,7 @@ router.put('/update', restaurantAuthMiddleware, upload.single('image'), async (r
       updateData,
       { new: true }
     ).populate('items.itemId')
-     .populate('items.attribute', 'name')
-     .populate('addons');
+     .populate('items.attribute', 'name');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -302,7 +334,7 @@ router.post('/admin/detail',authMiddleware, async (req, res) => {
     const combo = await Combo.findOne({ _id: comboId, restaurantId })
       .populate('items.itemId')
       .populate('items.attribute', 'name')
-      .populate('addons');
+      // .populate('addons');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });
@@ -334,6 +366,13 @@ router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res
     
     const restaurant = await Restaurant.findById(restaurantId);
     
+    // Upload image to server if provided
+    let imageUrl = null;
+    if (req.file) {
+      const filename = `combo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`;
+      imageUrl = await uploadToServer(req.file.buffer, filename);
+    }
+    
     const combo = new Combo({
       restaurantId,
       name,
@@ -343,7 +382,7 @@ router.post('/admin/add',authMiddleware, upload.single('image'), async (req, res
       price,
       category,
       currency: restaurant?.businessDetails?.currency,
-      image: req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null
+      image: imageUrl
     });
     
     await combo.save();
@@ -374,8 +413,10 @@ router.put('/admin/update',authMiddleware, upload.single('image'), async (req, r
     delete updateData.comboId;
     delete updateData.restaurantId;
     
+    // Upload new image to server if provided
     if (req.file) {
-      updateData.image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      const filename = `combo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.webp`;
+      updateData.image = await uploadToServer(req.file.buffer, filename);
     }
     
     const combo = await Combo.findOneAndUpdate(
@@ -383,8 +424,7 @@ router.put('/admin/update',authMiddleware, upload.single('image'), async (req, r
       updateData,
       { new: true }
     ).populate('items.itemId')
-     .populate('items.attribute', 'name')
-     .populate('addons');
+     .populate('items.attribute', 'name');
     
     if (!combo) {
       return res.status(404).json({ success: false, message: 'Combo not found' });

@@ -4,6 +4,7 @@ const Item = require('../models/Item');
 const Subcategory = require('../models/Subcategory');
 const Restaurant = require('../models/Restaurant');
 const Cart = require('../usersModels/Cart');
+const Combo = require('../models/Combo');
 const { verifyToken } = require('../middleware/userAuth');
 
 const escapeRegex = (string) => {
@@ -25,7 +26,8 @@ router.post('/popular-items', verifyToken, async (req, res) => {
 
     const popularItems = await Item.find({
       restaurantId,
-      isPopular: true
+      isPopular: true,
+      isAvailable: true
     })
     .populate({
       path:'subcategory',
@@ -74,6 +76,7 @@ router.post('/popular-items', verifyToken, async (req, res) => {
     // Add cart information to each item
     const itemsWithCartInfo = popularItems.map(item => {
       const itemObj = item.toObject();
+      itemObj.addons = itemObj.addons?.filter(addon => addon.isAvailable !== false) || [];
       itemObj.cartItems = [];
       
       if (userCart && userCart.items) {
@@ -148,7 +151,8 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
 
     const items = await Item.find({
       subcategory: subcategoryId,
-      restaurantId: restaurantId
+      restaurantId: restaurantId,
+      isAvailable: true
     })
     .populate({
       path:'subcategory',
@@ -196,6 +200,7 @@ router.get('/by-subcategory', verifyToken, async (req, res) => {
     // Add cart information to each item
     const itemsWithCartInfo = items.map(item => {
       const itemObj = item.toObject();
+      itemObj.addons = itemObj.addons?.filter(addon => addon.isAvailable !== false) || [];
       itemObj.cartItems = [];
       
       if (userCart && userCart.items) {
@@ -307,6 +312,7 @@ router.get('/search', verifyToken, async (req, res) => {
     // Add cart information to each item
     const itemsWithCartInfo = items.map(item => {
       const itemObj = item.toObject();
+      itemObj.addons = itemObj.addons?.filter(addon => addon.isAvailable !== false) || [];
       itemObj.cartItems = [];
       
       if (userCart && userCart.items) {

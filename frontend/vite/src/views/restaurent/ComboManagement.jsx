@@ -809,7 +809,7 @@ export default function ComboManagement() {
               )}
             />
 
-            <Autocomplete
+            {/* <Autocomplete
               multiple
               options={addonItems}
               getOptionLabel={(option) => option.name}
@@ -827,7 +827,7 @@ export default function ComboManagement() {
                   placeholder="Choose addon items for combo"
                 />
               )}
-            />
+            /> */}
             
             {selectedItems.length > 0 && (
               <Box>

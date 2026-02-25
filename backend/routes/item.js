@@ -90,6 +90,7 @@ router.post('/', restaurantAuthMiddleware, upload.array('images', 5), async (req
 
     const restaurant = await Restaurant.findById(itemData.restaurantId);
     if (restaurant?.businessDetails?.currency) {
+      console.log("restaurant currency",restaurant.businessDetails.currency)
       itemData.currency = restaurant.businessDetails.currency;
     }
 

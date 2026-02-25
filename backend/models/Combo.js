@@ -36,12 +36,12 @@ const comboSchema = new mongoose.Schema(
     ],
 
     // ⭐ NEW: Addons field
-    addons: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'AddonItem',
-      },
-    ],
+    // addons: [
+    //   {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: 'AddonItem',
+    //   },
+    // ],
 
     price: {
       type: Number,
