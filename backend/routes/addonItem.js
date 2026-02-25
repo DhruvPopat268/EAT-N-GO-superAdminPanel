@@ -106,6 +106,11 @@ router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async
       updateData.images = imageUrls;
     }
 
+    const restaurant = await Restaurant.findById(req.restaurant.restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      updateData.currency = restaurant.businessDetails.currency;
+    }
+
     const addonItem = await AddonItem.findOneAndUpdate(
       { _id: id, restaurantId: req.restaurant.restaurantId },
       updateData,
@@ -323,6 +328,11 @@ router.put('/admin/update', authMiddleware, upload.single('image'), async (req, 
       updateData.image = imageUrl;
     }
 
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      updateData.currency = restaurant.businessDetails.currency;
+    }
+
     const addonItem = await AddonItem.findOneAndUpdate(
       { _id: id, restaurantId },
       updateData,
@@ -332,7 +342,6 @@ router.put('/admin/update', authMiddleware, upload.single('image'), async (req, 
       return res.status(404).json({ success: false, message: 'Addon item not found' });
     }
     
-    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
       req.user,
       'Menu Management',

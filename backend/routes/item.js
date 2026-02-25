@@ -90,8 +90,11 @@ router.post('/', restaurantAuthMiddleware, upload.array('images', 5), async (req
 
     const restaurant = await Restaurant.findById(itemData.restaurantId);
     if (restaurant?.businessDetails?.currency) {
-      console.log("restaurant currency",restaurant.businessDetails.currency)
       itemData.currency = restaurant.businessDetails.currency;
+    }
+
+    if (!itemData.foodTypes || itemData.foodTypes.length === 0) {
+      itemData.foodTypes = ['Regular'];
     }
 
     const item = new Item(itemData);
@@ -131,6 +134,15 @@ router.put('/update', restaurantAuthMiddleware, upload.array('images', 5), async
 
     // Set the combined images array
     updateData.images = allImages;
+
+    const restaurant = await Restaurant.findById(req.restaurant.restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      updateData.currency = restaurant.businessDetails.currency;
+    }
+
+    if (!updateData.foodTypes || updateData.foodTypes.length === 0) {
+      updateData.foodTypes = ['Regular'];
+    }
 
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId: req.restaurant.restaurantId },
@@ -466,6 +478,10 @@ router.post('/admin/create', authMiddleware, upload.array('images', 5), async (r
       itemData.currency = restaurant.businessDetails.currency;
     }
 
+    if (!itemData.foodTypes || itemData.foodTypes.length === 0) {
+      itemData.foodTypes = ['Regular'];
+    }
+
     const item = new Item(itemData);
     await item.save();
     await item.populate('subcategory');
@@ -516,6 +532,15 @@ router.put('/admin/update', authMiddleware, upload.array('images', 5), async (re
     // Set the combined images array
     updateData.images = allImages;
 
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (restaurant?.businessDetails?.currency) {
+      updateData.currency = restaurant.businessDetails.currency;
+    }
+
+    if (!updateData.foodTypes || updateData.foodTypes.length === 0) {
+      updateData.foodTypes = ['Regular'];
+    }
+
     const item = await Item.findOneAndUpdate(
       { _id: itemId, restaurantId },
       updateData,
@@ -525,7 +550,6 @@ router.put('/admin/update', authMiddleware, upload.array('images', 5), async (re
       return res.status(404).json({ success: false, message: 'Item not found' });
     }
     
-    const restaurant = await Restaurant.findById(restaurantId);
     await createLog(
       req.user,
       'Menu Management',
