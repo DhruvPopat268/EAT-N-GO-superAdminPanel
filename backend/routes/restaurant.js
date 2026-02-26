@@ -7,7 +7,7 @@ const upload = require('../middleware/upload');
 const authMiddleware = require('../middleware/auth');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const createLog = require('../utils/createLog');
-const { sendUserCredentials } = require('../services/emailService');
+const { sendUserCredentials, sendRestaurantCredentials, sendRestaurantPendingNotification, sendRestaurantRejectionNotification } = require('../services/emailService');
 const { getJwtConfig } = require('../utils/jwtConfig');
 const { getCurrencyFromCountry } = require('../utils/countryToCurrencyConverter');
 const router = express.Router();
@@ -703,13 +703,11 @@ router.post(
       const restaurant = new Restaurant(nestedData);
       await restaurant.save();
 
-      // Email notification
+      // Send pending notification email
       try {
-        await sendUserCredentials(
+        await sendRestaurantPendingNotification(
           restaurantData.email,
-          restaurantData.restaurantName,
-          tempPassword,
-          'Restaurant'
+          restaurantData.restaurantName
         );
       } catch (emailError) {
         console.error("Email failed:", emailError);
@@ -739,7 +737,6 @@ router.post(
 // Approve restaurant
 router.post('/approve/:id', authMiddleware, async (req, res) => {
   try {
-
     const restaurant = await Restaurant.findByIdAndUpdate(
       req.params.id,
       { status: 'approved' },
@@ -753,6 +750,21 @@ router.post('/approve/:id', authMiddleware, async (req, res) => {
       });
     }
 
+    // Decrypt temp password to send in email
+    const tempPassword = generateTempPassword(restaurant.contactDetails.email);
+    const panelLink = process.env.RESTAURANT_PANEL_URL || 'https://restaurant.eatngo.com';
+
+    // Send approval email with credentials
+    try {
+      await sendRestaurantCredentials(
+        restaurant.contactDetails.email,
+        restaurant.basicInfo.restaurantName,
+        tempPassword,
+        panelLink
+      );
+    } catch (emailError) {
+      console.error("Approval email failed:", emailError);
+    }
 
     await createLog(
       req.user,
@@ -762,8 +774,6 @@ router.post('/approve/:id', authMiddleware, async (req, res) => {
       `Approved restaurant with ID ${req.params.id}`,
       restaurant.basicInfo.restaurantName
     );
-
-
 
     res.json({
       success: true,
@@ -800,6 +810,23 @@ router.post('/reject/:id', authMiddleware, async (req, res) => {
         success: false,
         message: 'Restaurant not found'
       });
+    }
+
+    // Generate temp password for rejection email
+    const tempPassword = generateTempPassword(restaurant.contactDetails.email);
+    const panelLink = process.env.RESTAURANT_PANEL_URL || 'https://restaurant.eatngo.com';
+
+    // Send rejection email with credentials
+    try {
+      await sendRestaurantRejectionNotification(
+        restaurant.contactDetails.email,
+        restaurant.basicInfo.restaurantName,
+        tempPassword,
+        panelLink,
+        reason
+      );
+    } catch (emailError) {
+      console.error("Rejection email failed:", emailError);
     }
 
     await createLog(
