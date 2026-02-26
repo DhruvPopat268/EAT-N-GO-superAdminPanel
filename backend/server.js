@@ -21,7 +21,8 @@ app.use(cors({
     'http://localhost:3002',
     'http://localhost:5173',
     "https://admin.eatngo.in",
-    "https://restaurant.eatngo.in"
+    "https://restaurant.eatngo.in",
+    "https://eat-n-go-restaurent-registration-fo.vercel.app"
   ],
   credentials: true
 }));
