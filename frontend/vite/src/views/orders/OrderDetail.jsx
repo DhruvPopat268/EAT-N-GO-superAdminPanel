@@ -219,18 +219,6 @@ export default function OrderDetail() {
                     </Box>
                   )}
 
-                  {/* Eat Timings */}
-                  {order.orderType === 'dine-in' && order.eatTimings && (
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                        Eat Timings
-                      </Typography>
-                      <Typography variant="body1" color="text.primary">
-                        {order.eatTimings.startTime} - {order.eatTimings.endTime}
-                      </Typography>
-                    </Box>
-                  )}
-
                   {/* Pickup Timings */}
                   {order.orderType === 'takeaway' && order.takeawayTimings && (
                     <Box>
@@ -312,7 +300,36 @@ export default function OrderDetail() {
               <Box sx={{ p: 3 }}>
                 <Stack spacing={3}>
                   {order.items?.map((item, index) => (
-                    <Box key={index} sx={{ display: 'flex', gap: 2 }}>
+                    <Box 
+                      key={index} 
+                      sx={{ 
+                        display: 'flex', 
+                        gap: 2,
+                        p: item.isPostOrder ? 2 : 0,
+                        borderRadius: item.isPostOrder ? 2 : 0,
+                        border: item.isPostOrder ? '2px solid #FF9800' : 'none',
+                        bgcolor: item.isPostOrder ? alpha('#FF9800', 0.05) : 'transparent',
+                        position: 'relative'
+                      }}
+                    >
+                      {/* Post Order Badge */}
+                      {item.isPostOrder && (
+                        <Chip
+                          label="POST ORDER"
+                          size="small"
+                          sx={{
+                            position: 'absolute',
+                            top: -8,
+                            right: 8,
+                            bgcolor: '#FF9800',
+                            color: 'white',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            height: 20,
+                            zIndex: 1
+                          }}
+                        />
+                      )}
                       {/* Item Image */}
                       {item.itemId?.images?.[0] && (
                         <Box

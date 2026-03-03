@@ -661,7 +661,164 @@ router.get('/:orderId', verifyToken, async (req, res) => {
   }
 });
 
-// Cancel order
+// Update order (add items from cart)
+router.put('/update', verifyToken, async (req, res) => {
+  try {
+    const { orderId, paymentMethod } = req.body;
+    const userId = req.user.userId;
+
+    if (!orderId || !paymentMethod) {
+      return res.status(400).json({ success: false, message: 'orderId and paymentMethod are required' });
+    }
+
+    if (!['online', 'pay_at_restaurant'].includes(paymentMethod)) {
+      return res.status(400).json({ success: false, message: 'Invalid paymentMethod' });
+    }
+
+    // Find the order
+    const order = await Order.findOne({ _id: orderId, userId });
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if payment method matches existing order
+    if (order.paymentMethod !== paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment method must match the original order payment method',
+        code: 'PAYMENT_METHOD_MISMATCH'
+      });
+    }
+
+    // Check if order can be updated (not completed status)
+    if (order.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Order cannot be updated at this stage',
+        code: 'ORDER_UPDATE_NOT_ALLOWED'
+      });
+    }
+
+    // Find current cart
+    const cart = await Cart.findOne({ userId });
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cart is empty' });
+    }
+
+    // Check if cart restaurant matches order restaurant
+    if (cart.restaurantId.toString() !== order.restaurantId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cart restaurant does not match order restaurant',
+        code: 'RESTAURANT_MISMATCH'
+      });
+    }
+
+    // Check if restaurant is still open
+    const restaurant = await Restaurant.findById(order.restaurantId).select('basicInfo.operatingHours isManuallyClosed');
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    const { openTime, closeTime } = restaurant.basicInfo.operatingHours || {};
+    if (!isRestaurantOpen(openTime, closeTime, restaurant.isManuallyClosed)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Restaurant is currently closed',
+        code: 'RESTAURANT_CLOSED'
+      });
+    }
+
+    // Use cart totals
+    const addedAmount = cart.cartTotal || 0;
+
+    // Mark cart items as post-order items
+    const postOrderItems = cart.items.map(item => ({
+      ...item.toObject(),
+      isPostOrder: true
+    }));
+
+    // Update order with cart items, totals, and set status to confirmed
+    await Order.findByIdAndUpdate(
+      orderId,
+      {
+        $push: { items: { $each: postOrderItems } },
+        $inc: {
+          baseTotalAmount: addedAmount,
+          totalAmount: addedAmount
+        },
+        $set: {
+          status: 'confirmed',
+          hasPostOrderItems: true
+        }
+      }
+    );
+
+    // Clear cart
+    await Cart.findOneAndDelete({ userId });
+
+    // Populate the updated order
+    const populatedOrder = await Order.findById(orderId)
+      .populate('userId', 'fullName phone')
+      .populate({
+        path: 'items.itemId',
+        model: 'Item',
+        select:
+          'category name description images foodTypes currency isAvailable isPopular subcategory attributes customizations addons',
+        populate: [
+          {
+            path: 'subcategory',
+            model: 'Subcategory',
+            select: 'name'
+          },
+          {
+            path: 'addons',
+            model: 'AddonItem',
+            select: 'category name description images currency isAvailable attributes'
+          }
+        ]
+      })
+      .populate({
+        path: 'items.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      })
+      .populate({
+        path: 'items.selectedAddons.addonId',
+        model: 'AddonItem',
+        select: 'category name description images currency isAvailable attributes',
+        populate: {
+          path: 'attributes.attribute',
+          model: 'Attribute'
+        }
+      })
+      .populate({
+        path: 'items.selectedAddons.selectedAttribute',
+        model: 'Attribute',
+        select: 'name'
+      });
+
+    const processedOrder = populatedOrder.toObject();
+
+    // Emit socket event to restaurant
+    const io = req.app.get('io');
+    if (io) {
+      const { emitOrderUpdateToRestaurant } = require('../utils/socketUtils');
+      emitOrderUpdateToRestaurant(io, order.restaurantId, processedOrder, addedAmount);
+    }
+
+    res.json({
+      success: true,
+      message: 'Order updated successfully',
+      data: processedOrder,
+      addedAmount
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 router.post('/cancel', verifyToken, async (req, res) => {
   try {
     const { orderId, cancellationReason } = req.body;

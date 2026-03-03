@@ -107,6 +107,12 @@ const orderSchema = new mongoose.Schema(
       addonTotal: {
         type: Number,
         default: 0
+      },
+      
+      // Flag to identify post-order items
+      isPostOrder: {
+        type: Boolean,
+        default: false
       }
     }],
 
@@ -198,6 +204,12 @@ const orderSchema = new mongoose.Schema(
     userRatingId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'userRating'
+    },
+
+    // Flag to identify if order has post-order items
+    hasPostOrderItems: {
+      type: Boolean,
+      default: false
     },
   },
   {

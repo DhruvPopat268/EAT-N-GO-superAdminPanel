@@ -10,7 +10,17 @@ const emitOrderToRestaurant = (io, restaurantId, orderData) => {
   io.to(`restaurant-${restaurantId}`).emit('new-order', orderData);
 };
 
+const emitOrderUpdateToRestaurant = (io, restaurantId, orderData, addedAmount) => {
+  console.log(`Order update sent to restaurant-${restaurantId}, Order ID: ${orderData._id}, Added Amount: ${addedAmount}`);
+  io.to(`restaurant-${restaurantId}`).emit('order-updated', {
+    order: orderData,
+    addedAmount,
+    message: 'Order has been updated with new items'
+  });
+};
+
 module.exports = {
   emitToRestaurant,
-  emitOrderToRestaurant
+  emitOrderToRestaurant,
+  emitOrderUpdateToRestaurant
 };

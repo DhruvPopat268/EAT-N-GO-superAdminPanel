@@ -368,6 +368,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order Type</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Eat/Takeaway Timings</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Waiting Time</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Post Order Items</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Payment Method</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Total Amount</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Status</TableCell>
@@ -380,13 +381,13 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 14 : 13} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading orders..." />
                     </TableCell>
                   </TableRow>
                 ) : orders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 14 : 13} sx={{ textAlign: 'center', py: 8 }}>
                       <Typography variant="h6" color="text.secondary">
                         No orders found
                       </Typography>
@@ -395,7 +396,10 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                 ) : (
                   orders.map((order, index) => (
                     <Fade in timeout={1200 + index * 100} key={order._id}>
-                      <TableRow sx={{ '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) } }}>
+                      <TableRow sx={{ 
+                        '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.02) },
+                        backgroundColor: order.hasPostOrderItems ? alpha('#9E9E9E', 0.1) : 'transparent'
+                      }}>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
                             #{order.orderNo}
@@ -434,6 +438,31 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                           <Typography variant="body2" color="black">
                             {order.waitingTime?.startTime && order.waitingTime?.endTime ? `${order.waitingTime.startTime} - ${order.waitingTime.endTime}` : 'N/A'}
                           </Typography>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
+                          {order.hasPostOrderItems ? (
+                            <Chip 
+                              label="YES" 
+                              size="small"
+                              sx={{ 
+                                bgcolor: '#FF9800',
+                                color: 'white',
+                                fontSize: '0.7rem',
+                                fontWeight: 600
+                              }}
+                            />
+                          ) : (
+                            <Chip 
+                              label="NO" 
+                              size="small"
+                              sx={{ 
+                                bgcolor: '#E0E0E0',
+                                color: '#666',
+                                fontSize: '0.7rem',
+                                fontWeight: 600
+                              }}
+                            />
+                          )}
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Chip 
