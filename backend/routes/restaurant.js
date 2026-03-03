@@ -878,7 +878,12 @@ router.put('/:id', authMiddleware, upload.fields([
     }
 
     const updateData = {
-      ...restaurantData,
+      basicInfo: {
+        ...restaurantData.basicInfo,
+        alcoholAvailable: restaurantData.basicInfo?.alcoholAvailable
+      },
+      contactDetails: restaurantData.contactDetails,
+      businessDetails: restaurantData.businessDetails,
       ...(Object.keys(documents).length > 0 && {
         documents: { ...restaurantData.documents, ...documents }
       })

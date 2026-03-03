@@ -326,7 +326,8 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         distanceFromCurrentLocation: `${distanceInKm} km`,
         isOpen: isOpen,
         averageRating: parseFloat(avgRating),
-        totalRatings: ratings.length
+        totalRatings: ratings.length,
+        alcoholAvailable: restaurant.basicInfo?.alcoholAvailable
       };
     }));
 
