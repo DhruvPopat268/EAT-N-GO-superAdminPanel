@@ -70,6 +70,7 @@ export default function AddRestaurant() {
     restaurantName: '',
     ownerName: '',
     foodCategory: 'Veg',
+    alcoholAvailable: false,
     cuisineTypes: [],
     otherCuisine: '',
     email: '',
@@ -577,6 +578,37 @@ export default function AddRestaurant() {
                     </Box>
                   )}
                 </FormControl>
+
+                <FormControl component="fieldset">
+                  <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
+                    Alcohol Availability
+                  </Typography>
+                  <FormGroup sx={{
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 3,
+                    p: 2
+                  }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.alcoholAvailable}
+                          onChange={(e) => setFormData(prev => ({ ...prev, alcoholAvailable: e.target.checked }))}
+                          sx={{
+                            '&.Mui-checked': {
+                              color: 'primary.main'
+                            }
+                          }}
+                        />
+                      }
+                      label="Restaurant serves alcohol"
+                      sx={{
+                        '& .MuiFormControlLabel-label': {
+                          fontSize: '0.95rem'
+                        }
+                      }}
+                    />
+                  </FormGroup>
+                </FormControl>
               </Stack>
             </Box>
           </Fade>
@@ -1029,6 +1061,7 @@ export default function AddRestaurant() {
                       <Box><strong>Name:</strong> {formData.restaurantName}</Box>
                       <Box><strong>Owner:</strong> {formData.ownerName}</Box>
                       <Box><strong>Category:</strong> <Chip label={formData.foodCategory} size="small" /></Box>
+                      <Box><strong>Alcohol:</strong> <Chip label={formData.alcoholAvailable ? 'Available' : 'Not Available'} size="small" color={formData.alcoholAvailable ? 'success' : 'default'} /></Box>
                       <Box><strong>Cuisines:</strong> {formData.cuisineTypes.map(c => c === 'Other' ? formData.otherCuisine : c).filter(Boolean).join(', ')}</Box>
                     </Box>
                   </CardContent>

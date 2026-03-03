@@ -6,6 +6,7 @@ const restaurantSchema = new mongoose.Schema({
     restaurantName: { type: String, required: true },
     ownerName: { type: String, required: true },
     foodCategory: { type: String, enum: ['Veg', 'Non-Veg', 'Mixed'], required: true },
+    alcoholAvailable: { type: Boolean, default: false },
     cuisineTypes: [{ type: String, required: true }],
     otherCuisine: { type: String },
     facilities: [{ type: String }],

@@ -664,6 +664,7 @@ router.post(
           restaurantName: restaurantData.restaurantName,
           ownerName: restaurantData.ownerName,
           foodCategory: restaurantData.foodCategory,
+          alcoholAvailable: restaurantData.alcoholAvailable || false,
           cuisineTypes: restaurantData.cuisineTypes,
           otherCuisine: restaurantData.otherCuisine
         },
