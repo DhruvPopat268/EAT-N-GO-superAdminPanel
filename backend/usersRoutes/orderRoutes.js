@@ -731,6 +731,7 @@ router.put('/update', verifyToken, async (req, res) => {
 
     // Use cart totals
     const addedAmount = cart.cartTotal || 0;
+    const addedItemsCount = cart.items.length;
 
     // Mark cart items as post-order items
     const postOrderItems = cart.items.map(item => ({
@@ -804,7 +805,7 @@ router.put('/update', verifyToken, async (req, res) => {
     const io = req.app.get('io');
     if (io) {
       const { emitOrderUpdateToRestaurant } = require('../utils/socketUtils');
-      emitOrderUpdateToRestaurant(io, order.restaurantId, processedOrder, addedAmount);
+      emitOrderUpdateToRestaurant(io, order.restaurantId, processedOrder, addedAmount, addedItemsCount);
     }
 
     res.json({

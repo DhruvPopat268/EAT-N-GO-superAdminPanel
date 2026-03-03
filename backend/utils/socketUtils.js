@@ -10,11 +10,12 @@ const emitOrderToRestaurant = (io, restaurantId, orderData) => {
   io.to(`restaurant-${restaurantId}`).emit('new-order', orderData);
 };
 
-const emitOrderUpdateToRestaurant = (io, restaurantId, orderData, addedAmount) => {
-  console.log(`Order update sent to restaurant-${restaurantId}, Order ID: ${orderData._id}, Added Amount: ${addedAmount}`);
+const emitOrderUpdateToRestaurant = (io, restaurantId, orderData, addedAmount, addedItemsCount) => {
+  console.log(`Order update sent to restaurant-${restaurantId}, Order ID: ${orderData._id}, Added Amount: ${addedAmount}, Added Items: ${addedItemsCount}`);
   io.to(`restaurant-${restaurantId}`).emit('order-updated', {
     order: orderData,
     addedAmount,
+    addedItemsCount,
     message: 'Order has been updated with new items'
   });
 };
