@@ -2,20 +2,20 @@ import { IconUsers } from '@tabler/icons-react';
 
 const icons = { IconUsers };
 
-const customers = {
-  id: 'customers',
-  title: 'Customer Management',
+const users = {
+  id: 'users',
+  title: 'User Management',
   type: 'group',
   children: [
     {
-      id: 'customers-management',
-      title: 'Customer Management',
+      id: 'users-management',
+      title: 'User Management',
       type: 'item',
-      url: '/customer/management',
+      url: '/user/management',
       icon: icons.IconUsers,
       breadcrumbs: false
     }
   ]
 };
 
-export default customers;
+export default users;

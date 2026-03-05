@@ -83,6 +83,11 @@ const userSchema = new mongoose.Schema(
         ref: "Order",
       },
     ],
+
+    status: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

@@ -3,13 +3,13 @@ import MainLayout from 'layout/MainLayout';
 import DashboardRoutes from './DashboardRoutes';
 import PaymentRoutes from './PaymentRoutes';
 import OrderRoutes, { OrderRequestRoutes, OrderManagementRoutes } from './OrderRoutes';
-import CustomerRoutes from './CustomerRoutes';
 import SupportRoutes from './SupportRoutes';
 import UtilityRoutes from './UtilityRoutes';
 import RestaurentRoutes from './RestaurentRoutes';
 import ActivityLogRoutes from './ActivityLogRoutes';
 import CouponRoutes from './CouponRoutes';
 import UserRatingRoutes from './UserRatingRoutes';
+import UserRoutes from './UserRoutes';
 import TestRoutes from './TestRoutes';
 
 const ProtectedRoute = ({ children }) => {
@@ -33,12 +33,12 @@ const MainRoutes = {
     OrderRequestRoutes,
     OrderRoutes,
     OrderManagementRoutes,
-    CustomerRoutes,
     SupportRoutes,
     RestaurentRoutes,
     CouponRoutes,
     ActivityLogRoutes,
     UserRatingRoutes,
+    UserRoutes,
     TestRoutes,
     ...UtilityRoutes
   ]

@@ -52,6 +52,7 @@ app.use('/api/order-requests', require('./routes/orderReqRoute'));
 app.use('/api/orders', require('./routes/orderRoute'));
 app.use('/api/user-ratings', require('./routes/userRatingRoutes'));
 app.use('/api/users', require('./usersRoutes/usersRoutes'));
+app.use('/api/admin/users', require('./routes/userRoute'));
 
 // Test API - Get current server time and IST time
 app.get('/api/test/time', (req, res) => {

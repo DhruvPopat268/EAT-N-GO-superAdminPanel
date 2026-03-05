@@ -6,7 +6,7 @@ import payments from './payments';
 import orders from './orders';
 import rbac from './rbac';
 import subscription from './subscription';
-import customers from './customers';
+import users from './users';
 import support from './support';
 import activityLogs from './activityLogs';
 import coupons from './coupons';
@@ -20,7 +20,7 @@ const menuItems = {
     restaurent,
      orders,
     // payments,
-    // customers,
+    users,
     coupons,
     userRatings,
     rbac,

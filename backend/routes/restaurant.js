@@ -18,6 +18,7 @@ const orderRoutes = require('../restaurantRoutes/orderRoutes');
 const orderCancelRefundRoutes = require('../restaurantRoutes/orderCancelRefund');
 const couponRoutes = require('../restaurantRoutes/couponRoutes');
 const userRatingRoutes = require('../restaurantRoutes/userRatingRoutes');
+const userRoutes = require('../restaurantRoutes/userRoute');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs').promises;
@@ -584,6 +585,9 @@ router.use('/coupons', couponRoutes);
 
 // Use user rating routes (MUST be before /:id route)
 router.use('/ratings', userRatingRoutes);
+
+// Use user routes (MUST be before /:id route)
+router.use('/users', userRoutes);
 
 // Get restaurant by ID
 router.get('/:id', authMiddleware, async (req, res) => {
