@@ -337,7 +337,7 @@ const UserRatings = () => {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Rating value={rating.rating} readOnly size="small" />
+                          <Rating value={rating.restaurantRating} readOnly size="small" />
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center', maxWidth: 300 }}>
                           <Typography variant="body2" color="black" sx={{ 
@@ -347,12 +347,12 @@ const UserRatings = () => {
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical'
                           }}>
-                            {rating.feedback || 'No feedback'}
+                            {rating.restaurantFeedback || '-'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
-                            {formatDateTime(rating.ratedAt)}
+                            {formatDateTime(rating.createdAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

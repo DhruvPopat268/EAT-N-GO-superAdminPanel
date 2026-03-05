@@ -27,6 +27,11 @@ const ratingSchema = new mongoose.Schema(
       max: 5
     },
 
+    restaurantFeedback: {
+      type: String,
+      trim: true
+    },
+
     itemRatings: [{
       itemId: {
         type: mongoose.Schema.Types.ObjectId,

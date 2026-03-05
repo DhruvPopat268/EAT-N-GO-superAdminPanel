@@ -1,9 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
-const Restaurant = require('../models/Restaurant');
-const User = require('../usersModels/usersModel');
-const Order = require('../usersModels/Order');
+const UserRating = require('../usersModels/userRating');
 
 // Get user ratings for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
@@ -11,57 +9,44 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     const restaurantId = req.restaurant.restaurantId;
     const { phone, fullName, startDate, endDate, rating, orderNo, page = 1, limit = 10 } = req.query;
 
-    const restaurant = await Restaurant.findById(restaurantId)
-      .populate('userRatings.userId', 'fullName phone')
-      .populate('userRatings.orderId', 'orderNo orderType createdAt');
-
-    if (!restaurant) {
-      return res.status(404).json({ success: false, message: 'Restaurant not found' });
-    }
-
-    let ratings = restaurant.userRatings;
+    // Build query for UserRating collection
+    let query = { restaurantId };
 
     // Filter by rating
     if (rating) {
-      ratings = ratings.filter(r => r.rating === parseInt(rating));
+      query.restaurantRating = parseInt(rating);
     }
 
     // Filter by date range
     if (startDate || endDate) {
-      ratings = ratings.filter(r => {
-        const ratingDate = r.orderId?.createdAt;
-        if (!ratingDate) return false;
-        if (startDate && ratingDate < new Date(startDate)) return false;
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          if (ratingDate > end) return false;
-        }
-        return true;
-      });
+      query.createdAt = {};
+      if (startDate) query.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
     }
 
-    // Filter by phone
+    let ratings = await UserRating.find(query)
+      .populate('userId', 'fullName phone')
+      .populate('orderId', 'orderNo orderType createdAt')
+      .sort({ createdAt: -1 });
+
+    // Filter by phone (after population)
     if (phone) {
       ratings = ratings.filter(r => r.userId?.phone?.includes(phone));
     }
 
-    // Filter by fullName
+    // Filter by fullName (after population)
     if (fullName) {
       ratings = ratings.filter(r => r.userId?.fullName?.toLowerCase().includes(fullName.toLowerCase()));
     }
 
-    // Filter by orderNo
+    // Filter by orderNo (after population)
     if (orderNo) {
       ratings = ratings.filter(r => r.orderId?.orderNo === parseInt(orderNo));
     }
-
-    // Sort by ratedAt (newest first), handle missing ratedAt
-    ratings.sort((a, b) => {
-      const dateA = a.ratedAt || new Date(0);
-      const dateB = b.ratedAt || new Date(0);
-      return dateB - dateA;
-    });
 
     const total = ratings.length;
     const startIndex = (page - 1) * limit;

@@ -4,6 +4,7 @@ const { verifyToken } = require('../middleware/userAuth');
 const UserRating = require('../usersModels/userRating');
 const Order = require('../usersModels/Order');
 const Restaurant = require('../models/Restaurant');
+const Item = require('../models/Item');
 
 // Get order items for rating
 router.get('/order/:orderId', verifyToken, async (req, res) => {
@@ -104,6 +105,7 @@ router.post('/', verifyToken, async (req, res) => {
       restaurantId,
       orderId,
       restaurantRating,
+      restaurantFeedback: feedback,
       itemRatings
     });
 
@@ -112,26 +114,23 @@ router.post('/', verifyToken, async (req, res) => {
     // Update order with rating reference
     await Order.findByIdAndUpdate(orderId, { userRatingId: userRating._id });
 
-    // Add restaurant rating to restaurant
+    // Update restaurant aggregated ratings
     const restaurant = await Restaurant.findById(restaurantId);
     const newRestaurantTotal = restaurant.totalRatings + 1;
     const newRestaurantAvg = ((restaurant.averageRating * restaurant.totalRatings) + restaurantRating) / newRestaurantTotal;
     
     await Restaurant.findByIdAndUpdate(restaurantId, {
-      $push: { userRatings: { userId, orderId, rating: restaurantRating, feedback: feedback || '', ratedAt: new Date() } },
       averageRating: newRestaurantAvg,
       totalRatings: newRestaurantTotal
     });
 
-    // Add item ratings to items
-    const Item = require('../models/Item');
+    // Update item aggregated ratings
     for (const itemRating of itemRatings) {
       const item = await Item.findById(itemRating.itemId);
       const newItemTotal = item.totalRatings + 1;
       const newItemAvg = ((item.averageRating * item.totalRatings) + itemRating.rating) / newItemTotal;
       
       await Item.findByIdAndUpdate(itemRating.itemId, {
-        $push: { userRatings: { userId, rating: itemRating.rating } },
         averageRating: newItemAvg,
         totalRatings: newItemTotal
       });
