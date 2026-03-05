@@ -59,7 +59,7 @@ businessDetails: {
   tempPassword: { type: String, required: true },
 
   // Status
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended'], default: 'pending' },
   
   // Rejection Details
   rejectionReason: { type: String },

@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Restaurant = require('../models/Restaurant');
+const UserRating = require('../usersModels/userRating');
 const RestaurantSession = require('../models/RestaurantSession');
 const upload = require('../middleware/upload');
 const authMiddleware = require('../middleware/auth');
@@ -553,6 +554,22 @@ router.get('/rejected', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/suspended', authMiddleware, async (req, res) => {
+  try {
+    const restaurants = await Restaurant.find({ status: "suspended" }).sort({ updatedAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: restaurants
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching restaurants',
+      error: error.message
+    });
+  }
+});
+
 // Use order cancel refund routes (MUST be before /:id route)
 router.use('/order-cancel-refund', orderCancelRefundRoutes);
 
@@ -853,6 +870,52 @@ router.post('/reject/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Reactivate suspended restaurant
+router.post('/reactivate/:id', authMiddleware, async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      req.params.id,
+      { status: 'approved' },
+      { new: true }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    if (restaurant.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to reactivate restaurant'
+      });
+    }
+
+    await createLog(
+      req.user,
+      'Restaurant Management',
+      'Status Update',
+      'reactivate',
+      `Reactivated suspended restaurant with ID ${req.params.id}`,
+      restaurant.basicInfo.restaurantName
+    );
+
+    res.json({
+      success: true,
+      message: 'Restaurant reactivated successfully',
+      data: restaurant
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error reactivating restaurant',
+      error: error.message
+    });
+  }
+});
+
 // Update restaurant with file uploads
 router.put('/:id', authMiddleware, upload.fields([
   { name: 'businessLicense', maxCount: 1 },
@@ -911,6 +974,53 @@ router.put('/:id', authMiddleware, upload.fields([
     res.status(500).json({
       success: false,
       message: 'Error updating restaurant',
+      error: error.message
+    });
+  }
+});
+
+// Cron job route - Check restaurant ratings and suspend if needed
+router.get('/cron/check-ratings', async (req, res) => {
+  try {
+    const restaurants = await Restaurant.find({ status: 'approved' });
+    const suspendedRestaurants = [];
+
+    for (const restaurant of restaurants) {
+      // Get last 50 ratings for this restaurant
+      const last50Ratings = await UserRating.find({ restaurantId: restaurant._id })
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .select('restaurantRating');
+
+      // Only process if restaurant has exactly 50 or more ratings
+      if (last50Ratings.length >= 50) {
+        const avgRating = last50Ratings.reduce((sum, rating) => sum + rating.restaurantRating, 0) / 50;
+        
+        // Suspend if average rating is 1 or below
+        if (avgRating <= 1) {
+          await Restaurant.findByIdAndUpdate(restaurant._id, { status: 'suspended' });
+          suspendedRestaurants.push({
+            restaurantId: restaurant._id,
+            restaurantName: restaurant.basicInfo.restaurantName,
+            avgRating: avgRating.toFixed(2)
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Rating check completed',
+      data: {
+        totalRestaurantsChecked: restaurants.length,
+        suspendedCount: suspendedRestaurants.length,
+        suspendedRestaurants
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error checking ratings',
       error: error.message
     });
   }

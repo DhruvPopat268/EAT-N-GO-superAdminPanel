@@ -46,6 +46,13 @@ const restaurent = {
                     // target: true
                 },
                 {
+                    id: 'Suspended',
+                    title: 'Suspended',
+                    type: 'item',
+                    url: '/restaurant/suspended',
+                    // target: true
+                },
+                {
                     id: 'CostBreakdown',
                     title: 'Cost Breakdown',
                     type: 'item',

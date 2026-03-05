@@ -4,6 +4,7 @@ import Loadable from 'ui-component/Loadable';
 const OnboardingRequestsPage = Loadable(lazy(() => import('../views/restaurent/OnboardingRequests')));
 const OnboardedPage = Loadable(lazy(() => import('../views/restaurent/Onboarded')));
 const RejectedPage = Loadable(lazy(() => import('../views/restaurent/Rejected')));
+const SuspendedPage = Loadable(lazy(() => import('../views/restaurent/Suspended')));
 const RestaurantDetailPage = Loadable(lazy(() => import('../views/restaurent/RestaurantDetail')));
 const CostBreakdown = Loadable(lazy(() => import('../views/restaurent/CostBreakdown')));
 const AddMenuItem = Loadable(lazy(() => import('../views/restaurent/AddMenuItem')));
@@ -30,6 +31,10 @@ const RestaurentRoutes = {
     {
       path: 'rejected',
       element: <RejectedPage />
+    },
+    {
+      path: 'suspended',
+      element: <SuspendedPage />
     },
     {
       path: 'detail/:id',
