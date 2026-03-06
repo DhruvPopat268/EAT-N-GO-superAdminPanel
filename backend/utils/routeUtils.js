@@ -73,6 +73,24 @@ function isAheadOnRoute(restaurantLat, restaurantLng, currentLat, currentLng, de
   return dotProduct >= 0; // Positive means forward direction
 }
 
+// Determine which side of route the restaurant is on using cross product
+function getRouteSide(restaurantLat, restaurantLng, currentLat, currentLng, destLat, destLng) {
+  // Vector from current to destination (route direction)
+  const routeX = destLat - currentLat;
+  const routeY = destLng - currentLng;
+  
+  // Vector from current to restaurant
+  const restX = restaurantLat - currentLat;
+  const restY = restaurantLng - currentLng;
+  
+  // Cross product: (routeX * restY) - (routeY * restX)
+  const cross = (routeX * restY) - (routeY * restX);
+  
+  if (cross > 0) return 'left';
+  if (cross < 0) return 'right';
+  return 'center'; // Exactly on route
+}
+
 // Main function to filter restaurants along route
 function getRestaurantsAlongRoute(restaurants, currentLocation, destinationLocation, bufferRadius = 500) {
   const { lat: currentLat, lng: currentLng } = currentLocation;
@@ -103,5 +121,6 @@ module.exports = {
   calculateDistance,
   calculateDistanceHaversine,
   distanceToLineSegment,
-  isAheadOnRoute
+  isAheadOnRoute,
+  getRouteSide
 };

@@ -223,7 +223,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
     }
 
     const Restaurant = require('../models/Restaurant');
-    const { calculateDistance, getRestaurantsAlongRoute } = require('../utils/routeUtils');
+    const { calculateDistance, getRestaurantsAlongRoute, getRouteSide, distanceToLineSegment, isAheadOnRoute } = require('../utils/routeUtils');
     const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
     const allRestaurants = await Restaurant.find({ status: 'approved' });
 
@@ -246,7 +246,6 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       }
 
       // Calculate distance from restaurant to route line
-      const { distanceToLineSegment, isAheadOnRoute } = require('../utils/routeUtils');
       const distanceToRoute = distanceToLineSegment(
         restLat, restLng, 
         currentLocation.lat, currentLocation.lng, 
@@ -254,6 +253,13 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       );
       
       const isAhead = isAheadOnRoute(
+        restLat, restLng,
+        currentLocation.lat, currentLocation.lng,
+        destinationLocation.lat, destinationLocation.lng
+      );
+      
+      // Determine which side of route
+      const routeSide = getRouteSide(
         restLat, restLng,
         currentLocation.lat, currentLocation.lng,
         destinationLocation.lat, destinationLocation.lng
@@ -268,6 +274,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
       console.log(`   🛣️  Distance from route line: ${(distanceToRoute / 1000).toFixed(2)} km`);
       console.log(`   ⬆️  Is ahead on route: ${isAhead ? '✅ Yes' : '❌ No (behind current location)'}`);
       console.log(`   🎯 Within buffer radius (${bufferRadius}m): ${isWithinBuffer ? '✅ Yes' : '❌ No'}`);
+      console.log(`   🔄 Route side: ${routeSide === 'left' ? '⬅️ LEFT' : routeSide === 'right' ? '➡️ RIGHT' : '🎯 CENTER'}`);
       console.log(`   🏁 Will be included: ${isAhead && isWithinBuffer ? '✅ YES' : '❌ NO'}`);
       
       return {
@@ -277,6 +284,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         distanceToRoute,
         isAhead,
         isWithinBuffer,
+        routeSide,
         willBeIncluded: isAhead && isWithinBuffer
       };
     }));
@@ -306,6 +314,13 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         ? (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length).toFixed(1)
         : 0;
       
+      // Get route side for response
+      const routeSide = getRouteSide(
+        restLat, restLng,
+        currentLocation.lat, currentLocation.lng,
+        destinationLocation.lat, destinationLocation.lng
+      );
+      
       return {
         _id: restaurant._id,
         basicInfo: {
@@ -327,13 +342,18 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         isOpen: isOpen,
         averageRating: parseFloat(avgRating),
         totalRatings: ratings.length,
-        alcoholAvailable: restaurant.basicInfo?.alcoholAvailable
+        alcoholAvailable: restaurant.basicInfo?.alcoholAvailable,
+        routeSide: routeSide
       };
     }));
 
     console.log('\n=== FINAL RESULTS ===');
     console.log(`✅ Restaurants included in results: ${filteredRestaurants.length}`);
     console.log(`❌ Restaurants excluded: ${allRestaurants.length - filteredRestaurants.length}`);
+    const leftCount = filteredRestaurants.filter(r => r.routeSide === 'left').length;
+    const rightCount = filteredRestaurants.filter(r => r.routeSide === 'right').length;
+    const centerCount = filteredRestaurants.filter(r => r.routeSide === 'center').length;
+    console.log(`📊 Side distribution - Left: ${leftCount}, Right: ${rightCount}, Center: ${centerCount}`);
     console.log('========================\n');
 
     res.json({
