@@ -495,7 +495,7 @@ router.get('/active', verifyToken, async (req, res) => {
       userId,
       status: { $nin: ['completed', 'cancelled'] }
     })
-      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory basicInfo.alcoholAvailable basicInfo.cuisineTypes contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
       .populate('userRatingId')
       .sort({ createdAt: -1 });
 
