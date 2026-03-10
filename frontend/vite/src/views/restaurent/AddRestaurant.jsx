@@ -123,7 +123,7 @@ export default function AddRestaurant() {
       if (window.google && window.google.maps) {
         return;
       }
-      
+
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
       script.async = true;
@@ -140,11 +140,11 @@ export default function AddRestaurant() {
           autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
             types: ['establishment', 'geocode']
           });
-          
+
           autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
         }
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [activeStep]);
@@ -154,7 +154,7 @@ export default function AddRestaurant() {
       const timer = setTimeout(() => {
         initializeMap();
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [activeStep, formData.latitude, formData.longitude]);
@@ -196,7 +196,7 @@ export default function AddRestaurant() {
 
   const updateLocationFromCoordinates = async (lat, lng) => {
     const geocoder = new window.google.maps.Geocoder();
-    
+
     try {
       const response = await new Promise((resolve, reject) => {
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
@@ -209,7 +209,7 @@ export default function AddRestaurant() {
       });
 
       let city = '', state = '', country = '', pincode = '';
-      
+
       response.address_components?.forEach(component => {
         const types = component.types;
         if (types.includes('locality') || types.includes('administrative_area_level_2')) {
@@ -248,10 +248,10 @@ export default function AddRestaurant() {
 
   const handlePlaceSelect = () => {
     const place = autocompleteRef.current.getPlace();
-    
+
     if (place.geometry) {
       let city = '', state = '', country = '', pincode = '';
-      
+
       place.address_components?.forEach(component => {
         const types = component.types;
         if (types.includes('locality') || types.includes('administrative_area_level_2')) {
@@ -264,7 +264,7 @@ export default function AddRestaurant() {
           pincode = component.long_name;
         }
       });
-      
+
       setFormData(prev => ({
         ...prev,
         address: place.formatted_address || place.name,
@@ -275,7 +275,7 @@ export default function AddRestaurant() {
         latitude: place.geometry.location.lat().toString(),
         longitude: place.geometry.location.lng().toString()
       }));
-      
+
       setLocationQuery(place.formatted_address || place.name);
     }
   };
@@ -433,6 +433,190 @@ export default function AddRestaurant() {
   const renderStepContent = (step) => {
     switch (step) {
       case 0:
+        return (
+          <Fade in timeout={500}>
+            <Box>
+              <Card sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                mb: 4,
+                borderRadius: 4
+              }}>
+              </Card>
+
+              <Stack spacing={4}>
+                <TextField
+                  fullWidth
+                  label="Restaurant Name"
+                  value={formData.restaurantName}
+                  onChange={handleInputChange('restaurantName')}
+                  error={!!errors.restaurantName}
+                  helperText={errors.restaurantName}
+                  required
+                  variant="outlined"
+                  inputProps={{ autoComplete: 'off' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      '&:hover fieldset': { borderColor: 'primary.main' },
+                      '&.Mui-focused fieldset': { borderWidth: 2 }
+                    },
+                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Owner Name"
+                  value={formData.ownerName}
+                  onChange={handleInputChange('ownerName')}
+                  error={!!errors.ownerName}
+                  helperText={errors.ownerName}
+                  required
+                  variant="outlined"
+                  inputProps={{ autoComplete: 'off' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      '&:hover fieldset': { borderColor: 'primary.main' },
+                      '&.Mui-focused fieldset': { borderWidth: 2 }
+                    },
+                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
+                  }}
+                />
+
+                <FormControl fullWidth required error={!!errors.foodCategory}>
+                  <InputLabel sx={{ fontSize: '1.1rem' }}>Food Category</InputLabel>
+                  <Select
+                    value={formData.foodCategory}
+                    onChange={handleInputChange('foodCategory')}
+                    label="Food Category"
+                    sx={{
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
+                    }}
+                  >
+                    <MenuItem value="Veg">Vegetarian</MenuItem>
+                    <MenuItem value="Non-Veg">Non-Vegetarian</MenuItem>
+                    <MenuItem value="Mixed">Mixed</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <FormControl component="fieldset" error={!!errors.cuisineTypes}>
+                  <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
+                    Cuisine Types *
+                  </Typography>
+                  <FormGroup sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 1,
+                    border: errors.cuisineTypes ? '2px solid #f44336' : '1px solid #e0e0e0',
+                    borderRadius: 3,
+                    p: 2
+                  }}>
+                    {cuisineTypes.map((cuisine) => (
+                      <FormControlLabel
+                        key={cuisine}
+                        control={
+                          <Checkbox
+                            checked={formData.cuisineTypes.includes(cuisine)}
+                            onChange={handleCuisineChange(cuisine)}
+                            sx={{
+                              '&.Mui-checked': {
+                                color: 'primary.main'
+                              }
+                            }}
+                          />
+                        }
+                        label={cuisine}
+                        sx={{
+                          '& .MuiFormControlLabel-label': {
+                            fontSize: '0.95rem'
+                          }
+                        }}
+                      />
+                    ))}
+                  </FormGroup>
+                  {formData.cuisineTypes.includes('Other') && (
+                    <TextField
+                      fullWidth
+                      label="Specify Other Cuisine"
+                      value={formData.otherCuisine}
+                      onChange={handleInputChange('otherCuisine')}
+                      placeholder="Enter cuisine type"
+                      inputProps={{ autoComplete: 'off' }}
+                      sx={{
+                        mt: 2,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: 3,
+                          fontSize: '1rem'
+                        }
+                      }}
+                    />
+                  )}
+                  {errors.cuisineTypes && (
+                    <Typography variant="caption" color="error" sx={{ mt: 1, ml: 1.5 }}>
+                      {errors.cuisineTypes}
+                    </Typography>
+                  )}
+                  {formData.cuisineTypes.length > 0 && (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Selected Cuisines:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {formData.cuisineTypes.map((cuisine) => (
+                          <Chip
+                            key={cuisine}
+                            label={cuisine}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </FormControl>
+
+                <FormControl component="fieldset">
+                  <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
+                    Alcohol Availability
+                  </Typography>
+                  <FormGroup sx={{
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 3,
+                    p: 2
+                  }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.alcoholAvailable}
+                          onChange={(e) => setFormData(prev => ({ ...prev, alcoholAvailable: e.target.checked }))}
+                          sx={{
+                            '&.Mui-checked': {
+                              color: 'primary.main'
+                            }
+                          }}
+                        />
+                      }
+                      label="Restaurant serves alcohol"
+                      sx={{
+                        '& .MuiFormControlLabel-label': {
+                          fontSize: '0.95rem'
+                        }
+                      }}
+                    />
+                  </FormGroup>
+                </FormControl>
+              </Stack>
+            </Box>
+          </Fade>
+        );
         return (
           <Fade in timeout={500}>
             <Box>
@@ -615,7 +799,7 @@ export default function AddRestaurant() {
           </Fade>
         );
 
-      case 1:
+
         return (
           <Fade in timeout={500}>
             <Box>
@@ -791,7 +975,203 @@ export default function AddRestaurant() {
             </Box>
           </Fade>
         );
+      case 1:
+        return (
+          <Fade in timeout={500}>
+            <Box>
+              <Card sx={{
+                background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+                color: 'white',
+                mb: 4,
+                borderRadius: 4
+              }}>
+              </Card>
 
+              <Stack spacing={4}>
+                <TextField
+                  fullWidth
+                  label="Email Address"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange('email')}
+                  error={!!errors.email}
+                  helperText={errors.email}
+                  required
+                  autoComplete="off"
+                  inputProps={{ autoComplete: 'off' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Phone Number"
+                  value={formData.phone}
+                  onChange={handleInputChange('phone')}
+                  error={!!errors.phone}
+                  helperText={errors.phone}
+                  required
+                  autoComplete="off"
+                  inputProps={{ autoComplete: 'off' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <TextField
+                  fullWidth
+                  label="Search Location"
+                  InputProps={{
+                    inputRef: inputRef,
+                    autoComplete: 'off'
+                  }}
+                  inputProps={{ autoComplete: 'off' }}
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  onFocus={() => {
+                    if (window.google && window.google.maps && inputRef.current && !autocompleteRef.current) {
+                      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+                        types: ['establishment', 'geocode']
+                      });
+                      // ✅ KEY FIX: After Google Places attaches, override autocomplete attribute
+                      // so Chrome stops bleeding place suggestions to nearby fields
+                      setTimeout(() => {
+                        if (inputRef.current) {
+                          inputRef.current.setAttribute('autocomplete', 'off');
+                        }
+                        // Also nuke any pac-container influence on sibling inputs
+                        document.querySelectorAll('.pac-container').forEach(el => {
+                          el.setAttribute('data-form-type', 'other');
+                        });
+                      }, 100);
+                      autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+                    }
+                  }}
+                  error={!!errors.address}
+                  helperText={errors.address || "Start typing to search for your restaurant location"}
+                  required
+                  autoComplete="off"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem'
+                    }
+                  }}
+                />
+
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
+                  <TextField
+                    fullWidth
+                    label="City"
+                    value={formData.city}
+                    onChange={handleInputChange('city')}
+                    error={!!errors.city}
+                    helperText={errors.city}
+                    required
+                    disabled
+                    inputProps={{ autoComplete: 'off' }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem',
+                        bgcolor: 'grey.50'
+                      }
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="State"
+                    value={formData.state}
+                    onChange={handleInputChange('state')}
+                    error={!!errors.state}
+                    helperText={errors.state}
+                    required
+                    disabled
+                    inputProps={{ autoComplete: 'off' }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem',
+                        bgcolor: 'grey.50'
+                      }
+                    }}
+                  />
+
+                  <TextField
+                    fullWidth
+                    label="Country"
+                    value={formData.country}
+                    onChange={handleInputChange('country')}
+                    error={!!errors.country}
+                    helperText={errors.country}
+                    required
+                    disabled
+                    inputProps={{ autoComplete: 'off' }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem',
+                        bgcolor: 'grey.50'
+                      }
+                    }}
+                  />
+                </Box>
+
+                <TextField
+                  fullWidth
+                  label="Pincode"
+                  value={formData.pincode}
+                  onChange={handleInputChange('pincode')}
+                  error={!!errors.pincode}
+                  helperText={errors.pincode}
+                  required
+                  disabled
+                  inputProps={{ autoComplete: 'off' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                      fontSize: '1.1rem',
+                      bgcolor: 'grey.50'
+                    }
+                  }}
+                />
+
+                {(formData.latitude && formData.longitude) ? (
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                      Restaurant Location
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Click on the map or drag the marker to adjust your exact location
+                    </Typography>
+                    <Box
+                      ref={mapRef}
+                      sx={{
+                        width: '100%',
+                        height: 300,
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        border: '1px solid #e0e0e0'
+                      }}
+                    />
+                    <Box sx={{ mt: 2, display: 'flex', gap: 2, fontSize: '0.875rem', color: 'text.secondary' }}>
+                      <Typography variant="caption">Lat: {parseFloat(formData.latitude).toFixed(6)}</Typography>
+                      <Typography variant="caption">Lng: {parseFloat(formData.longitude).toFixed(6)}</Typography>
+                    </Box>
+                  </Box>
+                ) : null}
+              </Stack>
+            </Box>
+          </Fade>
+        );
       case 2:
         return (
           <Fade in timeout={500}>
@@ -1131,7 +1511,7 @@ export default function AddRestaurant() {
                         if (key === 'LicenceForAlchoholSelling' && !formData.alcoholAvailable) {
                           return null;
                         }
-                        
+
                         const labels = {
                           businessLicense: 'Business License',
                           gstCertificate: 'GST Certificate',
