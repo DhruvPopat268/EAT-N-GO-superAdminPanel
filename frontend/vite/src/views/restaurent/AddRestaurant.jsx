@@ -92,7 +92,8 @@ export default function AddRestaurant() {
       gstCertificate: null,
       panCard: null,
       bankStatement: null,
-      foodLicense: null
+      foodLicense: null,
+      LicenceForAlchoholSelling: null
     },
     restaurantImages: []
   });
@@ -663,7 +664,9 @@ export default function AddRestaurant() {
                 <TextField
                   fullWidth
                   label="Search Location"
-                  inputRef={inputRef}
+                  InputProps={{
+                    inputRef: inputRef
+                  }}
                   value={locationQuery}
                   onChange={(e) => setLocationQuery(e.target.value)}
                   onFocus={() => {
@@ -677,6 +680,7 @@ export default function AddRestaurant() {
                   error={!!errors.address}
                   helperText={errors.address || "Start typing to search for your restaurant location"}
                   required
+                  autoComplete="new-password"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
@@ -841,6 +845,7 @@ export default function AddRestaurant() {
                   error={!!errors.bankAccount}
                   helperText={errors.bankAccount}
                   required
+                  autoComplete="new-password"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
@@ -893,6 +898,7 @@ export default function AddRestaurant() {
           { key: 'panCard', label: 'PAN Card', icon: <AttachFile />, required: true },
           { key: 'bankStatement', label: 'Bank Statement', icon: <AccountBalance />, required: false },
           { key: 'foodLicense', label: 'Food License (FSSAI)', icon: <Restaurant />, required: true },
+          ...(formData.alcoholAvailable ? [{ key: 'LicenceForAlchoholSelling', label: 'Alcohol Selling License', icon: <VerifiedUser />, required: false }] : []),
           { key: 'restaurantImages', label: 'Restaurant Images', icon: <Restaurant />, required: false, multiple: true }
         ];
 
@@ -1121,12 +1127,18 @@ export default function AddRestaurant() {
                   <CardContent>
                     <Stack spacing={1}>
                       {Object.entries(formData.documents).map(([key, file]) => {
+                        // Skip alcohol license if alcohol is not available
+                        if (key === 'LicenceForAlchoholSelling' && !formData.alcoholAvailable) {
+                          return null;
+                        }
+                        
                         const labels = {
                           businessLicense: 'Business License',
                           gstCertificate: 'GST Certificate',
                           panCard: 'PAN Card',
                           bankStatement: 'Bank Statement',
-                          foodLicense: 'Food License'
+                          foodLicense: 'Food License',
+                          LicenceForAlchoholSelling: 'Alcohol Selling License'
                         };
                         return file ? (
                           <Box key={key} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

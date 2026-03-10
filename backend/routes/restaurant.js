@@ -166,6 +166,7 @@ router.put('/resubmit', restaurantAuthMiddleware, upload.fields([
   { name: 'panCard', maxCount: 1 },
   { name: 'bankStatement', maxCount: 1 },
   { name: 'foodLicense', maxCount: 1 },
+  { name: 'LicenceForAlchoholSelling', maxCount: 1 },
   { name: 'restaurantImages', maxCount: 10 }
 ]), async (req, res) => {
   try {
@@ -621,6 +622,7 @@ router.post(
     { name: 'panCard', maxCount: 1 },
     { name: 'bankStatement', maxCount: 1 },
     { name: 'foodLicense', maxCount: 1 },
+    { name: 'LicenceForAlchoholSelling', maxCount: 1 },
     { name: 'restaurantImages', maxCount: 10 }
   ]),
   async (req, res) => {
@@ -926,7 +928,8 @@ router.put('/:id', authMiddleware, upload.fields([
   { name: 'gstCertificate', maxCount: 1 },
   { name: 'panCard', maxCount: 1 },
   { name: 'bankStatement', maxCount: 1 },
-  { name: 'foodLicense', maxCount: 1 }
+  { name: 'foodLicense', maxCount: 1 },
+  { name: 'LicenceForAlchoholSelling', maxCount: 1 }
 ]), async (req, res) => {
   try {
     const restaurantData = JSON.parse(req.body.data);

@@ -170,33 +170,44 @@ export default function OnboardingRequests() {
     );
   };
 
-  const formFieldSections = {
-    'Basic Information': [
-      'restaurantName',
-      'ownerName',
-      'foodCategory',
-      'cuisineTypes'
-    ],
-    'Contact Details': [
-      'email',
-      'phone',
-      'addressInfo'
-    ],
-    'Business Details': [
-      'licenseNumber',
-      'gstNumber',
-      'bankAccount',
-      'ifscCode',
-      'description'
-    ],
-    'Documents': [
+  const getFormFieldSections = (restaurantId) => {
+    const restaurant = restaurants.find(r => r._id === restaurantId);
+    const hasAlcohol = restaurant?.basicInfo?.alcoholAvailable || false;
+    
+    const documentsFields = [
       'businessLicense',
       'gstCertificate',
       'panCard',
       'bankStatement',
       'foodLicense',
       'restaurantImages'
-    ]
+    ];
+    
+    if (hasAlcohol) {
+      documentsFields.splice(-1, 0, 'LicenceForAlchoholSelling'); // Insert before restaurantImages
+    }
+    
+    return {
+      'Basic Information': [
+        'restaurantName',
+        'ownerName',
+        'foodCategory',
+        'cuisineTypes'
+      ],
+      'Contact Details': [
+        'email',
+        'phone',
+        'addressInfo'
+      ],
+      'Business Details': [
+        'licenseNumber',
+        'gstNumber',
+        'bankAccount',
+        'ifscCode',
+        'description'
+      ],
+      'Documents': documentsFields
+    };
   };
 
   const getFieldLabel = (field) => {
@@ -218,6 +229,7 @@ export default function OnboardingRequests() {
       panCard: 'PAN Card',
       bankStatement: 'Bank Statement',
       foodLicense: 'Food License',
+      LicenceForAlchoholSelling: 'Alcohol Selling License',
       restaurantImages: 'Restaurant Images'
     };
     return labels[field] || field;
@@ -757,7 +769,7 @@ export default function OnboardingRequests() {
             borderRadius: 2,
             p: 2
           }}>
-            {Object.entries(formFieldSections).map(([sectionName, fields]) => (
+            {Object.entries(getFormFieldSections(rejectDialog.restaurantId)).map(([sectionName, fields]) => (
               <Box key={sectionName} sx={{ mb: 3 }}>
                 <Typography 
                   variant="subtitle1" 
@@ -795,7 +807,7 @@ export default function OnboardingRequests() {
                     />
                   ))}
                 </FormGroup>
-                {Object.keys(formFieldSections).indexOf(sectionName) < Object.keys(formFieldSections).length - 1 && (
+                {Object.keys(getFormFieldSections(rejectDialog.restaurantId)).indexOf(sectionName) < Object.keys(getFormFieldSections(rejectDialog.restaurantId)).length - 1 && (
                   <Divider sx={{ mt: 2 }} />
                 )}
               </Box>
