@@ -69,9 +69,25 @@ router.post('/place', verifyToken, async (req, res) => {
     const { orderReqId, paymentMethod, userCurrentLocation } = req.body;
     const userId = req.user.userId;
 
+    // Check if user exists and has required fields
+    const user = await User.findById(userId).select('fullName status');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check user status
+    if (!user.status) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been deactivated. Please contact support.'
+      });
+    }
+
     // Check if user has fullName
-    const user = await User.findById(userId).select('fullName');
-    if (!user || !user.fullName) {
+    if (!user.fullName) {
       return res.status(400).json({ 
         success: false, 
         message: 'Please complete your profile by adding your full name before placing an order',

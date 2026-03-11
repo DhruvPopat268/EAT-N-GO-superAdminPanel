@@ -210,6 +210,23 @@ router.post('/add', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
 
+    // Check user status first
+    const User = require('../usersModels/usersModel');
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    if (!user.status) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been deactivated. Please contact support.'
+      });
+    }
+
     // Check if user has active order request
     const activeOrderRequest = await OrderRequest.findOne({
       userId,
