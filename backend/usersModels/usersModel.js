@@ -76,14 +76,6 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
-    // ⭐ All orders placed by the user
-    orders: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Order",
-      },
-    ],
-
     status: {
       type: Boolean,
       default: true,

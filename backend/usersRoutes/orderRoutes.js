@@ -350,11 +350,6 @@ router.post('/place', verifyToken, async (req, res) => {
       });
     }
 
-    // Add order to user's orders array
-    await User.findByIdAndUpdate(userId, {
-      $push: { orders: order._id }
-    });
-
     // Clear cart
     await Cart.findOneAndDelete({ userId });
 

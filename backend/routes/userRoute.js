@@ -54,8 +54,8 @@ router.get("/", async (req, res) => {
       {
         $lookup: {
           from: "orders",
-          localField: "orders",
-          foreignField: "_id",
+          localField: "_id",
+          foreignField: "userId",
           as: "orderDetails"
         }
       },
@@ -137,8 +137,8 @@ router.get("/:id", async (req, res) => {
       {
         $lookup: {
           from: "orders",
-          localField: "orders",
-          foreignField: "_id",
+          localField: "_id",
+          foreignField: "userId",
           as: "orderDetails"
         }
       },
