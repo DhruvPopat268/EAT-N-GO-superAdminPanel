@@ -20,6 +20,16 @@ import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
 import { formatDateTime } from '../../utils/dateFormatter.js';
 
+// Function to convert 24-hour time to 12-hour format with AM/PM
+const formatTimeTo12Hour = (time) => {
+  if (!time) return 'N/A';
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
+
 export default function OrderRequestDetail() {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -45,6 +55,7 @@ export default function OrderRequestDetail() {
       
       if (result.success) {
         setOrderRequest(result.data);
+        toast.success('Order request details loaded successfully');
       } else {
         toast.error(result.message || 'Failed to fetch order request details');
       }
@@ -198,31 +209,7 @@ export default function OrderRequestDetail() {
                         Eat Timings
                       </Typography>
                       <Typography variant="body1" color="text.primary">
-                        {orderRequest.eatTimings.startTime} - {orderRequest.eatTimings.endTime}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {/* Waiting Time */}
-                  {orderRequest.waitingTime?.startTime && orderRequest.waitingTime?.endTime && (
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                        Waiting Time
-                      </Typography>
-                      <Typography variant="body1" color="text.primary">
-                        {orderRequest.waitingTime.startTime} - {orderRequest.waitingTime.endTime}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {/* Eat Timings */}
-                  {orderRequest.orderType === 'dine-in' && orderRequest.eatTimings && (
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                        Eat Timings
-                      </Typography>
-                      <Typography variant="body1" color="text.primary">
-                        {orderRequest.eatTimings.startTime} - {orderRequest.eatTimings.endTime}
+                        {formatTimeTo12Hour(orderRequest.eatTimings.startTime)} - {formatTimeTo12Hour(orderRequest.eatTimings.endTime)}
                       </Typography>
                     </Box>
                   )}
@@ -234,7 +221,19 @@ export default function OrderRequestDetail() {
                         Pickup Timings
                       </Typography>
                       <Typography variant="body1" color="text.primary">
-                        {orderRequest.takeawayTimings.startTime} - {orderRequest.takeawayTimings.endTime}
+                        {formatTimeTo12Hour(orderRequest.takeawayTimings.startTime)} - {formatTimeTo12Hour(orderRequest.takeawayTimings.endTime)}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Waiting Time */}
+                  {orderRequest.waitingTime?.startTime && orderRequest.waitingTime?.endTime && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Waiting Time
+                      </Typography>
+                      <Typography variant="body1" color="text.primary">
+                        {formatTimeTo12Hour(orderRequest.waitingTime.startTime)} - {formatTimeTo12Hour(orderRequest.waitingTime.endTime)}
                       </Typography>
                     </Box>
                   )}
@@ -251,13 +250,13 @@ export default function OrderRequestDetail() {
                     </Box>
                   )}
 
-                  {/* Order Req Date */}
+                  {/* Order Date & Time */}
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                      Order Req Date
+                      Order Date & Time
                     </Typography>
-                    <Typography variant="body1" color="text.primary" sx={{ whiteSpace: 'pre-line' }}>
-                      {formatDateTime(orderRequest.createdAt)}
+                    <Typography variant="body1" color="text.primary">
+                      {formatDateTime(orderRequest.createdAt).replace('\n', ' - ')}
                     </Typography>
                   </Box>
 

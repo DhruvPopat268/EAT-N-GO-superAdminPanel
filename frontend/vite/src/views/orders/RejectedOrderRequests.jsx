@@ -33,6 +33,16 @@ import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
 import { formatDateTime } from '../../utils/dateFormatter.js';
 
+// Function to convert 24-hour time to 12-hour format with AM/PM
+const formatTimeTo12Hour = (time) => {
+  if (!time) return 'N/A';
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
+
 export default function RejectedOrderRequests() {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -389,7 +399,7 @@ export default function RejectedOrderRequests() {
                             {orderRequest.orderType === 'dine-in' ? (
                               <>
                                 <Typography variant="body2" color="black">
-                                  Eating: {orderRequest.eatTimings?.startTime} - {orderRequest.eatTimings?.endTime}
+                                  {formatTimeTo12Hour(orderRequest.eatTimings?.startTime)} - {formatTimeTo12Hour(orderRequest.eatTimings?.endTime)}
                                 </Typography>
                                 <Typography variant="body2" color="black">
                                   Guests: {orderRequest.numberOfGuests}
@@ -397,7 +407,7 @@ export default function RejectedOrderRequests() {
                               </>
                             ) : (
                               <Typography variant="body2" color="black">
-                                Pickup: {orderRequest.takeawayTimings?.startTime} - {orderRequest.takeawayTimings?.endTime}
+                                {formatTimeTo12Hour(orderRequest.takeawayTimings?.startTime)} - {formatTimeTo12Hour(orderRequest.takeawayTimings?.endTime)}
                               </Typography>
                             )}
                           </Box>

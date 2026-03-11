@@ -31,6 +31,16 @@ import { useNavigate } from 'react-router-dom';
 import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { formatDateTime } from '../../utils/dateFormatter.js';
 
+// Function to convert 24-hour time to 12-hour format with AM/PM
+const formatTimeTo12Hour = (time) => {
+  if (!time) return 'N/A';
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
+
 const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
   const theme = useTheme();
   const [orders, setOrders] = useState([]);
@@ -202,7 +212,7 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
 
   const formatTimings = (timings) => {
     if (!timings) return '-';
-    return `${timings.startTime} - ${timings.endTime}`;
+    return `${formatTimeTo12Hour(timings.startTime)} - ${formatTimeTo12Hour(timings.endTime)}`;
   };
 
   const handleViewOrder = (orderId, restaurantId) => {
@@ -436,7 +446,9 @@ const BaseOrderManagement = ({ title, status, apiEndpoint }) => {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Typography variant="body2" color="black">
-                            {order.waitingTime?.startTime && order.waitingTime?.endTime ? `${order.waitingTime.startTime} - ${order.waitingTime.endTime}` : 'N/A'}
+                            {order.waitingTime?.startTime && order.waitingTime?.endTime 
+                              ? `${formatTimeTo12Hour(order.waitingTime.startTime)} - ${formatTimeTo12Hour(order.waitingTime.endTime)}` 
+                              : 'N/A'}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>

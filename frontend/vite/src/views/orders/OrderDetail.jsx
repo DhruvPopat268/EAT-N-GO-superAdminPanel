@@ -21,6 +21,16 @@ import ThemeSpinner from '../../ui-component/ThemeSpinner.jsx';
 import { useToast } from '../../utils/toast.jsx';
 import { formatDateTime, formatDate } from '../../utils/dateFormatter.js';
 
+// Function to convert 24-hour time to 12-hour format with AM/PM
+const formatTimeTo12Hour = (time) => {
+  if (!time) return 'N/A';
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+};
+
 export default function OrderDetail() {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -49,6 +59,7 @@ export default function OrderDetail() {
       
       if (result.success) {
         setOrder(result.data);
+        toast.success('Order details loaded successfully');
       } else {
         toast.error(result.message || 'Failed to fetch order details');
       }
@@ -202,19 +213,7 @@ export default function OrderDetail() {
                         Eat Timings
                       </Typography>
                       <Typography variant="body1" color="text.primary">
-                        {order.eatTimings.startTime} - {order.eatTimings.endTime}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {/* Waiting Time */}
-                  {order.waitingTime?.startTime && order.waitingTime?.endTime && (
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                        Waiting Time
-                      </Typography>
-                      <Typography variant="body1" color="text.primary">
-                        {order.waitingTime.startTime} - {order.waitingTime.endTime}
+                        {formatTimeTo12Hour(order.eatTimings.startTime)} - {formatTimeTo12Hour(order.eatTimings.endTime)}
                       </Typography>
                     </Box>
                   )}
@@ -226,7 +225,19 @@ export default function OrderDetail() {
                         Pickup Timings
                       </Typography>
                       <Typography variant="body1" color="text.primary">
-                        {order.takeawayTimings.startTime} - {order.takeawayTimings.endTime}
+                        {formatTimeTo12Hour(order.takeawayTimings.startTime)} - {formatTimeTo12Hour(order.takeawayTimings.endTime)}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Waiting Time */}
+                  {order.waitingTime?.startTime && order.waitingTime?.endTime && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                        Waiting Time
+                      </Typography>
+                      <Typography variant="body1" color="text.primary">
+                        {formatTimeTo12Hour(order.waitingTime.startTime)} - {formatTimeTo12Hour(order.waitingTime.endTime)}
                       </Typography>
                     </Box>
                   )}
@@ -243,13 +254,13 @@ export default function OrderDetail() {
                     </Box>
                   )}
 
-                  {/* Order Date */}
+                  {/* Order Date & Time */}
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                      Order Req Date
+                      Order Date & Time
                     </Typography>
                     <Typography variant="body1" color="text.primary">
-                      {formatDate(order.createdAt)}
+                      {formatDateTime(order.createdAt).replace('\n', ' - ')}
                     </Typography>
                   </Box>
 

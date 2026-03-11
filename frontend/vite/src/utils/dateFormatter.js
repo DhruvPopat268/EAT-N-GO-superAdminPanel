@@ -8,11 +8,13 @@ export const formatDateTime = (dateString) => {
   const month = (date.getMonth() + 1).toString().padStart(2, '0');
   const year = date.getFullYear().toString().slice(-2);
   
-  // Format time as HH:MM in 24-hour format
-  const hours = date.getHours().toString().padStart(2, '0');
+  // Format time in 12-hour format with AM/PM
+  const hours = date.getHours();
   const minutes = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 || 12;
   
-  return `${day}/${month}/${year}\n${hours}:${minutes}`;
+  return `${day}/${month}/${year}\n${displayHour}:${minutes} ${ampm}`;
 };
 
 export const formatDate = (dateString) => {

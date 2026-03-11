@@ -27,7 +27,9 @@ import {
   Fade,
   InputAdornment,
   Autocomplete,
-  TablePagination
+  TablePagination,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { IconUsers, IconEye, IconPhone, IconMail, IconSearch, IconFilterOff, IconX } from '@tabler/icons-react';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -36,11 +38,33 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useNavigate } from 'react-router-dom';
 import BlackSpinner from 'ui-component/BlackSpinner';
 import ThemeSpinner from 'ui-component/ThemeSpinner';
+import { useToast } from '../../utils/toast.jsx';
 import axios from 'axios';
+
+// Function to format date and time in 12-hour format
+const formatDateTime = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  const date = new Date(dateString);
+  
+  // Format date as DD/MM/YY
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear().toString().slice(-2);
+  
+  // Format time in 12-hour format with AM/PM
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 || 12;
+  
+  return `${day}/${month}/${year} - ${displayHour}:${minutes} ${ampm}`;
+};
 
 export default function UserManagement() {
   const theme = useTheme();
   const navigate = useNavigate();
+  const toast = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,14 +108,27 @@ export default function UserManagement() {
         ...(filters.endDate && { endDate: filters.endDate })
       };
 
-      const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/admin/users`, { params });
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/admin/users`, 
+        { 
+          params,
+          withCredentials: true 
+        }
+      );
+      
       if (response.data.success) {
         setUsers(response.data.data);
         setTotalCount(response.data.pagination.totalUsers);
+        // Only show success toast on initial load, not on every refresh
+        if (page === 0 && !debouncedSearchTerm && !filters.filter) {
+          toast.success('Users loaded successfully');
+        }
+      } else {
+        toast.error(response.data.message || 'Failed to fetch users');
       }
     } catch (error) {
       console.error('Error fetching users:', error);
-      alert('Failed to fetch users');
+      toast.error(error.response?.data?.message || 'Failed to fetch users');
     } finally {
       setLoading(false);
     }
@@ -103,19 +140,23 @@ export default function UserManagement() {
 
   const handleStatusToggle = async (userId, currentStatus) => {
     try {
-      const response = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/admin/users/${userId}/status`, {
-        status: !currentStatus
-      });
+      const response = await axios.patch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/admin/users/${userId}/status`, 
+        { status: !currentStatus },
+        { withCredentials: true }
+      );
       
       if (response.data.success) {
         setUsers(users.map(user =>
           user._id === userId ? { ...user, status: !currentStatus } : user
         ));
-        alert('User status updated successfully');
+        toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+      } else {
+        toast.error(response.data.message || 'Failed to update user status');
       }
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert('Failed to update user status');
+      toast.error(error.response?.data?.message || 'Failed to update user status');
     }
   };
 
@@ -311,8 +352,8 @@ export default function UserManagement() {
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
-                          <Typography variant="body2" color="black" sx={{ whiteSpace: 'pre-line' }}>
-                            {new Date(user.createdAt).toLocaleDateString()}{'\n'}{new Date(user.createdAt).toLocaleTimeString('en-GB', { hour12: false })}
+                          <Typography variant="body2" color="black">
+                            {formatDateTime(user.createdAt)}
                           </Typography>
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
@@ -356,6 +397,29 @@ export default function UserManagement() {
           />
         </Card>
       </Fade>
+
+      {/* Toast Display Component */}
+      {toast.toasts.map((toastItem) => (
+        <Snackbar
+          key={toastItem.id}
+          open={true}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 2 }}
+        >
+          <Alert
+            severity={toastItem.severity}
+            variant="filled"
+            sx={{
+              borderRadius: 2,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+              minWidth: 300,
+              fontWeight: 500
+            }}
+          >
+            {toastItem.message}
+          </Alert>
+        </Snackbar>
+      ))}
     </Box>
   );
 }
