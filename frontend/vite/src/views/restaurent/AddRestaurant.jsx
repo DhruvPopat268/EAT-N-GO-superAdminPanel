@@ -66,6 +66,82 @@ export default function AddRestaurant() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionData, setSubmissionData] = useState(null);
 
+  // Add CSS to prevent Google Places interference
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Prevent Google Places from interfering with other inputs */
+      input[data-form-type="banking"],
+      input[data-form-type="business"],
+      input[data-lpignore="true"] {
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        appearance: none !important;
+      }
+      
+      /* Hide Google Places dropdown when not on location field */
+      .pac-container {
+        z-index: 9999 !important;
+      }
+      
+      /* Ensure banking fields don't get autocomplete */
+      input[data-form-type="banking"]::-webkit-contacts-auto-fill-button,
+      input[data-form-type="banking"]::-webkit-credentials-auto-fill-button {
+        display: none !important;
+      }
+      
+      /* Completely disable Google Places on non-location inputs */
+      input:not([id*="google-places-location"]).pac-target-input {
+        pointer-events: none !important;
+      }
+      
+      /* Force disable autocomplete on banking fields */
+      input[data-form-type="banking"],
+      input[data-form-type="business"] {
+        -webkit-text-security: none !important;
+        -webkit-autofill: none !important;
+      }
+      
+      /* Hide pac-container when not focused on location field */
+      body:not(.location-field-focused) .pac-container {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    // Add global event listener to prevent Google Places on banking fields
+    const preventGooglePlaces = (e) => {
+      const target = e.target;
+      if (target && target.tagName === 'INPUT') {
+        const formType = target.getAttribute('data-form-type');
+        if (formType === 'banking' || formType === 'business') {
+          target.classList.remove('pac-target-input');
+          target.setAttribute('autocomplete', 'off');
+          
+          // Hide any pac-container that might appear
+          setTimeout(() => {
+            document.querySelectorAll('.pac-container').forEach(container => {
+              if (!target.id || !target.id.includes('google-places-location')) {
+                container.style.display = 'none';
+              }
+            });
+          }, 10);
+        }
+      }
+    };
+    
+    document.addEventListener('focusin', preventGooglePlaces);
+    document.addEventListener('input', preventGooglePlaces);
+    
+    return () => {
+      if (document.head.contains(style)) {
+        document.head.removeChild(style);
+      }
+      document.removeEventListener('focusin', preventGooglePlaces);
+      document.removeEventListener('input', preventGooglePlaces);
+    };
+  }, []);
+
   const [formData, setFormData] = useState({
     restaurantName: '',
     ownerName: '',
@@ -104,6 +180,7 @@ export default function AddRestaurant() {
   const inputRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const [isLocationFieldFocused, setIsLocationFieldFocused] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,15 +214,56 @@ export default function AddRestaurant() {
     if (activeStep === 1 && inputRef.current && window.google && window.google.maps) {
       const timer = setTimeout(() => {
         if (inputRef.current && !autocompleteRef.current) {
+          // Create a unique ID for the location input
+          const locationInputId = 'google-places-location-input-' + Date.now();
+          inputRef.current.id = locationInputId;
+          
           autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
             types: ['establishment', 'geocode']
           });
 
           autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+          
+          // Disable autocomplete on ALL other inputs immediately
+          const disableOtherInputs = () => {
+            document.querySelectorAll('input').forEach(input => {
+              if (input.id !== locationInputId) {
+                input.setAttribute('autocomplete', 'off');
+                input.setAttribute('data-form-type', 'other');
+                input.setAttribute('data-lpignore', 'true');
+                // Remove any Google Places classes
+                input.classList.remove('pac-target-input');
+              }
+            });
+          };
+          
+          disableOtherInputs();
+          // Run it again after a delay to catch any late-rendered inputs
+          setTimeout(disableOtherInputs, 500);
         }
       }, 100);
 
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        // Clean up autocomplete when leaving step 1
+        if (autocompleteRef.current) {
+          window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+          autocompleteRef.current = null;
+        }
+        // Remove Google Places classes from all inputs
+        document.querySelectorAll('input').forEach(input => {
+          input.classList.remove('pac-target-input');
+        });
+      };
+    } else if (activeStep !== 1 && autocompleteRef.current) {
+      // Clean up when not on step 1
+      window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      autocompleteRef.current = null;
+      // Remove Google Places classes from all inputs
+      document.querySelectorAll('input').forEach(input => {
+        input.classList.remove('pac-target-input');
+        input.setAttribute('autocomplete', 'off');
+      });
     }
   }, [activeStep]);
 
@@ -377,11 +495,21 @@ export default function AddRestaurant() {
 
   const handleNext = () => {
     if (validateStep(activeStep)) {
+      // Clean up Google Places when leaving step 1
+      if (activeStep === 1 && autocompleteRef.current) {
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
+      }
       setActiveStep(prev => prev + 1);
     }
   };
 
   const handleBack = () => {
+    // Clean up Google Places when leaving step 1
+    if (activeStep === 1 && autocompleteRef.current) {
+      window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+      autocompleteRef.current = null;
+    }
     setActiveStep(prev => prev - 1);
   };
 
@@ -617,364 +745,6 @@ export default function AddRestaurant() {
             </Box>
           </Fade>
         );
-        return (
-          <Fade in timeout={500}>
-            <Box>
-              <Card sx={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: 'white',
-                mb: 4,
-                borderRadius: 4
-              }}>
-              </Card>
-
-              <Stack spacing={4}>
-                <TextField
-                  fullWidth
-                  label="Restaurant Name"
-                  value={formData.restaurantName}
-                  onChange={handleInputChange('restaurantName')}
-                  error={!!errors.restaurantName}
-                  helperText={errors.restaurantName}
-                  required
-                  variant="outlined"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': { borderColor: 'primary.main' },
-                      '&.Mui-focused fieldset': { borderWidth: 2 }
-                    },
-                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
-                  }}
-                />
-
-                <TextField
-                  fullWidth
-                  label="Owner Name"
-                  value={formData.ownerName}
-                  onChange={handleInputChange('ownerName')}
-                  error={!!errors.ownerName}
-                  helperText={errors.ownerName}
-                  required
-                  variant="outlined"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem',
-                      '&:hover fieldset': { borderColor: 'primary.main' },
-                      '&.Mui-focused fieldset': { borderWidth: 2 }
-                    },
-                    '& .MuiInputLabel-root': { fontSize: '1.1rem' }
-                  }}
-                />
-
-                <FormControl fullWidth required error={!!errors.foodCategory}>
-                  <InputLabel sx={{ fontSize: '1.1rem' }}>Food Category</InputLabel>
-                  <Select
-                    value={formData.foodCategory}
-                    onChange={handleInputChange('foodCategory')}
-                    label="Food Category"
-                    sx={{
-                      borderRadius: 3,
-                      fontSize: '1.1rem',
-                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderWidth: 2 }
-                    }}
-                  >
-                    <MenuItem value="Veg">Vegetarian</MenuItem>
-                    <MenuItem value="Non-Veg">Non-Vegetarian</MenuItem>
-                    <MenuItem value="Mixed">Mixed</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <FormControl component="fieldset" error={!!errors.cuisineTypes}>
-                  <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
-                    Cuisine Types *
-                  </Typography>
-                  <FormGroup sx={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 1,
-                    border: errors.cuisineTypes ? '2px solid #f44336' : '1px solid #e0e0e0',
-                    borderRadius: 3,
-                    p: 2
-                  }}>
-                    {cuisineTypes.map((cuisine) => (
-                      <FormControlLabel
-                        key={cuisine}
-                        control={
-                          <Checkbox
-                            checked={formData.cuisineTypes.includes(cuisine)}
-                            onChange={handleCuisineChange(cuisine)}
-                            sx={{
-                              '&.Mui-checked': {
-                                color: 'primary.main'
-                              }
-                            }}
-                          />
-                        }
-                        label={cuisine}
-                        sx={{
-                          '& .MuiFormControlLabel-label': {
-                            fontSize: '0.95rem'
-                          }
-                        }}
-                      />
-                    ))}
-                  </FormGroup>
-                  {formData.cuisineTypes.includes('Other') && (
-                    <TextField
-                      fullWidth
-                      label="Specify Other Cuisine"
-                      value={formData.otherCuisine}
-                      onChange={handleInputChange('otherCuisine')}
-                      placeholder="Enter cuisine type"
-                      sx={{
-                        mt: 2,
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: 3,
-                          fontSize: '1rem'
-                        }
-                      }}
-                    />
-                  )}
-                  {errors.cuisineTypes && (
-                    <Typography variant="caption" color="error" sx={{ mt: 1, ml: 1.5 }}>
-                      {errors.cuisineTypes}
-                    </Typography>
-                  )}
-                  {formData.cuisineTypes.length > 0 && (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                        Selected Cuisines:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {formData.cuisineTypes.map((cuisine) => (
-                          <Chip
-                            key={cuisine}
-                            label={cuisine}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </FormControl>
-
-                <FormControl component="fieldset">
-                  <Typography variant="h6" sx={{ mb: 2, fontSize: '1.1rem', fontWeight: 600 }}>
-                    Alcohol Availability
-                  </Typography>
-                  <FormGroup sx={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 3,
-                    p: 2
-                  }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={formData.alcoholAvailable}
-                          onChange={(e) => setFormData(prev => ({ ...prev, alcoholAvailable: e.target.checked }))}
-                          sx={{
-                            '&.Mui-checked': {
-                              color: 'primary.main'
-                            }
-                          }}
-                        />
-                      }
-                      label="Restaurant serves alcohol"
-                      sx={{
-                        '& .MuiFormControlLabel-label': {
-                          fontSize: '0.95rem'
-                        }
-                      }}
-                    />
-                  </FormGroup>
-                </FormControl>
-              </Stack>
-            </Box>
-          </Fade>
-        );
-
-
-        return (
-          <Fade in timeout={500}>
-            <Box>
-              <Card sx={{
-                background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-                color: 'white',
-                mb: 4,
-                borderRadius: 4
-              }}>
-              </Card>
-
-              <Stack spacing={4}>
-                <TextField
-                  fullWidth
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange('email')}
-                  error={!!errors.email}
-                  helperText={errors.email}
-                  required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem'
-                    }
-                  }}
-                />
-
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  value={formData.phone}
-                  onChange={handleInputChange('phone')}
-                  error={!!errors.phone}
-                  helperText={errors.phone}
-                  required
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem'
-                    }
-                  }}
-                />
-
-                <TextField
-                  fullWidth
-                  label="Search Location"
-                  InputProps={{
-                    inputRef: inputRef
-                  }}
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                  onFocus={() => {
-                    if (window.google && window.google.maps && inputRef.current && !autocompleteRef.current) {
-                      autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-                        types: ['establishment', 'geocode']
-                      });
-                      autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
-                    }
-                  }}
-                  error={!!errors.address}
-                  helperText={errors.address || "Start typing to search for your restaurant location"}
-                  required
-                  autoComplete="new-password"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem'
-                    }
-                  }}
-                />
-
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 3 }}>
-                  <TextField
-                    fullWidth
-                    label="City"
-                    value={formData.city}
-                    onChange={handleInputChange('city')}
-                    error={!!errors.city}
-                    helperText={errors.city}
-                    required
-                    disabled
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 3,
-                        fontSize: '1.1rem',
-                        bgcolor: 'grey.50'
-                      }
-                    }}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="State"
-                    value={formData.state}
-                    onChange={handleInputChange('state')}
-                    error={!!errors.state}
-                    helperText={errors.state}
-                    required
-                    disabled
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 3,
-                        fontSize: '1.1rem',
-                        bgcolor: 'grey.50'
-                      }
-                    }}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Country"
-                    value={formData.country}
-                    onChange={handleInputChange('country')}
-                    error={!!errors.country}
-                    helperText={errors.country}
-                    required
-                    disabled
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 3,
-                        fontSize: '1.1rem',
-                        bgcolor: 'grey.50'
-                      }
-                    }}
-                  />
-                </Box>
-
-                <TextField
-                  fullWidth
-                  label="Pincode"
-                  value={formData.pincode}
-                  onChange={handleInputChange('pincode')}
-                  error={!!errors.pincode}
-                  helperText={errors.pincode}
-                  required
-                  disabled
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem',
-                      bgcolor: 'grey.50'
-                    }
-                  }}
-                />
-
-                {(formData.latitude && formData.longitude) ? (
-                  <Box sx={{ mt: 3 }}>
-                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                      Restaurant Location
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Click on the map or drag the marker to adjust your exact location
-                    </Typography>
-                    <Box
-                      ref={mapRef}
-                      sx={{
-                        width: '100%',
-                        height: 300,
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                        border: '1px solid #e0e0e0'
-                      }}
-                    />
-                    <Box sx={{ mt: 2, display: 'flex', gap: 2, fontSize: '0.875rem', color: 'text.secondary' }}>
-                      <Typography variant="caption">Lat: {parseFloat(formData.latitude).toFixed(6)}</Typography>
-                      <Typography variant="caption">Lng: {parseFloat(formData.longitude).toFixed(6)}</Typography>
-                    </Box>
-                  </Box>
-                ) : null}
-              </Stack>
-            </Box>
-          </Fade>
-        );
       case 1:
         return (
           <Fade in timeout={500}>
@@ -1030,34 +800,47 @@ export default function AddRestaurant() {
                   label="Search Location"
                   InputProps={{
                     inputRef: inputRef,
-                    autoComplete: 'off'
+                    autoComplete: 'new-password'
                   }}
-                  inputProps={{ autoComplete: 'off' }}
+                  inputProps={{ 
+                    autoComplete: 'new-password',
+                    'data-form-type': 'location'
+                  }}
                   value={locationQuery}
                   onChange={(e) => setLocationQuery(e.target.value)}
                   onFocus={() => {
+                    setIsLocationFieldFocused(true);
+                    document.body.classList.add('location-field-focused');
+                    
                     if (window.google && window.google.maps && inputRef.current && !autocompleteRef.current) {
+                      const locationInputId = 'google-places-location-input-' + Date.now();
+                      inputRef.current.id = locationInputId;
+                      
                       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
                         types: ['establishment', 'geocode']
                       });
-                      // ✅ KEY FIX: After Google Places attaches, override autocomplete attribute
-                      // so Chrome stops bleeding place suggestions to nearby fields
+                      
+                      // Immediately disable other inputs
                       setTimeout(() => {
-                        if (inputRef.current) {
-                          inputRef.current.setAttribute('autocomplete', 'off');
-                        }
-                        // Also nuke any pac-container influence on sibling inputs
-                        document.querySelectorAll('.pac-container').forEach(el => {
-                          el.setAttribute('data-form-type', 'other');
+                        document.querySelectorAll('input').forEach(input => {
+                          if (input.id !== locationInputId) {
+                            input.setAttribute('autocomplete', 'off');
+                            input.setAttribute('data-form-type', 'protected');
+                            input.classList.remove('pac-target-input');
+                          }
                         });
-                      }, 100);
+                      }, 50);
+                      
                       autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
                     }
+                  }}
+                  onBlur={() => {
+                    setIsLocationFieldFocused(false);
+                    document.body.classList.remove('location-field-focused');
                   }}
                   error={!!errors.address}
                   helperText={errors.address || "Start typing to search for your restaurant location"}
                   required
-                  autoComplete="off"
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
@@ -1193,6 +976,11 @@ export default function AddRestaurant() {
                   error={!!errors.licenseNumber}
                   helperText={errors.licenseNumber}
                   required
+                  inputProps={{ 
+                    autoComplete: 'new-password',
+                    'data-form-type': 'business',
+                    'data-lpignore': 'true'
+                  }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
@@ -1209,6 +997,11 @@ export default function AddRestaurant() {
                   error={!!errors.gstNumber}
                   helperText={errors.gstNumber || "Format: 22AAAAA0000A1Z5"}
                   required
+                  inputProps={{ 
+                    autoComplete: 'new-password',
+                    'data-form-type': 'business',
+                    'data-lpignore': 'true'
+                  }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
@@ -1217,22 +1010,52 @@ export default function AddRestaurant() {
                   }}
                 />
 
-                <TextField
-                  fullWidth
-                  label="Bank Account Number"
-                  value={formData.bankAccount}
-                  onChange={handleInputChange('bankAccount')}
-                  error={!!errors.bankAccount}
-                  helperText={errors.bankAccount}
-                  required
-                  autoComplete="new-password"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 3,
-                      fontSize: '1.1rem'
-                    }
-                  }}
-                />
+                <Box sx={{ position: 'relative', isolation: 'isolate' }}>
+                  <TextField
+                    fullWidth
+                    label="Bank Account Number"
+                    value={formData.bankAccount}
+                    onChange={handleInputChange('bankAccount')}
+                    error={!!errors.bankAccount}
+                    helperText={errors.bankAccount}
+                    required
+                    inputProps={{ 
+                      autoComplete: 'off',
+                      'data-form-type': 'banking',
+                      'data-lpignore': 'true',
+                      'data-1p-ignore': 'true',
+                      'data-bwignore': 'true'
+                    }}
+                    InputProps={{
+                      autoComplete: 'off',
+                      'data-form-type': 'banking'
+                    }}
+                    onFocus={(e) => {
+                      // Aggressively prevent any autocomplete
+                      e.target.setAttribute('autocomplete', 'off');
+                      e.target.setAttribute('data-form-type', 'banking');
+                      e.target.setAttribute('data-lpignore', 'true');
+                      e.target.classList.remove('pac-target-input');
+                      
+                      // Hide any visible pac-container
+                      document.querySelectorAll('.pac-container').forEach(container => {
+                        container.style.display = 'none';
+                      });
+                    }}
+                    onInput={(e) => {
+                      // Remove Google Places classes on every input
+                      e.target.classList.remove('pac-target-input');
+                    }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 3,
+                        fontSize: '1.1rem',
+                        position: 'relative',
+                        zIndex: 1
+                      }
+                    }}
+                  />
+                </Box>
 
                 <TextField
                   fullWidth
@@ -1242,6 +1065,11 @@ export default function AddRestaurant() {
                   error={!!errors.ifscCode}
                   helperText={errors.ifscCode || "Format: ABCD0123456"}
                   required
+                  inputProps={{ 
+                    autoComplete: 'new-password',
+                    'data-form-type': 'banking',
+                    'data-lpignore': 'true'
+                  }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 3,
