@@ -16,6 +16,7 @@ const AddonManagement = Loadable(lazy(() => import('../views/restaurent/AddonMan
 const ComboManagement = Loadable(lazy(() => import('../views/restaurent/ComboManagement')));
 const ItemDetail = Loadable(lazy(() => import('../views/restaurent/ItemDetail')));
 const ComboDetail = Loadable(lazy(() => import('../views/restaurent/ComboDetail')));
+const CommissionManagement = Loadable(lazy(() => import('../views/restaurent/CommissionManagement')));
 
 const RestaurentRoutes = {
   path: 'restaurant',
@@ -79,6 +80,10 @@ const RestaurentRoutes = {
     {
       path: 'combo-detail/:restaurantId/:comboId',
       element: <ComboDetail />
+    },
+    {
+      path: 'commission-management',
+      element: <CommissionManagement />
     }
   ]
 };

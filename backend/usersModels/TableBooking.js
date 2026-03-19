@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const TableBookingCounter = require('./TableBookingCounter');
 
 const tableBookingSchema = new mongoose.Schema(
   {
@@ -14,12 +15,6 @@ const tableBookingSchema = new mongoose.Schema(
       required: true,
     },
 
-    tableBookingRequestId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'TableBookingRequest',
-      required: true,
-    },
-
     tableBookingNo: {
       type: Number
     },
@@ -27,21 +22,18 @@ const tableBookingSchema = new mongoose.Schema(
     numberOfGuests: { type: Number },
     bookingTimings: {
       date: { type: String },
-      startTime: { type: String },
-      endTime: { type: String }
+      slotTime: { type: String }
     },
     specialInstructions: { type: String },
 
-    // Payment info
-    paymentMethod: {
-      type: String,
-      enum: ['online', 'pay_at_restaurant'],
-      required: true
-    },
-
-    baseTotalAmount: {
-      type: Number,
-      required: true
+    offer: {
+      offerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'TableBookingOffers'
+      },
+      offerName: { type: String },
+      restaurantOfferPercentage: { type: Number },
+      adminOfferPercentage: { type: Number }
     },
 
     totalAmount: {
@@ -62,20 +54,6 @@ const tableBookingSchema = new mongoose.Schema(
       default: 'confirmed',
     },
 
-    // Waiting time
-    waitingTime: {
-      date: String,
-      startTime: String,
-      endTime: String
-    },
-
-    // Timestamps for status changes
-    waitingAt: { type: Date },
-    preparedAt: { type: Date },
-    readyAt: { type: Date },
-    servedAt: { type: Date },
-    completedAt: { type: Date },
-
     // Cancellation/refund info
     cancelledBy: {
       type: String,
@@ -86,12 +64,7 @@ const tableBookingSchema = new mongoose.Schema(
       ref: 'OrderActionReason'
     },
     cancellationReason: { type: String },
-    refundAmount: { type: Number },
-
-    userRatingId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'userRating'
-    },
+    
   },
   {
     timestamps: true,
@@ -101,8 +74,6 @@ const tableBookingSchema = new mongoose.Schema(
 // Pre-save hook to generate tableBookingNo
 tableBookingSchema.pre('save', async function(next) {
   if (this.isNew) {
-    const TableBookingCounter = require('../models/TableBookingCounter');
-    
     const counter = await TableBookingCounter.findOneAndUpdate(
       { restaurantId: this.restaurantId },
       { $inc: { tableBookingCount: 1 } },

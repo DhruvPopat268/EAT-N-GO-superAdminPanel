@@ -1,12 +1,13 @@
 // assets
-import { IconKey, IconToolsKitchen2, IconChefHat, IconPlus } from '@tabler/icons-react';
+import { IconKey, IconToolsKitchen2, IconChefHat, IconPlus, IconPercentage } from '@tabler/icons-react';
 
 // constant
 const icons = {
     IconKey,
     IconToolsKitchen2,
     IconChefHat,
-    IconPlus
+    IconPlus,
+    IconPercentage
 };
 
 // ==============================|| EXTRA PAGES MENU ITEMS ||============================== //
@@ -111,6 +112,13 @@ const restaurent = {
                 //     url: '/restaurant/combo-management',
                 // }
             ]
+        },
+        {
+            id: 'commission-management',
+            title: 'Commission Management',
+            type: 'item',
+            icon: icons.IconPercentage,
+            url: '/restaurant/commission-management'
         }
     ]
 };

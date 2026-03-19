@@ -1,1 +1,1 @@
-export { ToastProvider as default } from '../utils/toast.jsx';
+export { Toast as default } from '../utils/toast.jsx';

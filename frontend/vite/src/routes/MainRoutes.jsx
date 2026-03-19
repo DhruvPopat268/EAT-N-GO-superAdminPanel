@@ -6,6 +6,7 @@ import OrderRoutes, { OrderRequestRoutes, OrderManagementRoutes } from './OrderR
 import SupportRoutes from './SupportRoutes';
 import UtilityRoutes from './UtilityRoutes';
 import RestaurentRoutes from './RestaurentRoutes';
+import TableBookingRoutes from './TableBookingRoutes';
 import ActivityLogRoutes from './ActivityLogRoutes';
 import CouponRoutes from './CouponRoutes';
 import UserRatingRoutes from './UserRatingRoutes';
@@ -35,6 +36,7 @@ const MainRoutes = {
     OrderManagementRoutes,
     SupportRoutes,
     RestaurentRoutes,
+    TableBookingRoutes,
     CouponRoutes,
     ActivityLogRoutes,
     UserRatingRoutes,

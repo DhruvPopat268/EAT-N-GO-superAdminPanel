@@ -2,6 +2,7 @@ import dashboard from './dashboard';
 import pages from './pages';
 // import utilities from './utilities';
 import restaurent from './restaurent';
+import tableBooking from './tableBooking';
 import payments from './payments';
 import orders from './orders';
 import rbac from './rbac';
@@ -18,6 +19,7 @@ const menuItems = {
   items: [
     dashboard,
     restaurent,
+    tableBooking,
      orders,
     // payments,
     users,

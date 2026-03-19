@@ -61,6 +61,43 @@ businessDetails: {
   // Status
   status: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended'], default: 'pending' },
   
+  // Table Reservation Booking
+  tableReservationBooking: { type: Boolean, default: false },
+  
+  tableReservationBookingConfig: {
+    flatPercentageDiscountOnFinalBill: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+    coverChargePerPerson: {
+      type: Number,
+      min: 0,
+      default: 0
+    }
+  },
+  
+  // Admin Commission
+  adminCommission: {
+    orderCommission: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+    tableBookingCommission: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+    updatedAt: {
+      type: Date,
+      default: Date
+    }
+  },
+  
   // Rejection Details
   rejectionReason: { type: String },
   rejectedFormFields: [{ type: String }],

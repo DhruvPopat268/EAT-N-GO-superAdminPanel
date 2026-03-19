@@ -19,6 +19,7 @@ const orderCancelRefundRoutes = require('../restaurantRoutes/orderCancelRefund')
 const couponRoutes = require('../restaurantRoutes/couponRoutes');
 const userRatingRoutes = require('../restaurantRoutes/userRatingRoutes');
 const userRoutes = require('../restaurantRoutes/userRoute');
+const tableBookingConfigRoutes = require('../restaurantRoutes/tableBookingConfig');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs').promises;
@@ -470,6 +471,321 @@ router.post('/admin/usefullDetails', authMiddleware, async (req, res) => {
   }
 });
 
+// Get table reservation booking config
+router.get('/admin/table-reservation-config', authMiddleware, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Restaurant.countDocuments({ status: 'approved' });
+    
+    const restaurants = await Restaurant.find(
+      { status: 'approved' },
+      '_id basicInfo.restaurantName contactDetails.city contactDetails.state contactDetails.country tableReservationBooking tableReservationBookingConfig'
+    )
+    .sort({ 'basicInfo.restaurantName': 1 })
+    .skip(skip)
+    .limit(limit);
+    
+    const restaurantConfigs = restaurants.map(restaurant => ({
+      restaurantId: restaurant._id,
+      restaurantName: restaurant.basicInfo.restaurantName,
+      city: restaurant.contactDetails.city,
+      state: restaurant.contactDetails.state,
+      country: restaurant.contactDetails.country,
+      tableReservationBooking: restaurant.tableReservationBooking,
+      tableReservationBookingConfig: restaurant.tableReservationBookingConfig || {
+        flatPercentageDiscountOnFinalBill: 0,
+        coverChargePerPerson: 0
+      }
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: restaurantConfigs,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        limit
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching table reservation configs',
+      error: error.message
+    });
+  }
+});
+
+// Update table reservation booking status
+router.patch('/admin/table-reservation-booking', authMiddleware, async (req, res) => {
+  try {
+    const { restaurantId, tableReservationBooking } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'restaurantId is required'
+      });
+    }
+
+    if (typeof tableReservationBooking !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'tableReservationBooking must be a boolean value'
+      });
+    }
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      { tableReservationBooking },
+      { new: true, select: 'tableReservationBooking tableReservationBookingConfig' }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Table reservation booking status updated successfully',
+      data: {
+        tableReservationBooking: restaurant.tableReservationBooking,
+        tableReservationBookingConfig: restaurant.tableReservationBookingConfig
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating table reservation booking status',
+      error: error.message
+    });
+  }
+});
+
+// Update table reservation booking config
+router.patch('/admin/table-reservation-config', authMiddleware, async (req, res) => {
+  try {
+    const { restaurantId, flatPercentageDiscountOnFinalBill, coverChargePerPerson } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'restaurantId is required'
+      });
+    }
+
+    // Validate input
+    if (flatPercentageDiscountOnFinalBill !== undefined) {
+      const discount = parseFloat(flatPercentageDiscountOnFinalBill);
+      if (isNaN(discount) || discount < 0 || discount > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'flatPercentageDiscountOnFinalBill must be between 0 and 100'
+        });
+      }
+    }
+
+    if (coverChargePerPerson !== undefined) {
+      const charge = parseFloat(coverChargePerPerson);
+      if (isNaN(charge) || charge < 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'coverChargePerPerson must be 0 or greater'
+        });
+      }
+    }
+
+    // Prepare update object
+    const updateObj = {};
+    if (flatPercentageDiscountOnFinalBill !== undefined) {
+      updateObj['tableReservationBookingConfig.flatPercentageDiscountOnFinalBill'] = parseFloat(flatPercentageDiscountOnFinalBill);
+    }
+    if (coverChargePerPerson !== undefined) {
+      updateObj['tableReservationBookingConfig.coverChargePerPerson'] = parseFloat(coverChargePerPerson);
+    }
+
+    if (Object.keys(updateObj).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one field to update is required'
+      });
+    }
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      { $set: updateObj },
+      { new: true, select: 'tableReservationBooking tableReservationBookingConfig' }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Table reservation booking config updated successfully',
+      data: {
+        tableReservationBooking: restaurant.tableReservationBooking,
+        tableReservationBookingConfig: restaurant.tableReservationBookingConfig
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating table reservation config',
+      error: error.message
+    });
+  }
+});
+
+// Get all restaurant commissions
+router.get('/admin/commission', authMiddleware, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalCount = await Restaurant.countDocuments({ status: 'approved' });
+    
+    const restaurants = await Restaurant.find(
+      { status: 'approved' },
+      '_id basicInfo.restaurantName contactDetails.city contactDetails.state contactDetails.country adminCommission'
+    )
+    .sort({ 'basicInfo.restaurantName': 1 })
+    .skip(skip)
+    .limit(limit);
+    
+    const restaurantCommissions = restaurants.map(restaurant => {
+      const defaultCommission = {
+        orderCommission: 0,
+        tableBookingCommission: 0
+      };
+      
+      // Only include updatedAt if it exists
+      const adminCommission = restaurant.adminCommission 
+        ? { ...restaurant.adminCommission.toObject() }
+        : defaultCommission;
+      
+      return {
+        restaurantId: restaurant._id,
+        restaurantName: restaurant.basicInfo.restaurantName,
+        city: restaurant.contactDetails.city,
+        state: restaurant.contactDetails.state,
+        country: restaurant.contactDetails.country,
+        adminCommission
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: restaurantCommissions,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        limit
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching restaurant commissions',
+      error: error.message
+    });
+  }
+});
+
+// Update restaurant commission
+router.patch('/admin/commission', authMiddleware, async (req, res) => {
+  try {
+    const { restaurantId, orderCommission, tableBookingCommission } = req.body;
+
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'restaurantId is required'
+      });
+    }
+
+    // Validate input
+    if (orderCommission !== undefined) {
+      const commission = parseFloat(orderCommission);
+      if (isNaN(commission) || commission < 0 || commission > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'orderCommission must be between 0 and 100'
+        });
+      }
+    }
+
+    if (tableBookingCommission !== undefined) {
+      const commission = parseFloat(tableBookingCommission);
+      if (isNaN(commission) || commission < 0 || commission > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'tableBookingCommission must be between 0 and 100'
+        });
+      }
+    }
+
+    // Prepare update object
+    const updateObj = {};
+    if (orderCommission !== undefined) {
+      updateObj['adminCommission.orderCommission'] = parseFloat(orderCommission);
+    }
+    if (tableBookingCommission !== undefined) {
+      updateObj['adminCommission.tableBookingCommission'] = parseFloat(tableBookingCommission);
+    }
+    
+    // Always update the timestamp when commission is modified
+    updateObj['adminCommission.updatedAt'] = new Date();
+
+    if (Object.keys(updateObj).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one commission field to update is required'
+      });
+    }
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      { $set: updateObj },
+      { new: true, select: 'adminCommission' }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Restaurant commission updated successfully',
+      data: {
+        adminCommission: restaurant.adminCommission
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating restaurant commission',
+      error: error.message
+    });
+  }
+});
+
 // Get approved restaurant names
 router.get('/restaurantNames', authMiddleware, async (req, res) => {
   try {
@@ -571,6 +887,9 @@ router.get('/suspended', authMiddleware, async (req, res) => {
     });
   }
 });
+
+// Use table booking configuration routes (MUST be before /:id route)
+router.use('/table-booking', tableBookingConfigRoutes);
 
 // Use order cancel refund routes (MUST be before /:id route)
 router.use('/order-cancel-refund', orderCancelRefundRoutes);
