@@ -366,6 +366,20 @@ router.post('/get-slots', verifyToken, async (req, res) => {
       });
     }
 
+    // Find restaurant with table booking configuration
+    const restaurant = await Restaurant.findOne({
+      _id: restaurantId,
+      status: 'approved',
+      tableReservationBooking: true
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found or table reservation booking is not available'
+      });
+    }
+
     // Find time slots configuration for the restaurant
     const timeSlots = await TableBookingSlot.findOne({ restaurantId });
     if (!timeSlots) {
@@ -450,5 +464,82 @@ router.post('/get-slots', verifyToken, async (req, res) => {
     });
   }
 });
+
+// POST route to get restaurant cover charges and offers
+router.post('/offers-coverCharges', verifyToken, async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+
+    // Validate restaurantId
+    if (!restaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'restaurantId is required'
+      });
+    }
+
+    // Find restaurant with table booking configuration
+    const restaurant = await Restaurant.findOne({
+      _id: restaurantId,
+      status: 'approved',
+      tableReservationBooking: true
+    });
+
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found or table reservation booking is not available'
+      });
+    }
+
+    // Get cover charge per person and admin offer percentage
+    const coverChargePerPerson = restaurant.tableReservationBookingConfig?.coverChargePerPerson || 0;
+    const adminOfferPercentageOnBill = restaurant.tableReservationBookingConfig?.adminOfferPercentageOnBill || 0;
+    const currency = restaurant.businessDetails?.currency || {
+      code: 'INR',
+      name: 'Indian Rupee',
+      symbol: '₹'
+    };
+
+    // Find active offers for this restaurant
+    const offers = await TableBookingOffers.find({
+      restaurantId,
+      status: true
+    }).select('_id name percentage');
+
+    // Calculate total discount percentage for each offer
+    const formattedOffers = offers.map(offer => ({
+      offerId: offer._id,
+      name: offer.name,
+      restaurantOfferPercentage: offer.percentage,
+      adminOfferPercentage: adminOfferPercentageOnBill,
+      totalDiscountPercentage: offer.percentage + adminOfferPercentageOnBill
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: 'Restaurant information retrieved successfully',
+      data: {
+        restaurantId,
+        coverCharges: {
+          perPerson: coverChargePerPerson,
+          currency
+        },
+        offers: formattedOffers,
+        totalOffers: formattedOffers.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting restaurant information:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting restaurant information',
+      error: error.message
+    });
+  }
+});
+
+
 
 module.exports = router;
