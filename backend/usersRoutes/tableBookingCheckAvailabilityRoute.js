@@ -63,11 +63,15 @@ router.post('/', verifyToken, async (req, res) => {
     // Handle DD-MM-YYYY format properly
     const [day, month, year] = bookingTimings.date.split('-');
     const bookingDate = new Date(year, month - 1, day); // month is 0-indexed
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    bookingDate.setHours(0, 0, 0, 0); // Set to start of day
     
-    console.log('Booking date parsed:', bookingDate);
-    console.log('Today date:', today);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0); // Use UTC for consistency
+    
+    console.log('Input date string:', bookingTimings.date);
+    console.log('Parsed components:', { day, month, year });
+    console.log('Booking date parsed:', bookingDate.toISOString());
+    console.log('Today date (UTC):', today.toISOString());
     
     if (bookingDate < today) {
       return res.status(400).json({
@@ -102,12 +106,13 @@ router.post('/', verifyToken, async (req, res) => {
     console.log('Is today booking:', isToday);
     
     if (isToday) {
+      // Force UTC time to ensure consistency across environments
       const currentTime = new Date();
-      const currentHours = currentTime.getHours();
-      const currentMinutes = currentTime.getMinutes();
+      const currentHours = currentTime.getUTCHours();
+      const currentMinutes = currentTime.getUTCMinutes();
       const currentTimeInMinutes = currentHours * 60 + currentMinutes;
       
-      console.log('Current time in minutes:', currentTimeInMinutes, `(${currentHours}:${currentMinutes})`);
+      console.log('Current UTC time in minutes:', currentTimeInMinutes, `(${currentHours}:${currentMinutes})`);
       
       // Parse slot time (format: "12:00")
       const [slotHours, slotMinutes] = requestedSlot.time.split(':').map(Number);
@@ -120,7 +125,7 @@ router.post('/', verifyToken, async (req, res) => {
           success: false,
           message: 'Cannot book a time slot that has already passed today',
           debug: {
-            currentTime: `${currentHours}:${currentMinutes}`,
+            currentUTCTime: `${currentHours}:${currentMinutes}`,
             slotTime: requestedSlot.time,
             currentTimeInMinutes,
             slotTimeInMinutes
