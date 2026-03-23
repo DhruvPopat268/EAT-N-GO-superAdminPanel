@@ -72,7 +72,4 @@ tableBookingCheckAvailabilitySchema.index({ restaurantId: 1 });
 tableBookingCheckAvailabilitySchema.index({ userId: 1 });
 tableBookingCheckAvailabilitySchema.index({ status: 1 });
 
-// TTL index to automatically delete expired records after they expire
-tableBookingCheckAvailabilitySchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-
 module.exports = mongoose.model('TableBookingCheckAvailability', tableBookingCheckAvailabilitySchema);
