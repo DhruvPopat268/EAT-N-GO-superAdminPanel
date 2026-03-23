@@ -60,17 +60,16 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Validate booking date (should be today or future)
-    // Handle DD-MM-YYYY format properly
+    // Handle DD-MM-YYYY format properly with UTC
     const [day, month, year] = bookingTimings.date.split('-');
-    const bookingDate = new Date(year, month - 1, day); // month is 0-indexed
-    bookingDate.setHours(0, 0, 0, 0); // Set to start of day
+    const bookingDate = new Date(Date.UTC(year, month - 1, day)); // Force UTC creation
     
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0); // Use UTC for consistency
     
     console.log('Input date string:', bookingTimings.date);
     console.log('Parsed components:', { day, month, year });
-    console.log('Booking date parsed:', bookingDate.toISOString());
+    console.log('Booking date parsed (UTC):', bookingDate.toISOString());
     console.log('Today date (UTC):', today.toISOString());
     
     if (bookingDate < today) {
@@ -106,28 +105,39 @@ router.post('/', verifyToken, async (req, res) => {
     console.log('Is today booking:', isToday);
     
     if (isToday) {
-      // Force UTC time to ensure consistency across environments
+      // Convert current UTC time to IST (UTC + 5:30) since slots are stored in IST
       const currentTime = new Date();
-      const currentHours = currentTime.getUTCHours();
-      const currentMinutes = currentTime.getUTCMinutes();
-      const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+      const istOffset = 5.5 * 60; // IST is UTC + 5:30 (5.5 hours in minutes)
+      const currentUTCMinutes = currentTime.getUTCHours() * 60 + currentTime.getUTCMinutes();
+      const currentISTMinutes = currentUTCMinutes + istOffset;
       
-      console.log('Current UTC time in minutes:', currentTimeInMinutes, `(${currentHours}:${currentMinutes})`);
+      // Handle day overflow (if IST time goes to next day)
+      const currentISTHours = Math.floor(currentISTMinutes / 60) % 24;
+      const currentISTMins = currentISTMinutes % 60;
       
-      // Parse slot time (format: "12:00")
+      console.log('Current UTC time:', `${currentTime.getUTCHours()}:${currentTime.getUTCMinutes().toString().padStart(2, '0')}`);
+      console.log('Current IST time:', `${currentISTHours}:${currentISTMins.toString().padStart(2, '0')}`);
+      console.log('Current IST time in minutes:', currentISTMinutes % (24 * 60));
+      
+      // Parse slot time (format: "12:00" - assumed to be in IST)
       const [slotHours, slotMinutes] = requestedSlot.time.split(':').map(Number);
       const slotTimeInMinutes = slotHours * 60 + slotMinutes;
       
-      console.log('Slot time in minutes:', slotTimeInMinutes, `(${slotHours}:${slotMinutes})`);
+      console.log('Slot time (IST):', `${slotHours}:${slotMinutes.toString().padStart(2, '0')}`);
+      console.log('Slot time in minutes:', slotTimeInMinutes);
       
-      if (slotTimeInMinutes <= currentTimeInMinutes) {
+      // Compare IST times
+      const currentISTTimeInDay = currentISTMinutes % (24 * 60); // Handle day overflow
+      
+      if (slotTimeInMinutes <= currentISTTimeInDay) {
         return res.status(400).json({
           success: false,
           message: 'Cannot book a time slot that has already passed today',
           debug: {
-            currentUTCTime: `${currentHours}:${currentMinutes}`,
+            currentUTCTime: `${currentTime.getUTCHours()}:${currentTime.getUTCMinutes().toString().padStart(2, '0')}`,
+            currentISTTime: `${currentISTHours}:${currentISTMins.toString().padStart(2, '0')}`,
             slotTime: requestedSlot.time,
-            currentTimeInMinutes,
+            currentISTTimeInMinutes: currentISTTimeInDay,
             slotTimeInMinutes
           }
         });
