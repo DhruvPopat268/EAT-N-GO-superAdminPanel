@@ -3,6 +3,10 @@ const router = express.Router();
 const UserOtpSession = require('../usersModels/userOtpSession');
 const UserSession = require('../usersModels/userSession');
 const User = require('../usersModels/usersModel');
+const TableBooking = require('../usersModels/TableBooking');
+const Restaurant = require('../models/Restaurant');
+const TableBookingSlot = require('../restaurantModels/TableBookingSlot');
+const TableBookingOffers = require('../restaurantModels/TableBookingOffers');
 const { generateTokens, verifyToken } = require('../middleware/userAuth');
 const { getRestaurantsAlongRoute } = require('../utils/routeUtils');
 const jwt = require('jsonwebtoken');
@@ -13,6 +17,7 @@ const orderRequestRoutes = require('./orderRequestRoutes');
 const orderRoutes = require('./orderRoutes');
 const couponRoutes = require('./couponRoutes');
 const userRatingRoutes = require('./userRatingRoutes');
+const tableBookingRoutes = require('./tableBookingRoute');
 
 // Send OTP
 router.post('/send-otp', async (req, res) => {
@@ -383,5 +388,8 @@ router.use('/orders', orderRoutes);
 
 // Use user rating routes
 router.use('/ratings', userRatingRoutes);
+
+// Use table booking routes
+router.use('/table-bookings', tableBookingRoutes);
 
 module.exports = router;

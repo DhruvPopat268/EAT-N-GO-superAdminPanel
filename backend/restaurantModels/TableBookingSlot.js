@@ -15,9 +15,11 @@ const tableBookingSlotSchema = new mongoose.Schema({
   },
   
   timeSlotCreatedWith: {
-    type: Number, // Initial maxTables value when slots were created
-    required: true,
-    min: 1
+    maxGuests: {
+      type: Number, // Initial maxGuests value when slots were created
+      required: true,
+      min: 1
+    }
   },
   
   timeSlots: [{
@@ -32,9 +34,20 @@ const tableBookingSlotSchema = new mongoose.Schema({
         message: 'Time must be in 24-hour format (HH:MM)'
       }
     },
-    maxTables: {
+    maxGuests: {
       type: Number,
+      required: true,
       min: 1
+    },
+    onlineGuests: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    offlineGuests: {
+      type: Number,
+      default: 0,
+      min: 0
     },
     status: {
       type: Boolean,

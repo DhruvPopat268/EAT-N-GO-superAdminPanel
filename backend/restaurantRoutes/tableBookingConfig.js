@@ -78,7 +78,7 @@ const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const router = express.Router();
 
 // Helper function to generate time slots based on operating hours
-const generateTimeSlots = (openTime, closeTime, duration, maxTables = 1) => {
+const generateTimeSlots = (openTime, closeTime, duration, maxGuests = 1) => {
   const durationNum = parseInt(duration);
   const slots = [];
   const [openHour, openMin] = openTime.split(':').map(Number);
@@ -96,7 +96,13 @@ const generateTimeSlots = (openTime, closeTime, duration, maxTables = 1) => {
     const hour = Math.floor(minutes / 60) % 24; // Use modulo to handle 24+ hours
     const min = minutes % 60;
     const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-    slots.push({ time: timeStr, status: true, maxTables });
+    slots.push({ 
+      time: timeStr, 
+      status: true, 
+      maxGuests,
+      onlineGuests: 0,
+      offlineGuests: 0
+    });
   }
   
   return slots;
@@ -156,16 +162,16 @@ router.patch('/toggle', restaurantAuthMiddleware, async (req, res) => {
 router.post('/time-slots', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { duration, maxTables } = req.body;
+    const { duration, maxGuests } = req.body;
     const durationNum = parseInt(duration);
-    const maxTablesNum = parseInt(maxTables);
+    const maxGuestsNum = parseInt(maxGuests);
 
     if (!duration || isNaN(durationNum) || durationNum <= 0) {
       return res.status(400).json({ message: 'Valid duration is required' });
     }
 
-    if (!maxTables || isNaN(maxTablesNum) || maxTablesNum <= 0) {
-      return res.status(400).json({ message: 'Valid maxTables is required' });
+    if (!maxGuests || isNaN(maxGuestsNum) || maxGuestsNum <= 0) {
+      return res.status(400).json({ message: 'Valid maxGuests is required' });
     }
 
     // Check if table reservation booking is enabled
@@ -190,12 +196,14 @@ router.post('/time-slots', restaurantAuthMiddleware, async (req, res) => {
     }
 
     const { openTime, closeTime } = restaurant.basicInfo.operatingHours;
-    const timeSlots = generateTimeSlots(openTime, closeTime, durationNum, maxTablesNum);
+    const timeSlots = generateTimeSlots(openTime, closeTime, durationNum, maxGuestsNum);
 
     const slot = new TableBookingSlot({
       restaurantId,
       duration: durationNum,
-      timeSlotCreatedWith: maxTablesNum,
+      timeSlotCreatedWith: {
+        maxGuests: maxGuestsNum
+      },
       timeSlots
     });
 
@@ -214,16 +222,16 @@ router.post('/time-slots', restaurantAuthMiddleware, async (req, res) => {
 router.patch('/time-slots', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { duration, maxTables } = req.body;
+    const { duration, maxGuests } = req.body;
     const durationNum = parseInt(duration);
-    const maxTablesNum = parseInt(maxTables);
+    const maxGuestsNum = parseInt(maxGuests);
 
     if (!duration || isNaN(durationNum) || durationNum <= 0) {
       return res.status(400).json({ message: 'Valid duration is required' });
     }
 
-    if (!maxTables || isNaN(maxTablesNum) || maxTablesNum <= 0) {
-      return res.status(400).json({ message: 'Valid maxTables is required' });
+    if (!maxGuests || isNaN(maxGuestsNum) || maxGuestsNum <= 0) {
+      return res.status(400).json({ message: 'Valid maxGuests is required' });
     }
 
     // Check if table reservation booking is enabled
@@ -248,11 +256,17 @@ router.patch('/time-slots', restaurantAuthMiddleware, async (req, res) => {
     }
 
     const { openTime, closeTime } = restaurant.basicInfo.operatingHours;
-    const timeSlots = generateTimeSlots(openTime, closeTime, durationNum, maxTablesNum);
+    const timeSlots = generateTimeSlots(openTime, closeTime, durationNum, maxGuestsNum);
 
     const slot = await TableBookingSlot.findOneAndUpdate(
       { restaurantId },
-      { duration: durationNum, timeSlots },
+      { 
+        duration: durationNum, 
+        timeSlots,
+        timeSlotCreatedWith: {
+          maxGuests: maxGuestsNum
+        }
+      },
       { new: true }
     );
 
@@ -283,10 +297,22 @@ router.patch('/time-slots/status', restaurantAuthMiddleware, async (req, res) =>
       if (typeof slot.status !== 'boolean') {
         return res.status(400).json({ message: 'status must be a boolean value for each slot' });
       }
-      if (slot.maxTables !== undefined) {
-        const maxTablesNum = parseInt(slot.maxTables);
-        if (isNaN(maxTablesNum) || maxTablesNum <= 0) {
-          return res.status(400).json({ message: 'maxTables must be a positive number for each slot' });
+      if (slot.maxGuests !== undefined) {
+        const maxGuestsNum = parseInt(slot.maxGuests);
+        if (isNaN(maxGuestsNum) || maxGuestsNum <= 0) {
+          return res.status(400).json({ message: 'maxGuests must be a positive number for each slot' });
+        }
+      }
+      if (slot.onlineGuests !== undefined) {
+        const onlineGuestsNum = parseInt(slot.onlineGuests);
+        if (isNaN(onlineGuestsNum) || onlineGuestsNum < 0) {
+          return res.status(400).json({ message: 'onlineGuests must be a non-negative number for each slot' });
+        }
+      }
+      if (slot.offlineGuests !== undefined) {
+        const offlineGuestsNum = parseInt(slot.offlineGuests);
+        if (isNaN(offlineGuestsNum) || offlineGuestsNum < 0) {
+          return res.status(400).json({ message: 'offlineGuests must be a non-negative number for each slot' });
         }
       }
     }
@@ -311,8 +337,14 @@ router.patch('/time-slots/status', restaurantAuthMiddleware, async (req, res) =>
     // Update multiple slots using bulkWrite
     const bulkOperations = timeSlots.map(slot => {
       const updateObj = { 'timeSlots.$.status': slot.status };
-      if (slot.maxTables !== undefined) {
-        updateObj['timeSlots.$.maxTables'] = parseInt(slot.maxTables);
+      if (slot.maxGuests !== undefined) {
+        updateObj['timeSlots.$.maxGuests'] = parseInt(slot.maxGuests);
+      }
+      if (slot.onlineGuests !== undefined) {
+        updateObj['timeSlots.$.onlineGuests'] = parseInt(slot.onlineGuests);
+      }
+      if (slot.offlineGuests !== undefined) {
+        updateObj['timeSlots.$.offlineGuests'] = parseInt(slot.offlineGuests);
       }
 
       return {
@@ -350,6 +382,93 @@ router.patch('/time-slots/status', restaurantAuthMiddleware, async (req, res) =>
       bulkResult: {
         modifiedCount: bulkResult.modifiedCount,
         matchedCount: bulkResult.matchedCount
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST route to create a single time slot in existing configuration
+router.post('/time-slots/single', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurantId = req.restaurant.restaurantId;
+    const { time, maxGuests, onlineGuests = 0, offlineGuests = 0, status = true } = req.body;
+
+    // Validate required fields
+    if (!time) {
+      return res.status(400).json({ message: 'time is required' });
+    }
+
+    // Validate time format (HH:MM)
+    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+      return res.status(400).json({ message: 'time must be in 24-hour format (HH:MM)' });
+    }
+
+    const maxGuestsNum = parseInt(maxGuests);
+    if (!maxGuests || isNaN(maxGuestsNum) || maxGuestsNum <= 0) {
+      return res.status(400).json({ message: 'Valid maxGuests is required' });
+    }
+
+    const onlineGuestsNum = parseInt(onlineGuests);
+    if (isNaN(onlineGuestsNum) || onlineGuestsNum < 0) {
+      return res.status(400).json({ message: 'onlineGuests must be a non-negative number' });
+    }
+
+    const offlineGuestsNum = parseInt(offlineGuests);
+    if (isNaN(offlineGuestsNum) || offlineGuestsNum < 0) {
+      return res.status(400).json({ message: 'offlineGuests must be a non-negative number' });
+    }
+
+    // Check if table reservation booking is enabled
+    const restaurant = req.restaurantDetails;
+    
+    if (!restaurant?.tableReservationBooking) {
+      return res.status(403).json({ 
+        message: 'Table reservation booking is not enabled for this restaurant' 
+      });
+    }
+
+    // Find existing time slots configuration
+    const existingSlot = await TableBookingSlot.findOne({ restaurantId });
+    if (!existingSlot) {
+      return res.status(404).json({ 
+        message: 'Time slots configuration not found. Create time slots first using POST /time-slots' 
+      });
+    }
+
+    // Check if time slot already exists
+    const duplicateSlot = existingSlot.timeSlots.find(slot => slot.time === time);
+    if (duplicateSlot) {
+      return res.status(409).json({ 
+        message: `Time slot ${time} already exists` 
+      });
+    }
+
+    // Create new time slot object
+    const newTimeSlot = {
+      time,
+      maxGuests: maxGuestsNum,
+      onlineGuests: onlineGuestsNum,
+      offlineGuests: offlineGuestsNum,
+      status
+    };
+
+    // Add the new time slot to existing configuration
+    const updatedSlot = await TableBookingSlot.findOneAndUpdate(
+      { restaurantId },
+      { $push: { timeSlots: newTimeSlot } },
+      { new: true }
+    );
+
+    // Get the newly created slot (last one in the array)
+    const createdSlot = updatedSlot.timeSlots[updatedSlot.timeSlots.length - 1];
+
+    res.status(201).json({
+      message: 'Single time slot created successfully',
+      data: {
+        slotConfiguration: updatedSlot,
+        createdSlot: createdSlot
       }
     });
   } catch (error) {

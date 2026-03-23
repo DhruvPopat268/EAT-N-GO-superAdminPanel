@@ -30,19 +30,19 @@ const restaurantSchema = new mongoose.Schema({
   },
 
   // Business Details
-businessDetails: {
-  licenseNumber: { type: String, required: true },
-  gstNumber: { type: String, required: true },
-  bankAccount: { type: String, required: true },
-  ifscCode: { type: String, required: true },
-  description: { type: String },
+  businessDetails: {
+    licenseNumber: { type: String, required: true },
+    gstNumber: { type: String, required: true },
+    bankAccount: { type: String, required: true },
+    ifscCode: { type: String, required: true },
+    description: { type: String },
 
-  currency: {
-    code: { type: String },     // e.g., "INR"
-    name: { type: String },     // e.g., "Indian Rupee"
-    symbol: { type: String }    // e.g., "₹"
-  }
-},
+    currency: {
+      code: { type: String },     // e.g., "INR"
+      name: { type: String },     // e.g., "Indian Rupee"
+      symbol: { type: String }    // e.g., "₹"
+    }
+  },
 
   // Documents
   documents: {
@@ -60,12 +60,12 @@ businessDetails: {
 
   // Status
   status: { type: String, enum: ['pending', 'approved', 'rejected', 'suspended'], default: 'pending' },
-  
+
   // Table Reservation Booking
   tableReservationBooking: { type: Boolean, default: false },
-  
+
   tableReservationBookingConfig: {
-    flatPercentageDiscountOnFinalBill: {
+    adminOfferPercentageOnBill: {
       type: Number,
       min: 0,
       max: 100,
@@ -77,7 +77,7 @@ businessDetails: {
       default: 0
     }
   },
-  
+
   // Admin Commission
   adminCommission: {
     orderCommission: {
@@ -97,7 +97,7 @@ businessDetails: {
       default: Date
     }
   },
-  
+
   // Rejection Details
   rejectionReason: { type: String },
   rejectedFormFields: [{ type: String }],

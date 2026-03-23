@@ -482,7 +482,7 @@ router.get('/admin/table-reservation-config', authMiddleware, async (req, res) =
     
     const restaurants = await Restaurant.find(
       { status: 'approved' },
-      '_id basicInfo.restaurantName contactDetails.city contactDetails.state contactDetails.country tableReservationBooking tableReservationBookingConfig'
+      '_id basicInfo.restaurantName contactDetails.city contactDetails.state contactDetails.country tableReservationBooking tableReservationBookingConfig businessDetails.currency'
     )
     .sort({ 'basicInfo.restaurantName': 1 })
     .skip(skip)
@@ -496,9 +496,10 @@ router.get('/admin/table-reservation-config', authMiddleware, async (req, res) =
       country: restaurant.contactDetails.country,
       tableReservationBooking: restaurant.tableReservationBooking,
       tableReservationBookingConfig: restaurant.tableReservationBookingConfig || {
-        flatPercentageDiscountOnFinalBill: 0,
+        adminOfferPercentageOnBill: 0,
         coverChargePerPerson: 0
-      }
+      },
+      currency: restaurant.businessDetails?.currency || null
     }));
 
     res.status(200).json({
@@ -572,7 +573,7 @@ router.patch('/admin/table-reservation-booking', authMiddleware, async (req, res
 // Update table reservation booking config
 router.patch('/admin/table-reservation-config', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId, flatPercentageDiscountOnFinalBill, coverChargePerPerson } = req.body;
+    const { restaurantId, adminOfferPercentageOnBill, coverChargePerPerson } = req.body;
 
     if (!restaurantId) {
       return res.status(400).json({
@@ -582,12 +583,12 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
     }
 
     // Validate input
-    if (flatPercentageDiscountOnFinalBill !== undefined) {
-      const discount = parseFloat(flatPercentageDiscountOnFinalBill);
+    if (adminOfferPercentageOnBill !== undefined) {
+      const discount = parseFloat(adminOfferPercentageOnBill);
       if (isNaN(discount) || discount < 0 || discount > 100) {
         return res.status(400).json({
           success: false,
-          message: 'flatPercentageDiscountOnFinalBill must be between 0 and 100'
+          message: 'adminOfferPercentageOnBill must be between 0 and 100'
         });
       }
     }
@@ -604,8 +605,8 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
 
     // Prepare update object
     const updateObj = {};
-    if (flatPercentageDiscountOnFinalBill !== undefined) {
-      updateObj['tableReservationBookingConfig.flatPercentageDiscountOnFinalBill'] = parseFloat(flatPercentageDiscountOnFinalBill);
+    if (adminOfferPercentageOnBill !== undefined) {
+      updateObj['tableReservationBookingConfig.adminOfferPercentageOnBill'] = parseFloat(adminOfferPercentageOnBill);
     }
     if (coverChargePerPerson !== undefined) {
       updateObj['tableReservationBookingConfig.coverChargePerPerson'] = parseFloat(coverChargePerPerson);

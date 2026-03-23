@@ -37,7 +37,7 @@ const Configuration = () => {
   const [editDialog, setEditDialog] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [editData, setEditData] = useState({
-    flatPercentageDiscountOnFinalBill: 0,
+    adminOfferPercentageOnBill: 0,
     coverChargePerPerson: 0
   });
   const [updating, setUpdating] = useState(false);
@@ -95,7 +95,7 @@ const Configuration = () => {
   const handleEditConfig = (restaurant) => {
     setSelectedRestaurant(restaurant);
     setEditData({
-      flatPercentageDiscountOnFinalBill: restaurant.tableReservationBookingConfig.flatPercentageDiscountOnFinalBill || 0,
+      adminOfferPercentageOnBill: restaurant.tableReservationBookingConfig.adminOfferPercentageOnBill || 0,
       coverChargePerPerson: restaurant.tableReservationBookingConfig.coverChargePerPerson || 0
     });
     setEditDialog(true);
@@ -107,7 +107,7 @@ const Configuration = () => {
       setUpdating(true);
       const response = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/table-reservation-config`, {
         restaurantId: selectedRestaurant.restaurantId,
-        flatPercentageDiscountOnFinalBill: parseFloat(editData.flatPercentageDiscountOnFinalBill),
+        adminOfferPercentageOnBill: parseFloat(editData.adminOfferPercentageOnBill),
         coverChargePerPerson: parseFloat(editData.coverChargePerPerson)
       },{withCredentials: true});
 
@@ -129,7 +129,7 @@ const Configuration = () => {
     setEditDialog(false);
     setSelectedRestaurant(null);
     setEditData({
-      flatPercentageDiscountOnFinalBill: 0,
+      adminOfferPercentageOnBill: 0,
       coverChargePerPerson: 0
     });
   };
@@ -170,7 +170,7 @@ const Configuration = () => {
               <TableCell>Restaurant Name</TableCell>
               <TableCell>Address</TableCell>
               <TableCell align="center">Booking Status</TableCell>
-              <TableCell align="center">Admin Discount</TableCell>
+              <TableCell align="center">Admin Offer %</TableCell>
               <TableCell align="center">Cover Charge Per Person</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
@@ -208,12 +208,12 @@ const Configuration = () => {
                 </TableCell>
                 <TableCell align="center">
                   <Typography variant="body2" sx={{ color: '#000' }}>
-                    {restaurant.tableReservationBookingConfig.flatPercentageDiscountOnFinalBill}%
+                    {restaurant.tableReservationBookingConfig.adminOfferPercentageOnBill}%
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
                   <Typography variant="body2" sx={{ color: '#000' }}>
-                    ₹{restaurant.tableReservationBookingConfig.coverChargePerPerson}
+                    {restaurant.currency?.symbol || '₹'}{restaurant.tableReservationBookingConfig.coverChargePerPerson}
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
@@ -262,15 +262,15 @@ const Configuration = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Admin Discount for User Final Bill (%)"
+                label="Admin Offer Percentage On Bill (%)"
                 type="number"
-                value={editData.flatPercentageDiscountOnFinalBill}
+                value={editData.adminOfferPercentageOnBill}
                 onChange={(e) => setEditData({
                   ...editData,
-                  flatPercentageDiscountOnFinalBill: e.target.value
+                  adminOfferPercentageOnBill: e.target.value
                 })}
                 inputProps={{ min: 0, max: 100, step: 0.1 }}
-                helperText="Enter admin discount percentage (0-100)"
+                helperText="Enter admin offer percentage on bill (0-100)"
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2,
@@ -281,7 +281,7 @@ const Configuration = () => {
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Cover Charge Per Person (₹)"
+                label={`Cover Charge Per Person (${selectedRestaurant?.currency?.symbol || '₹'})`}
                 type="number"
                 value={editData.coverChargePerPerson}
                 onChange={(e) => setEditData({
@@ -289,7 +289,7 @@ const Configuration = () => {
                   coverChargePerPerson: e.target.value
                 })}
                 inputProps={{ min: 0, step: 0.01 }}
-                helperText="Enter cover charge amount in rupees"
+                helperText={`Enter cover charge amount in ${selectedRestaurant?.currency?.name || 'rupees'}`}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2,

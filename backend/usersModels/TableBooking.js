@@ -20,6 +20,12 @@ const tableBookingSchema = new mongoose.Schema(
     },
 
     numberOfGuests: { type: Number },
+    
+    allocatedTables: [{
+      tableNumbers: [{ type: String }],
+      allocatedAt: { type: Date, default: Date.now }
+    }],
+    
     bookingTimings: {
       date: { type: String },
       slotTime: { type: String }
@@ -32,13 +38,24 @@ const tableBookingSchema = new mongoose.Schema(
         ref: 'TableBookingOffers'
       },
       offerName: { type: String },
-      restaurantOfferPercentage: { type: Number },
-      adminOfferPercentage: { type: Number }
+      restaurantOfferPercentageOnBill: { type: Number },
+      adminOfferPercentageOnBill: { type: Number },
+      usageStatus: {
+        type: String,
+        enum: ['pending', 'redeemed', 'expired', 'cancelled'],
+        default: 'pending'
+      }
     },
 
-    totalAmount: {
+    coverCharges: {
       type: Number,
       required: true
+    },
+
+    coverChargesUsageStatus: {
+      type: String,
+      enum: ['notRedeemed', 'redeemed'],
+      default: 'notRedeemed'
     },
 
     currency: {
@@ -50,20 +67,41 @@ const tableBookingSchema = new mongoose.Schema(
     // Table booking status
     status: {
       type: String,
-      enum: ['confirmed', 'waiting', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded'],
-      default: 'confirmed',
+      enum: ['pending', 'confirmed', 'arrived', 'seated', 'completed', 'cancelled', 'rejected', 'expired', 'no_show'],
+      default: 'pending',
     },
 
-    // Cancellation/refund info
-    cancelledBy: {
+    // Track who updated the status last
+    lastStatusUpdatedBy: {
       type: String,
-      enum: ['Restaurant', 'User']
+      enum: ['User', 'Restaurant', 'System']
     },
-    cancellationReasonId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'OrderActionReason'
+
+    // Cancellation info
+    cancellation: {
+      cancelledBy: {
+        type: String,
+        enum: ['Restaurant', 'User']
+      },
+      reasonId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrderActionReason'
+      },
+      reason: { type: String }
     },
-    cancellationReason: { type: String },
+
+    // Rejection info
+    rejection: {
+      rejectedBy: {
+        type: String,
+        enum: ['Restaurant', 'System']
+      },
+      reasonId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrderActionReason'
+      },
+      reason: { type: String }
+    },
     
   },
   {
