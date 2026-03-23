@@ -60,9 +60,14 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Validate booking date (should be today or future)
-    const bookingDate = new Date(bookingTimings.date);
+    // Handle DD-MM-YYYY format properly
+    const [day, month, year] = bookingTimings.date.split('-');
+    const bookingDate = new Date(year, month - 1, day); // month is 0-indexed
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    console.log('Booking date parsed:', bookingDate);
+    console.log('Today date:', today);
     
     if (bookingDate < today) {
       return res.status(400).json({
@@ -94,20 +99,32 @@ router.post('/', verifyToken, async (req, res) => {
 
     // If booking is for today, validate that the slot time hasn't passed
     const isToday = bookingDate.getTime() === today.getTime();
+    console.log('Is today booking:', isToday);
+    
     if (isToday) {
       const currentTime = new Date();
       const currentHours = currentTime.getHours();
       const currentMinutes = currentTime.getMinutes();
       const currentTimeInMinutes = currentHours * 60 + currentMinutes;
       
-      // Parse slot time (format: "14:30")
+      console.log('Current time in minutes:', currentTimeInMinutes, `(${currentHours}:${currentMinutes})`);
+      
+      // Parse slot time (format: "12:00")
       const [slotHours, slotMinutes] = requestedSlot.time.split(':').map(Number);
       const slotTimeInMinutes = slotHours * 60 + slotMinutes;
+      
+      console.log('Slot time in minutes:', slotTimeInMinutes, `(${slotHours}:${slotMinutes})`);
       
       if (slotTimeInMinutes <= currentTimeInMinutes) {
         return res.status(400).json({
           success: false,
-          message: 'Cannot book a time slot that has already passed today'
+          message: 'Cannot book a time slot that has already passed today',
+          debug: {
+            currentTime: `${currentHours}:${currentMinutes}`,
+            slotTime: requestedSlot.time,
+            currentTimeInMinutes,
+            slotTimeInMinutes
+          }
         });
       }
     }
