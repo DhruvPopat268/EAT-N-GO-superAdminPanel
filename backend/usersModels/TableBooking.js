@@ -15,6 +15,12 @@ const tableBookingSchema = new mongoose.Schema(
       required: true,
     },
 
+    checkAvailabilityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TableBookingCheckAvailability',
+      required: true
+    },
+
     tableBookingNo: {
       type: Number
     },
@@ -52,10 +58,14 @@ const tableBookingSchema = new mongoose.Schema(
       required: true
     },
 
-    coverChargesUsageStatus: {
+    coverChargePaymentId: {
+      type: String
+    },
+
+    coverChargePaymentStatus: {
       type: String,
-      enum: ['notRedeemed', 'redeemed'],
-      default: 'notRedeemed'
+      enum: ['pending', 'paid', 'failed', 'refunded', 'redeemed'],
+      default: 'pending'
     },
 
     currency: {

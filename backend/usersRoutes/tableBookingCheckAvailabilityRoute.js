@@ -187,8 +187,7 @@ router.post('/', verifyToken, async (req, res) => {
         offerId: offer._id,
         offerName: offer.name,
         restaurantOfferPercentageOnBill,
-        adminOfferPercentageOnBill,
-        usageStatus: 'pending'
+        adminOfferPercentageOnBill
       };
     }
 
@@ -214,6 +213,7 @@ router.post('/', verifyToken, async (req, res) => {
         symbol: '₹'
       },
       expiresAt,
+      status: 'pending',
       ...(offerData && { offer: offerData })
     };
 
@@ -235,24 +235,9 @@ router.post('/', verifyToken, async (req, res) => {
       success: true,
       message: 'Table availability confirmed',
       data: {
-        checkAvailabilityId: availabilityCheck._id,
-        expiresAt: availabilityCheck.expiresAt,
+        _id: availabilityCheck._id,
         expiresInMinutes: expiryMinutes,
         remainingCapacity: availableCapacity - numberOfGuests,
-        slotDetails: {
-          slotId: bookingTimings.slotId,
-          time: slotTime,
-          maxGuests,
-          currentOccupied: {
-            onlineGuests,
-            offlineGuests,
-            total: currentOccupiedGuests
-          },
-          availableCapacity,
-          afterBooking: {
-            remainingCapacity: availableCapacity - numberOfGuests
-          }
-        },
         bookingDetails: availabilityData
       }
     });
