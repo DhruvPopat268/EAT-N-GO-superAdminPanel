@@ -67,11 +67,6 @@ router.post('/', verifyToken, async (req, res) => {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0); // Use UTC for consistency
     
-    console.log('Input date string:', bookingTimings.date);
-    console.log('Parsed components:', { day, month, year });
-    console.log('Booking date parsed (UTC):', bookingDate.toISOString());
-    console.log('Today date (UTC):', today.toISOString());
-    
     if (bookingDate < today) {
       return res.status(400).json({
         success: false,
@@ -102,7 +97,6 @@ router.post('/', verifyToken, async (req, res) => {
 
     // If booking is for today, validate that the slot time hasn't passed
     const isToday = bookingDate.getTime() === today.getTime();
-    console.log('Is today booking:', isToday);
     
     if (isToday) {
       // Convert current UTC time to IST (UTC + 5:30) since slots are stored in IST
@@ -115,16 +109,9 @@ router.post('/', verifyToken, async (req, res) => {
       const currentISTHours = Math.floor(currentISTMinutes / 60) % 24;
       const currentISTMins = currentISTMinutes % 60;
       
-      console.log('Current UTC time:', `${currentTime.getUTCHours()}:${currentTime.getUTCMinutes().toString().padStart(2, '0')}`);
-      console.log('Current IST time:', `${currentISTHours}:${currentISTMins.toString().padStart(2, '0')}`);
-      console.log('Current IST time in minutes:', currentISTMinutes % (24 * 60));
-      
       // Parse slot time (format: "12:00" - assumed to be in IST)
       const [slotHours, slotMinutes] = requestedSlot.time.split(':').map(Number);
       const slotTimeInMinutes = slotHours * 60 + slotMinutes;
-      
-      console.log('Slot time (IST):', `${slotHours}:${slotMinutes.toString().padStart(2, '0')}`);
-      console.log('Slot time in minutes:', slotTimeInMinutes);
       
       // Compare IST times
       const currentISTTimeInDay = currentISTMinutes % (24 * 60); // Handle day overflow
@@ -361,6 +348,104 @@ router.get('/cleanup-expired', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error cleaning up expired availability checks',
+      error: error.message
+    });
+  }
+});
+
+// POST route to get available slots for a specific date
+router.post('/get-slots', verifyToken, async (req, res) => {
+  try {
+    const { restaurantId, date } = req.body;
+
+    // Validate required fields
+    if (!restaurantId || !date) {
+      return res.status(400).json({
+        success: false,
+        message: 'restaurantId and date are required'
+      });
+    }
+
+    // Find time slots configuration for the restaurant
+    const timeSlots = await TableBookingSlot.findOne({ restaurantId });
+    if (!timeSlots) {
+      return res.status(404).json({
+        success: false,
+        message: 'No time slots configured for this restaurant'
+      });
+    }
+
+    // Parse the provided date (DD-MM-YYYY format)
+    const [day, month, year] = date.split('-');
+    const providedDate = new Date(Date.UTC(year, month - 1, day));
+    
+    // Get today's date in UTC
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    
+    // Check if provided date is today
+    const isToday = providedDate.getTime() === today.getTime();
+
+    // Filter slots based on status and time (if today)
+    let availableSlots = timeSlots.timeSlots.filter(slot => slot.status === true);
+    let currentISTTime = null;
+    
+    if (isToday) {
+      // Convert current UTC time to IST since slots are stored in IST
+      const currentTime = new Date();
+      const istOffset = 5.5 * 60; // IST is UTC + 5:30 (5.5 hours in minutes)
+      const currentUTCMinutes = currentTime.getUTCHours() * 60 + currentTime.getUTCMinutes();
+      const currentISTMinutes = currentUTCMinutes + istOffset;
+      const currentISTTimeInDay = currentISTMinutes % (24 * 60); // Handle day overflow
+      
+      const currentISTHours = Math.floor(currentISTTimeInDay / 60);
+      const currentISTMins = currentISTTimeInDay % 60;
+      
+      // Store formatted IST time for response
+      currentISTTime = `${currentISTHours}:${currentISTMins.toString().padStart(2, '0')}`;
+      
+      // Filter out slots that have already passed today
+      availableSlots = availableSlots.filter(slot => {
+        const [slotHours, slotMinutes] = slot.time.split(':').map(Number);
+        const slotTimeInMinutes = slotHours * 60 + slotMinutes;
+        
+        // Return slots that are in the future (greater than current IST time)
+        return slotTimeInMinutes > currentISTTimeInDay;
+      });
+    }
+
+    // Format the response with slot details
+    const formattedSlots = availableSlots.map(slot => ({
+      slotId: slot._id,
+      time: slot.time
+    }));
+
+    // Build response data
+    const responseData = {
+      restaurantId,
+      date,
+      isToday,
+      totalSlots: formattedSlots.length,
+      slots: formattedSlots,
+      slotDuration: timeSlots.duration
+    };
+
+    // Add current IST time only if it's today
+    if (isToday && currentISTTime) {
+      responseData.currentISTTime = currentISTTime;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Available slots retrieved for ${date}`,
+      data: responseData
+    });
+
+  } catch (error) {
+    console.error('Error getting available slots:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting available slots',
       error: error.message
     });
   }
