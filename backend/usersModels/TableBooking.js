@@ -77,7 +77,7 @@ const tableBookingSchema = new mongoose.Schema(
     // Table booking status
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'arrived', 'seated', 'completed', 'cancelled', 'rejected', 'expired', 'no_show'],
+      enum: ['pending', 'confirmed', 'arrived', 'seated', 'completed', 'cancelled', 'didNotArrived'],
       default: 'pending',
     },
 
@@ -92,19 +92,6 @@ const tableBookingSchema = new mongoose.Schema(
       cancelledBy: {
         type: String,
         enum: ['Restaurant', 'User']
-      },
-      reasonId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'OrderActionReason'
-      },
-      reason: { type: String }
-    },
-
-    // Rejection info
-    rejection: {
-      rejectedBy: {
-        type: String,
-        enum: ['Restaurant', 'System']
       },
       reasonId: {
         type: mongoose.Schema.Types.ObjectId,

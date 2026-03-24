@@ -20,6 +20,7 @@ const couponRoutes = require('../restaurantRoutes/couponRoutes');
 const userRatingRoutes = require('../restaurantRoutes/userRatingRoutes');
 const userRoutes = require('../restaurantRoutes/userRoute');
 const tableBookingConfigRoutes = require('../restaurantRoutes/tableBookingConfig');
+const tableBookingRoutes = require('../restaurantRoutes/tableBookingRoutes');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs').promises;
@@ -891,6 +892,9 @@ router.get('/suspended', authMiddleware, async (req, res) => {
 
 // Use table booking configuration routes (MUST be before /:id route)
 router.use('/table-booking', tableBookingConfigRoutes);
+
+// Use table booking routes (MUST be before /:id route)
+router.use('/table-bookings', tableBookingRoutes);
 
 // Use order cancel refund routes (MUST be before /:id route)
 router.use('/order-cancel-refund', orderCancelRefundRoutes);

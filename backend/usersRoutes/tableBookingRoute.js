@@ -325,12 +325,7 @@ router.post('/dummy', verifyToken, async (req, res) => {
       success: true,
       message: 'Table booking created successfully (dummy payment)',
       data: {
-        ...populatedBooking.toObject(),
-        paymentInfo: {
-          paymentId: dummyPaymentId,
-          paymentStatus: 'paid',
-          paymentMethod: 'dummy'
-        }
+        ...populatedBooking.toObject()
       }
     });
 
