@@ -202,7 +202,7 @@ router.post('/', verifyToken, async (req, res) => {
       restaurantId,
       numberOfGuests,
       bookingTimings: {
-        date: bookingTimings.date,
+        date: bookingDate,
         slotTime: slotTime,
         slotId: bookingTimings.slotId
       },

@@ -1,75 +1,3 @@
-/**
- * Table Booking Configuration Routes
- * 
- * API Endpoints:
- * GET    /api/restaurants/table-booking/                    - Get table booking configuration
- * PATCH  /api/restaurants/table-booking/toggle             - Enable/disable table reservation booking
- * POST   /api/restaurants/table-booking/time-slots         - Create time slots configuration
- * PATCH  /api/restaurants/table-booking/time-slots         - Update time slots configuration
- * PATCH  /api/restaurants/table-booking/time-slots/status  - Update status of specific time slot
- * POST   /api/restaurants/table-booking/offers             - Create table booking offers
- * PATCH  /api/restaurants/table-booking/offers             - Update table booking offers
- * DELETE /api/restaurants/table-booking/offers             - Delete table booking offers
- * 
- * Authentication: All routes require restaurantAuthMiddleware
- * Validation: time-slots and offers routes require tableReservationBooking = true
- * 
- * Usage Examples:
- * 
- * 1. Get Configuration:
- *    GET /api/restaurants/table-booking/
- *    Headers: { Authorization: "Bearer <restaurant_token>" }
- *    Response: {
- *      tableReservationBooking: boolean,
- *      timeSlots: { duration, timeSlots: [{ _id, time, status }] } | null,
- *      offers: { offerType, percentage, fixedAmount, coverChargePerPerson, status, currency } | null
- *    }
- * 
- * 2. Toggle Table Booking:
- *    PATCH /api/restaurants/table-booking/toggle
- *    Body: { tableReservationBooking: true }
- * 
- * 3. Create Time Slots:
- *    POST /api/restaurants/table-booking/time-slots
- *    Body: { duration: 60 }
- *    Note: Auto-generates slots from restaurant operating hours
- * 
- * 4. Update Time Slots:
- *    PATCH /api/restaurants/table-booking/time-slots
- *    Body: { duration: 30 }
- * 
- * 5. Update Specific Time Slot Status:
- *    PATCH /api/restaurants/table-booking/time-slots/status
- *    Body: { 
- *      timeSlotId: "slot_id_1", 
- *      status: false 
- *    }
- *    Note: Updates status of a single time slot by its MongoDB _id
- * 
- * 6. Create Table Booking Offers:
- *    POST /api/restaurants/table-booking/offers
- *    Body: {
- *      offerType: "percentage",
- *      percentage: 20,
- *      coverChargePerPerson: 100,
- *      status: true,
- *      currency: { code: "INR", name: "Indian Rupee", symbol: "₹" }
- *    }
- * 
- * 7. Update Table Booking Offers:
- *    PATCH /api/restaurants/table-booking/offers
- *    Body: {
- *      offerType: "fixed",
- *      fixedAmount: 50,
- *      coverChargePerPerson: 150,
- *      status: false,
- *      currency: { code: "INR", name: "Indian Rupee", symbol: "₹" }
- *    }
- * 
- * 8. Delete Table Booking Offers:
- *    DELETE /api/restaurants/table-booking/offers
- */
-
 const express = require('express');
 const Restaurant = require('../models/Restaurant');
 const TableBookingSlot = require('../restaurantModels/TableBookingSlot');
@@ -473,6 +401,58 @@ router.post('/time-slots/single', restaurantAuthMiddleware, async (req, res) => 
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// GET route to get active slots with online guests (frozen capacity)
+router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurantId = req.restaurant.restaurantId;
+
+    // Find time slots for the restaurant
+    const timeSlots = await TableBookingSlot.findOne({ restaurantId });
+    
+    if (!timeSlots) {
+      return res.status(404).json({
+        success: false,
+        message: 'No time slots configured for this restaurant'
+      });
+    }
+
+    // Filter slots with status: true and onlineGuests > 0
+    const activeSlotsWithOnlineGuests = timeSlots.timeSlots.filter(slot => 
+      slot.status === true && slot.onlineGuests > 0
+    );
+
+    // Format the response
+    const formattedSlots = activeSlotsWithOnlineGuests.map(slot => ({
+      slotId: slot._id,
+      time: slot.time,
+      maxGuests: slot.maxGuests,
+      onlineGuests: slot.onlineGuests,
+      offlineGuests: slot.offlineGuests,
+      availableCapacity: slot.maxGuests - (slot.onlineGuests + slot.offlineGuests),
+      status: slot.status
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: 'Active slots with online guests retrieved successfully',
+      data: {
+        restaurantId,
+        totalActiveSlots: formattedSlots.length,
+        slots: formattedSlots,
+        slotDuration: timeSlots.duration
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching active slots:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching active slots',
+      error: error.message
+    });
   }
 });
 

@@ -17,7 +17,7 @@ const tableBookingCheckAvailabilitySchema = new mongoose.Schema(
     numberOfGuests: { type: Number },
     
     bookingTimings: {
-      date: { type: String },
+      date: { type: Date },
       slotTime: { type: String },
       slotId: { 
         type: mongoose.Schema.Types.ObjectId,

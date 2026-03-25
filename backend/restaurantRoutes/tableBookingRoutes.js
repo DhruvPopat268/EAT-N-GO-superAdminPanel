@@ -8,12 +8,17 @@ const router = express.Router();
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, activeBookings } = req.query;
     
     const skip = (page - 1) * limit;
     
     // Build filter object
     const filter = { restaurantId };
+    
+    // Filter out completed and cancelled bookings if activeBookings is true
+    if (activeBookings === 'true') {
+      filter.status = { $nin: ['completed', 'cancelled'] };
+    }
     
     // Date range filter
     if (date) {
@@ -37,7 +42,7 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -56,7 +61,6 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching table bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching table bookings',
@@ -98,7 +102,7 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -117,7 +121,6 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching pending bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching pending bookings',
@@ -159,7 +162,7 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -178,7 +181,6 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching confirmed bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching confirmed bookings',
@@ -220,7 +222,7 @@ router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -239,7 +241,6 @@ router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching arrived bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching arrived bookings',
@@ -281,7 +282,7 @@ router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -300,7 +301,6 @@ router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching seated bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching seated bookings',
@@ -342,7 +342,7 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -361,7 +361,6 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching completed bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching completed bookings',
@@ -403,7 +402,7 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -422,7 +421,6 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching cancelled bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching cancelled bookings',
@@ -464,7 +462,7 @@ router.get('/not-arrived', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
+      .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -483,7 +481,6 @@ router.get('/not-arrived', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching not arrived bookings:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching not arrived bookings',
@@ -526,7 +523,6 @@ router.patch('/allocate-tables', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error allocating tables:', error);
     res.status(500).json({
       success: false,
       message: 'Error allocating tables',
@@ -561,7 +557,6 @@ router.post('/details', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching booking details:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching booking details',
@@ -596,7 +591,6 @@ router.patch('/arrived', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating arrival status:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating arrival status',
@@ -631,7 +625,6 @@ router.patch('/seated', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating seated status:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating seated status',
@@ -676,7 +669,6 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
 
       // Check if slot was found and updated
       if (slotUpdateResult.matchedCount === 0) {
-        console.error(`Slot not found for slotId: ${slotId}, restaurantId: ${restaurantId}`);
         // Still return success for booking completion, but log the issue
         return res.status(200).json({
           success: true,
@@ -685,12 +677,7 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
           data: booking
         });
       }
-
-      if (slotUpdateResult.modifiedCount === 0) {
-        console.warn(`Slot found but not modified for slotId: ${slotId}`);
-      }
     } else {
-      console.error(`No slotId found in booking: ${bookingId}`);
       return res.status(200).json({
         success: true,
         message: 'Booking marked as completed, but no slotId found',
@@ -706,7 +693,6 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating completed status:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating completed status',
@@ -741,7 +727,6 @@ router.patch('/did-not-arrive', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating did not arrive status:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating did not arrive status',
@@ -777,6 +762,40 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       });
     }
 
+    // Update slot: remove guests from onlineGuests using slotId
+    const slotId = booking.bookingTimings.slotId;
+    const numberOfGuests = booking.numberOfGuests;
+
+    if (slotId) {
+      const slotUpdateResult = await TableBookingSlot.updateOne(
+        { 
+          restaurantId,
+          'timeSlots._id': slotId 
+        },
+        { 
+          $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
+        }
+      );
+
+      // Check if slot was found and updated
+      if (slotUpdateResult.matchedCount === 0) {
+        // Still return success for booking cancellation, but log the issue
+        return res.status(200).json({
+          success: true,
+          message: 'Booking cancelled successfully, but slot capacity could not be updated',
+          warning: 'Slot not found - capacity may be inconsistent',
+          data: booking
+        });
+      }
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: 'Booking cancelled successfully, but no slotId found',
+        warning: 'Missing slotId - capacity may be inconsistent',
+        data: booking
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully',
@@ -784,7 +803,6 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error cancelling booking:', error);
     res.status(500).json({
       success: false,
       message: 'Error cancelling booking',
