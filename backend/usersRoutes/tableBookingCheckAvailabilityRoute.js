@@ -525,6 +525,4 @@ router.post('/offers-coverCharges', verifyToken, async (req, res) => {
   }
 });
 
-
-
 module.exports = router;

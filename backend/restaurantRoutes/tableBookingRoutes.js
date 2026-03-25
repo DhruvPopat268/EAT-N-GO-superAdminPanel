@@ -1,5 +1,6 @@
 const express = require('express');
 const TableBooking = require('../usersModels/TableBooking');
+const TableBookingSlot = require('../restaurantModels/TableBookingSlot');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const router = express.Router();
 
@@ -7,15 +8,36 @@ const router = express.Router();
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ restaurantId });
+    // Build filter object
+    const filter = { restaurantId };
     
-    const bookings = await TableBooking.find({ restaurantId })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -47,21 +69,36 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
 router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'pending' 
-    });
+    // Build filter object
+    const filter = { restaurantId, status: 'pending' };
     
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'pending' 
-    })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -93,21 +130,36 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
 router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'confirmed' 
-    });
+    // Build filter object
+    const filter = { restaurantId, status: 'confirmed' };
     
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'confirmed' 
-    })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -139,21 +191,36 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
 router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'arrived' 
-    });
+    // Build filter object
+    const filter = { restaurantId, status: 'arrived' };
     
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'arrived' 
-    })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -185,21 +252,36 @@ router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
 router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'seated' 
-    });
+    // Build filter object
+    const filter = { restaurantId, status: 'seated' };
     
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'seated' 
-    })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -231,21 +313,36 @@ router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
 router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'completed' 
-    });
+    // Build filter object
+    const filter = { restaurantId, status: 'completed' };
     
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'completed' 
-    })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -277,21 +374,36 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
 router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'cancelled' 
-    });
+    // Build filter object
+    const filter = { restaurantId, status: 'cancelled' };
     
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'cancelled' 
-    })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -319,31 +431,46 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
   }
 });
 
-// GET route to get expired table bookings
-router.get('/expired', restaurantAuthMiddleware, async (req, res) => {
+// GET route to get not arrived table bookings
+router.get('/not-arrived', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, date, slot } = req.query;
     
     const skip = (page - 1) * limit;
     
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'expired' 
-    });
+    // Build filter object
+    const filter = { restaurantId, status: 'notArrived' };
     
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'expired' 
-    })
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
+      .sort({ 'bookingTimings.date': -1, 'bookingTimings.slotTime': -1, createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
     res.status(200).json({
       success: true,
-      message: 'Expired table bookings retrieved successfully',
+      message: 'Not arrived table bookings retrieved successfully',
       data: {
         bookings,
         pagination: {
@@ -356,10 +483,10 @@ router.get('/expired', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching expired bookings:', error);
+    console.error('Error fetching not arrived bookings:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching expired bookings',
+      message: 'Error fetching not arrived bookings',
       error: error.message
     });
   }
@@ -532,6 +659,26 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
       });
     }
 
+    // Update slot: remove guests from onlineGuests
+    const slotTime = booking.bookingTimings.slotTime;
+    const numberOfGuests = booking.numberOfGuests;
+
+    // Find the slot and update guest counts
+    const timeSlots = await TableBookingSlot.findOne({ restaurantId });
+    const requestedSlot = timeSlots?.timeSlots.find(slot => slot.time === slotTime);
+    
+    if (requestedSlot) {
+      await TableBookingSlot.updateOne(
+        { 
+          restaurantId,
+          'timeSlots._id': requestedSlot._id 
+        },
+        { 
+          $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
+        }
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: 'Booking marked as completed',
@@ -556,7 +703,7 @@ router.patch('/did-not-arrive', restaurantAuthMiddleware, async (req, res) => {
 
     const booking = await TableBooking.findOneAndUpdate(
       { _id: bookingId, restaurantId, status: 'confirmed' },
-      { status: 'didNotArrived' },
+      { status: 'notArrived' },
       { new: true }
     ).populate('userId', 'fullName phone');
 
@@ -593,7 +740,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       { 
         _id: bookingId, 
         restaurantId, 
-        status: { $in: ['pending', 'confirmed', 'didNotArrived'] }
+        status: { $in: ['pending', 'confirmed', 'notArrived'] }
       },
       { 
         status: 'cancelled',
@@ -621,52 +768,6 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error cancelling booking',
-      error: error.message
-    });
-  }
-});
-
-// GET route to get no_show table bookings
-router.get('/no-show', restaurantAuthMiddleware, async (req, res) => {
-  try {
-    const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10 } = req.query;
-    
-    const skip = (page - 1) * limit;
-    
-    const totalCount = await TableBooking.countDocuments({ 
-      restaurantId, 
-      status: 'no_show' 
-    });
-    
-    const bookings = await TableBooking.find({ 
-      restaurantId, 
-      status: 'no_show' 
-    })
-      .populate('userId', 'fullName phone')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    res.status(200).json({
-      success: true,
-      message: 'No-show table bookings retrieved successfully',
-      data: {
-        bookings,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalCount / limit),
-          totalCount,
-          limit: parseInt(limit)
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Error fetching no-show bookings:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching no-show bookings',
       error: error.message
     });
   }
