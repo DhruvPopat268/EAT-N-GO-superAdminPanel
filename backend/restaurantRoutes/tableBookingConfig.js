@@ -409,9 +409,9 @@ router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
 
-    // Find time slots for the restaurant
+    // Get time slots
     const timeSlots = await TableBookingSlot.findOne({ restaurantId });
-    
+
     if (!timeSlots) {
       return res.status(404).json({
         success: false,
@@ -419,49 +419,58 @@ router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Filter slots with status: true and onlineGuests > 0
-    const activeSlotsWithOnlineGuests = timeSlots.timeSlots.filter(slot => 
-      slot.status === true && slot.onlineGuests > 0
+    // ✅ Filter active slots with online guests
+    const activeSlotsWithOnlineGuests = timeSlots.timeSlots.filter(
+      slot => slot.status === true && slot.onlineGuests > 0
     );
 
-    // Calculate total online guests across all active slots
+    // ✅ Total online guests (only active slots)
     const totalOnlineGuests = timeSlots.timeSlots
       .filter(slot => slot.status === true)
       .reduce((total, slot) => total + slot.onlineGuests, 0);
 
-    // Get total active table bookings count for today
+    // ✅ Import model
     const TableBooking = require('../usersModels/TableBooking');
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    
+
+    // ✅ FIXED DATE RANGE (NO MUTATION + ISO DATE)
+    const now = new Date();
+
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(now);
+    endOfDay.setHours(24, 0, 0, 0);
+
+    // ✅ Correct booking count
     const totalActiveBookings = await TableBooking.countDocuments({
       restaurantId,
       status: { $nin: ['completed', 'cancelled'] },
       'bookingTimings.date': {
-        $gte: startOfDay.toISOString().split('T')[0],
-        $lt: endOfDay.toISOString().split('T')[0]
+        $gte: startOfDay,
+        $lt: endOfDay
       }
     });
 
-    // Format the response
+    // ✅ Format slots
     const formattedSlots = activeSlotsWithOnlineGuests.map(slot => ({
       slotId: slot._id,
       time: slot.time,
       maxGuests: slot.maxGuests,
       onlineGuests: slot.onlineGuests,
       offlineGuests: slot.offlineGuests,
-      availableCapacity: slot.maxGuests - (slot.onlineGuests + slot.offlineGuests),
+      availableCapacity:
+        slot.maxGuests - (slot.onlineGuests + slot.offlineGuests),
       status: slot.status
     }));
 
+    // ✅ Final response
     res.status(200).json({
       success: true,
       message: 'Active slots with online guests retrieved successfully',
       data: {
         restaurantId,
         totalActiveSlots: formattedSlots.length,
-        totalActiveBookings,
+        totalActiveBookings, // ✅ now correct
         totalOnlineGuests,
         slots: formattedSlots,
         slotDuration: timeSlots.duration
