@@ -34,7 +34,11 @@ const tableBookingSchema = new mongoose.Schema(
     
     bookingTimings: {
       date: { type: String },
-      slotTime: { type: String }
+      slotTime: { type: String },
+      slotId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+      }
     },
     specialInstructions: { type: String },
 

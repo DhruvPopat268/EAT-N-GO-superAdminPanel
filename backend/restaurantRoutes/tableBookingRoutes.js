@@ -659,24 +659,44 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Update slot: remove guests from onlineGuests
-    const slotTime = booking.bookingTimings.slotTime;
+    // Update slot: remove guests from onlineGuests using slotId
+    const slotId = booking.bookingTimings.slotId;
     const numberOfGuests = booking.numberOfGuests;
 
-    // Find the slot and update guest counts
-    const timeSlots = await TableBookingSlot.findOne({ restaurantId });
-    const requestedSlot = timeSlots?.timeSlots.find(slot => slot.time === slotTime);
-    
-    if (requestedSlot) {
-      await TableBookingSlot.updateOne(
+    if (slotId) {
+      const slotUpdateResult = await TableBookingSlot.updateOne(
         { 
           restaurantId,
-          'timeSlots._id': requestedSlot._id 
+          'timeSlots._id': slotId 
         },
         { 
           $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
         }
       );
+
+      // Check if slot was found and updated
+      if (slotUpdateResult.matchedCount === 0) {
+        console.error(`Slot not found for slotId: ${slotId}, restaurantId: ${restaurantId}`);
+        // Still return success for booking completion, but log the issue
+        return res.status(200).json({
+          success: true,
+          message: 'Booking marked as completed, but slot capacity could not be updated',
+          warning: 'Slot not found - capacity may be inconsistent',
+          data: booking
+        });
+      }
+
+      if (slotUpdateResult.modifiedCount === 0) {
+        console.warn(`Slot found but not modified for slotId: ${slotId}`);
+      }
+    } else {
+      console.error(`No slotId found in booking: ${bookingId}`);
+      return res.status(200).json({
+        success: true,
+        message: 'Booking marked as completed, but no slotId found',
+        warning: 'Missing slotId - capacity may be inconsistent',
+        data: booking
+      });
     }
 
     res.status(200).json({
