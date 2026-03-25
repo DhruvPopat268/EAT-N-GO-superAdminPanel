@@ -424,6 +424,26 @@ router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
       slot.status === true && slot.onlineGuests > 0
     );
 
+    // Calculate total online guests across all active slots
+    const totalOnlineGuests = timeSlots.timeSlots
+      .filter(slot => slot.status === true)
+      .reduce((total, slot) => total + slot.onlineGuests, 0);
+
+    // Get total active table bookings count for today
+    const TableBooking = require('../usersModels/TableBooking');
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    
+    const totalActiveBookings = await TableBooking.countDocuments({
+      restaurantId,
+      status: { $nin: ['completed', 'cancelled'] },
+      'bookingTimings.date': {
+        $gte: startOfDay.toISOString().split('T')[0],
+        $lt: endOfDay.toISOString().split('T')[0]
+      }
+    });
+
     // Format the response
     const formattedSlots = activeSlotsWithOnlineGuests.map(slot => ({
       slotId: slot._id,
@@ -441,13 +461,14 @@ router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
       data: {
         restaurantId,
         totalActiveSlots: formattedSlots.length,
+        totalActiveBookings,
+        totalOnlineGuests,
         slots: formattedSlots,
         slotDuration: timeSlots.duration
       }
     });
 
   } catch (error) {
-    console.error('Error fetching active slots:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching active slots',
