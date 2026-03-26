@@ -472,6 +472,102 @@ router.post('/cancellation-charges', verifyToken, async (req, res) => {
   }
 });
 
+// POST route to calculate bill with offer discount
+router.post('/calculate-bill', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { tableBookingId, billAmount } = req.body;
+
+    if (!tableBookingId || !billAmount) {
+      return res.status(400).json({
+        success: false,
+        message: 'tableBookingId and billAmount are required'
+      });
+    }
+
+    if (billAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'billAmount must be greater than 0'
+      });
+    }
+
+    const booking = await TableBooking.findOne({
+      _id: tableBookingId,
+      userId,
+      status: 'seated'
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found or not in seated status'
+      });
+    }
+
+    let discountBreakup = {
+      restaurantDiscount: 0,
+      adminDiscount: 0,
+      totalDiscount: 0
+    };
+    let discountedBillAmount = billAmount;
+    let coverChargesDeducted = 0;
+
+    if (booking.offer) {
+      const restaurantOfferPercentage = booking.offer.restaurantOfferPercentageOnBill || 0;
+      const adminOfferPercentage = booking.offer.adminOfferPercentageOnBill || 0;
+      const totalDiscountPercentage = restaurantOfferPercentage + adminOfferPercentage;
+
+      const totalDiscountAmount = (billAmount * totalDiscountPercentage) / 100;
+      discountedBillAmount = billAmount - totalDiscountAmount;
+
+      discountBreakup = {
+        restaurantDiscount: (billAmount * restaurantOfferPercentage) / 100,
+        adminDiscount: (billAmount * adminOfferPercentage) / 100,
+        totalDiscount: totalDiscountAmount
+      };
+    }
+
+    if (booking.coverChargePaymentStatus === 'paid') {
+      coverChargesDeducted = booking.coverCharges;
+      discountedBillAmount = discountedBillAmount - coverChargesDeducted;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        tableBookingId: booking._id,
+        tableBookingNo: booking.tableBookingNo,
+        originalBillAmount: billAmount,
+        discountedBillAmount: parseFloat(discountedBillAmount.toFixed(2)),
+        currency: booking.currency,
+        coverCharges: booking.coverCharges,
+        coverChargePaymentStatus: booking.coverChargePaymentStatus,
+        offer: booking.offer ? {
+          offerName: booking.offer.offerName,
+          restaurantOfferPercentage: booking.offer.restaurantOfferPercentageOnBill || 0,
+          adminOfferPercentage: booking.offer.adminOfferPercentageOnBill || 0,
+          totalDiscountPercentage: (booking.offer.restaurantOfferPercentageOnBill || 0) + (booking.offer.adminOfferPercentageOnBill || 0)
+        } : null,
+        discountBreakup: {
+          restaurantDiscount: parseFloat(discountBreakup.restaurantDiscount.toFixed(2)),
+          adminDiscount: parseFloat(discountBreakup.adminDiscount.toFixed(2)),
+          totalDiscount: parseFloat(discountBreakup.totalDiscount.toFixed(2)),
+          coverChargesDeducted: parseFloat(coverChargesDeducted.toFixed(2))
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error calculating bill:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error calculating bill',
+      error: error.message
+    });
+  }
+});
+
 // POST route to cancel table booking
 router.post('/cancel', verifyToken, async (req, res) => {
   try {

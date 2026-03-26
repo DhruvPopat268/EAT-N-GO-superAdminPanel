@@ -688,7 +688,7 @@ router.patch('/arrived', restaurantAuthMiddleware, async (req, res) => {
     const restaurantId = req.restaurant.restaurantId;
 
     const booking = await TableBooking.findOneAndUpdate(
-      { _id: bookingId, restaurantId, status: 'confirmed' },
+      { _id: bookingId, restaurantId, status: { $in: ['confirmed', 'notArrived'] } },
       { status: 'arrived' },
       { new: true }
     ).populate('userId', 'fullName phone');
@@ -696,7 +696,7 @@ router.patch('/arrived', restaurantAuthMiddleware, async (req, res) => {
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Booking not found or not in confirmed status'
+        message: 'Booking not found or not in confirmed/notArrived status'
       });
     }
 
