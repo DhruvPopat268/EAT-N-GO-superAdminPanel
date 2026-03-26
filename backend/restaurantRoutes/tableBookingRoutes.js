@@ -802,6 +802,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       },
       { 
         status: 'cancelled',
+        coverChargePaymentStatus: 'refunded',
         'cancellation.cancelledBy': 'Restaurant',
         'cancellation.reason': reason
       },
@@ -814,6 +815,10 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         message: 'Booking not found or cannot be cancelled'
       });
     }
+
+    // TODO: Initiate cover charge refund process here
+    // The coverChargePaymentStatus is updated to 'refunded'
+    // Actual refund to payment gateway should be implemented
 
     // Update slot: remove guests from onlineGuests using slotId
     const slotId = booking.bookingTimings.slotId;
@@ -835,7 +840,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         // Still return success for booking cancellation, but log the issue
         return res.status(200).json({
           success: true,
-          message: 'Booking cancelled successfully, but slot capacity could not be updated',
+          message: 'Booking cancelled successfully and cover charges will be refunded, but slot capacity could not be updated',
           warning: 'Slot not found - capacity may be inconsistent',
           data: booking
         });
@@ -843,7 +848,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     } else {
       return res.status(200).json({
         success: true,
-        message: 'Booking cancelled successfully, but no slotId found',
+        message: 'Booking cancelled successfully and cover charges will be refunded, but no slotId found',
         warning: 'Missing slotId - capacity may be inconsistent',
         data: booking
       });
@@ -851,7 +856,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Booking cancelled successfully',
+      message: 'Booking cancelled successfully and cover charges will be refunded',
       data: booking
     });
 

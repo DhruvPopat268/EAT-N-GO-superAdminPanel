@@ -6,7 +6,7 @@ const restaurantAuthMiddleware = async (req, res, next) => {
   try {
     let token = req.cookies.RestaurantToken || (req.headers.authorization && req.headers.authorization.replace('Bearer ', ''));
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_RESTAURENT || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_RESTAURENT );
    
     const session = await RestaurantSession.findOne({ token });
    

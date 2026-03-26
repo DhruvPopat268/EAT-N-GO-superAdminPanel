@@ -80,7 +80,7 @@ const Configuration = () => {
       const response = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/table-reservation-booking`, {
         restaurantId,
         tableReservationBooking: !currentStatus
-      },{withCredentials: true});
+      }, { withCredentials: true });
 
       if (response.data.success) {
         toast.success('Table reservation booking status updated successfully');
@@ -112,7 +112,7 @@ const Configuration = () => {
         adminOfferPercentageOnBill: parseFloat(editData.adminOfferPercentageOnBill),
         coverChargePerPerson: parseFloat(editData.coverChargePerPerson),
         minBufferTimeBeforeCancel: parseFloat(editData.minBufferTimeBeforeCancel)
-      },{withCredentials: true});
+      }, { withCredentials: true });
 
       if (response.data.success) {
         toast.success('Configuration updated successfully');
@@ -162,7 +162,7 @@ const Configuration = () => {
     <MainCard title="Table Booking Configuration">
       <Box sx={{ mb: 2 }}>
         <Alert severity="info">
-          Manage table reservation booking settings for all restaurants. Toggle booking status and configure admin discount for user final bill, cover charge per person, and minimum buffer time before cancellation (in hours).
+          Manage table reservation booking settings for all restaurants. Toggle booking status and configure admin discount for user final bill, cover charge per person, and minimum buffer time before cancellation (in minutes).
         </Alert>
       </Box>
 
@@ -176,7 +176,7 @@ const Configuration = () => {
               <TableCell align="center">Booking Status</TableCell>
               <TableCell align="center">Admin Offer %</TableCell>
               <TableCell align="center">Cover Charge Per Person</TableCell>
-              <TableCell align="center">Min Buffer Time (hrs)</TableCell>
+              <TableCell align="center">Min Buffer Time (mins)</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -223,7 +223,7 @@ const Configuration = () => {
                 </TableCell>
                 <TableCell align="center">
                   <Typography variant="body2" sx={{ color: '#000' }}>
-                    {restaurant.tableReservationBookingConfig.minBufferTimeBeforeCancel || 0} hrs
+                    {restaurant.tableReservationBookingConfig.minBufferTimeBeforeCancel || 0} mins
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
@@ -268,69 +268,125 @@ const Configuration = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={3} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Admin Offer Percentage On Bill (%)"
-                type="number"
-                value={editData.adminOfferPercentageOnBill}
-                onChange={(e) => setEditData({
-                  ...editData,
-                  adminOfferPercentageOnBill: e.target.value
-                })}
-                inputProps={{ min: 0, max: 100, step: 0.1 }}
-                helperText="Enter admin offer percentage on bill (0-100)"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
+          <Dialog open={editDialog} onClose={handleCloseDialog} maxWidth="xs" fullWidth>
+            <DialogTitle sx={{ pb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <EditIcon color="primary" />
+                <Box>
+                  <Typography variant="h6" fontWeight="bold">
+                    Update Configuration - {selectedRestaurant?.restaurantName}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Configure discount, cover charge, and buffer time settings
+                  </Typography>
+                </Box>
+              </Box>
+            </DialogTitle>
+
+            <DialogContent>
+              <Box
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                gap={3}
+                mt={1}
+              >
+                {/* Admin Offer */}
+                <TextField
+                  size="small"
+                  sx={{
+                    width: 300,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                    },
+                  }}
+                  FormHelperTextProps={{ sx: { minHeight: 20 } }}
+                  label="Admin Offer Percentage On Bill (%)"
+                  type="number"
+                  value={editData.adminOfferPercentageOnBill}
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      adminOfferPercentageOnBill: e.target.value,
+                    })
                   }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label={`Cover Charge Per Person (${selectedRestaurant?.currency?.symbol || '₹'})`}
-                type="number"
-                value={editData.coverChargePerPerson}
-                onChange={(e) => setEditData({
-                  ...editData,
-                  coverChargePerPerson: e.target.value
-                })}
-                inputProps={{ min: 0, step: 0.01 }}
-                helperText={`Enter cover charge amount in ${selectedRestaurant?.currency?.name || 'rupees'}`}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
+                  inputProps={{ min: 0, max: 100, step: 0.1 }}
+                  helperText="Enter admin offer percentage on bill (0-100)"
+                />
+
+                {/* Cover Charge */}
+                <TextField
+                  size="small"
+                  sx={{
+                    width: 300,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                    },
+                  }}
+                  FormHelperTextProps={{ sx: { minHeight: 20 } }}
+                  label={`Cover Charge Per Person (${selectedRestaurant?.currency?.symbol || '₹'})`}
+                  type="number"
+                  value={editData.coverChargePerPerson}
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      coverChargePerPerson: e.target.value,
+                    })
                   }
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Min Buffer Time Before Cancel (hours)"
-                type="number"
-                value={editData.minBufferTimeBeforeCancel}
-                onChange={(e) => setEditData({
-                  ...editData,
-                  minBufferTimeBeforeCancel: e.target.value
-                })}
-                inputProps={{ min: 0, step: 0.5 }}
-                helperText="Minimum hours before booking time when cancellation is allowed"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
+                  inputProps={{ min: 0, step: 0.01 }}
+                  helperText={`Enter cover charge amount in ${selectedRestaurant?.currency?.name || 'rupees'
+                    }`}
+                />
+
+                {/* Buffer Time */}
+                <TextField
+                  size="small"
+                  sx={{
+                    width: 300,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 2,
+                    },
+                  }}
+                  FormHelperTextProps={{ sx: { minHeight: 20 } }}
+                  label="Min Buffer Time Before Cancel (minutes)"
+                  type="number"
+                  value={editData.minBufferTimeBeforeCancel}
+                  onChange={(e) =>
+                    setEditData({
+                      ...editData,
+                      minBufferTimeBeforeCancel: e.target.value,
+                    })
                   }
-                }}
-              />
-            </Grid>
-          </Grid>
+                  inputProps={{ min: 0, step: 1 }}
+                  helperText="Minimum minutes before booking time when cancellation is allowed"
+                />
+              </Box>
+            </DialogContent>
+
+            <DialogActions sx={{ p: 3, pt: 2, justifyContent: 'space-between' }}>
+              <Button
+                onClick={handleCloseDialog}
+                startIcon={<CancelIcon />}
+                sx={{ borderRadius: 2 }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                onClick={handleUpdateConfig}
+                variant="contained"
+                startIcon={<SaveIcon />}
+                disabled={updating}
+                sx={{ borderRadius: 2 }}
+              >
+                {updating ? 'Updating...' : 'Update Configuration'}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 2 }}>
-          <Button 
-            onClick={handleCloseDialog} 
+          <Button
+            onClick={handleCloseDialog}
             startIcon={<CancelIcon />}
             sx={{ borderRadius: 2 }}
           >
@@ -370,7 +426,7 @@ const Configuration = () => {
         </Snackbar>
       ))}
 
-      
+
     </MainCard>
   );
 };

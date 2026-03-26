@@ -33,12 +33,7 @@ const tableBookingCheckAvailabilitySchema = new mongoose.Schema(
       },
       offerName: { type: String },
       restaurantOfferPercentageOnBill: { type: Number },
-      adminOfferPercentageOnBill: { type: Number },
-      usageStatus: {
-        type: String,
-        enum: ['pending', 'redeemed', 'expired', 'cancelled'],
-        default: 'pending'
-      }
+      adminOfferPercentageOnBill: { type: Number }
     },
 
     coverCharges: {

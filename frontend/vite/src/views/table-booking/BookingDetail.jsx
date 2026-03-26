@@ -352,29 +352,13 @@ export default function BookingDetail() {
                         </Typography>
                       </Box>
                     </Box>
-
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
-                        Usage Status
-                      </Typography>
-                      <Chip 
-                        label={booking.offer.usageStatus?.toUpperCase() || 'PENDING'}
-                        size="small"
-                        sx={{ 
-                          bgcolor: booking.offer.usageStatus === 'used' ? '#4CAF50' : '#FF9800',
-                          color: 'white',
-                          fontSize: '0.75rem',
-                          fontWeight: 500
-                        }}
-                      />
-                    </Box>
                   </Stack>
                 </Box>
               </Card>
             )}
 
             {/* Allocated Tables */}
-            {booking.allocatedTables && booking.allocatedTables.length > 0 && (
+            {booking.allocatedTables && Array.isArray(booking.allocatedTables) && booking.allocatedTables.length > 0 && (
               <Card sx={{ borderRadius: 2, border: '1px solid #e5e7eb' }}>
                 <Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb' }}>
                   <Typography variant="h6" fontWeight={600} color="text.primary">
@@ -418,6 +402,50 @@ export default function BookingDetail() {
                       </Box>
                     ))}
                   </Stack>
+                </Box>
+              </Card>
+            )}
+
+            {/* Allocated Tables - Object Format */}
+            {booking.allocatedTables && !Array.isArray(booking.allocatedTables) && booking.allocatedTables.tableNumbers?.length > 0 && (
+              <Card sx={{ borderRadius: 2, border: '1px solid #e5e7eb' }}>
+                <Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                  <Typography variant="h6" fontWeight={600} color="text.primary">
+                    Allocated Tables
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 3 }}>
+                  <Box 
+                    sx={{ 
+                      p: 2, 
+                      borderRadius: 2, 
+                      bgcolor: alpha('#4CAF50', 0.05),
+                      border: '1px solid #4CAF50'
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                        Table Numbers
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                        Allocated: {formatDateTime(booking.allocatedTables.allocatedAt).replace('\n', ' - ')}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {booking.allocatedTables.tableNumbers.map((tableNum, idx) => (
+                        <Chip
+                          key={idx}
+                          label={`Table ${tableNum}`}
+                          size="small"
+                          sx={{
+                            bgcolor: '#4CAF50',
+                            color: 'white',
+                            fontWeight: 600
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
                 </Box>
               </Card>
             )}
