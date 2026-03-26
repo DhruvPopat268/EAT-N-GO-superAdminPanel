@@ -38,7 +38,8 @@ const Configuration = () => {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [editData, setEditData] = useState({
     adminOfferPercentageOnBill: 0,
-    coverChargePerPerson: 0
+    coverChargePerPerson: 0,
+    minBufferTimeBeforeCancel: 0
   });
   const [updating, setUpdating] = useState(false);
   const [page, setPage] = useState(0);
@@ -96,7 +97,8 @@ const Configuration = () => {
     setSelectedRestaurant(restaurant);
     setEditData({
       adminOfferPercentageOnBill: restaurant.tableReservationBookingConfig.adminOfferPercentageOnBill || 0,
-      coverChargePerPerson: restaurant.tableReservationBookingConfig.coverChargePerPerson || 0
+      coverChargePerPerson: restaurant.tableReservationBookingConfig.coverChargePerPerson || 0,
+      minBufferTimeBeforeCancel: restaurant.tableReservationBookingConfig.minBufferTimeBeforeCancel || 0
     });
     setEditDialog(true);
   };
@@ -108,7 +110,8 @@ const Configuration = () => {
       const response = await axios.patch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/table-reservation-config`, {
         restaurantId: selectedRestaurant.restaurantId,
         adminOfferPercentageOnBill: parseFloat(editData.adminOfferPercentageOnBill),
-        coverChargePerPerson: parseFloat(editData.coverChargePerPerson)
+        coverChargePerPerson: parseFloat(editData.coverChargePerPerson),
+        minBufferTimeBeforeCancel: parseFloat(editData.minBufferTimeBeforeCancel)
       },{withCredentials: true});
 
       if (response.data.success) {
@@ -130,7 +133,8 @@ const Configuration = () => {
     setSelectedRestaurant(null);
     setEditData({
       adminOfferPercentageOnBill: 0,
-      coverChargePerPerson: 0
+      coverChargePerPerson: 0,
+      minBufferTimeBeforeCancel: 0
     });
   };
 
@@ -158,7 +162,7 @@ const Configuration = () => {
     <MainCard title="Table Booking Configuration">
       <Box sx={{ mb: 2 }}>
         <Alert severity="info">
-          Manage table reservation booking settings for all restaurants. Toggle booking status and configure admin discount for user final bill and cover charge per person.
+          Manage table reservation booking settings for all restaurants. Toggle booking status and configure admin discount for user final bill, cover charge per person, and minimum buffer time before cancellation (in hours).
         </Alert>
       </Box>
 
@@ -172,6 +176,7 @@ const Configuration = () => {
               <TableCell align="center">Booking Status</TableCell>
               <TableCell align="center">Admin Offer %</TableCell>
               <TableCell align="center">Cover Charge Per Person</TableCell>
+              <TableCell align="center">Min Buffer Time (hrs)</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -217,6 +222,11 @@ const Configuration = () => {
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
+                  <Typography variant="body2" sx={{ color: '#000' }}>
+                    {restaurant.tableReservationBookingConfig.minBufferTimeBeforeCancel || 0} hrs
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
                   <Button
                     variant="outlined"
                     size="small"
@@ -252,7 +262,7 @@ const Configuration = () => {
                 Update Configuration - {selectedRestaurant?.restaurantName}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Configure discount and cover charge settings
+                Configure discount, cover charge, and buffer time settings
               </Typography>
             </Box>
           </Box>
@@ -290,6 +300,25 @@ const Configuration = () => {
                 })}
                 inputProps={{ min: 0, step: 0.01 }}
                 helperText={`Enter cover charge amount in ${selectedRestaurant?.currency?.name || 'rupees'}`}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Min Buffer Time Before Cancel (hours)"
+                type="number"
+                value={editData.minBufferTimeBeforeCancel}
+                onChange={(e) => setEditData({
+                  ...editData,
+                  minBufferTimeBeforeCancel: e.target.value
+                })}
+                inputProps={{ min: 0, step: 0.5 }}
+                helperText="Minimum hours before booking time when cancellation is allowed"
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     borderRadius: 2,

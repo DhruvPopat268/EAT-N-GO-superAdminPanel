@@ -498,7 +498,8 @@ router.get('/admin/table-reservation-config', authMiddleware, async (req, res) =
       tableReservationBooking: restaurant.tableReservationBooking,
       tableReservationBookingConfig: restaurant.tableReservationBookingConfig || {
         adminOfferPercentageOnBill: 0,
-        coverChargePerPerson: 0
+        coverChargePerPerson: 0,
+        minBufferTimeBeforeCancel: 0
       },
       currency: restaurant.businessDetails?.currency || null
     }));
@@ -574,7 +575,7 @@ router.patch('/admin/table-reservation-booking', authMiddleware, async (req, res
 // Update table reservation booking config
 router.patch('/admin/table-reservation-config', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId, adminOfferPercentageOnBill, coverChargePerPerson } = req.body;
+    const { restaurantId, adminOfferPercentageOnBill, coverChargePerPerson, minBufferTimeBeforeCancel } = req.body;
 
     if (!restaurantId) {
       return res.status(400).json({
@@ -604,6 +605,16 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
       }
     }
 
+    if (minBufferTimeBeforeCancel !== undefined) {
+      const bufferTime = parseFloat(minBufferTimeBeforeCancel);
+      if (isNaN(bufferTime) || bufferTime < 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'minBufferTimeBeforeCancel must be 0 or greater'
+        });
+      }
+    }
+
     // Prepare update object
     const updateObj = {};
     if (adminOfferPercentageOnBill !== undefined) {
@@ -611,6 +622,9 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
     }
     if (coverChargePerPerson !== undefined) {
       updateObj['tableReservationBookingConfig.coverChargePerPerson'] = parseFloat(coverChargePerPerson);
+    }
+    if (minBufferTimeBeforeCancel !== undefined) {
+      updateObj['tableReservationBookingConfig.minBufferTimeBeforeCancel'] = parseFloat(minBufferTimeBeforeCancel);
     }
 
     if (Object.keys(updateObj).length === 0) {

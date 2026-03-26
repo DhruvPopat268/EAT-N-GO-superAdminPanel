@@ -75,6 +75,11 @@ const restaurantSchema = new mongoose.Schema({
       type: Number,
       min: 0,
       default: 0
+    },
+    minBufferTimeBeforeCancel: {
+      type: Number,
+      min: 0,
+      default: 0
     }
   },
 
