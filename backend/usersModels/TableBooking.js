@@ -27,10 +27,10 @@ const tableBookingSchema = new mongoose.Schema(
 
     numberOfGuests: { type: Number },
     
-    allocatedTables: [{
+    allocatedTables: {
       tableNumbers: [{ type: String }],
       allocatedAt: { type: Date, default: Date.now }
-    }],
+    },
     
     bookingTimings: {
       date: { type: Date },

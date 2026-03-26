@@ -553,11 +553,9 @@ router.patch('/allocate-tables', restaurantAuthMiddleware, async (req, res) => {
     const booking = await TableBooking.findOneAndUpdate(
       { _id: bookingId, restaurantId },
       { 
-        $push: { 
-          allocatedTables: { 
-            tableNumbers,
-            allocatedAt: new Date()
-          } 
+        allocatedTables: { 
+          tableNumbers,
+          allocatedAt: new Date()
         },
         status: 'confirmed'
       },
