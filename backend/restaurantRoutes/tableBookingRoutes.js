@@ -4,11 +4,42 @@ const TableBookingSlot = require('../restaurantModels/TableBookingSlot');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const router = express.Router();
 
+// Helper function for search
+const addSearchFilter = async (filter, search) => {
+  if (search) {
+    const searchRegex = new RegExp(search, 'i');
+    const User = require('../usersModels/usersModel');
+    
+    // Search for matching users by name or phone
+    const matchingUsers = await User.find({
+      $or: [
+        { fullName: { $regex: searchRegex } },
+        { phone: { $regex: searchRegex } }
+      ]
+    }).select('_id');
+    const userIds = matchingUsers.map(u => u._id);
+    
+    // Build search conditions
+    const searchConditions = [
+      { userId: { $in: userIds } }
+    ];
+    
+    // Check if search is a number for booking number search
+    const numericSearch = parseInt(search);
+    if (!isNaN(numericSearch)) {
+      searchConditions.push({ tableBookingNo: numericSearch });
+    }
+    
+    filter.$or = searchConditions;
+  }
+  return filter;
+};
+
 // GET route to get all table bookings for restaurant
 router.get('/', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot, activeBookings } = req.query;
+    const { page = 1, limit = 10, date, slot, activeBookings, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -37,6 +68,9 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -73,7 +107,7 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
 router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -97,6 +131,9 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -133,7 +170,7 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
 router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -157,6 +194,9 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -193,7 +233,7 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
 router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -217,6 +257,9 @@ router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -253,7 +296,7 @@ router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
 router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -277,6 +320,9 @@ router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -313,7 +359,7 @@ router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
 router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -337,6 +383,9 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -373,7 +422,7 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
 router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -397,6 +446,9 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -433,7 +485,7 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
 router.get('/not-arrived', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { page = 1, limit = 10, date, slot } = req.query;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
     
     const skip = (page - 1) * limit;
     
@@ -457,6 +509,9 @@ router.get('/not-arrived', restaurantAuthMiddleware, async (req, res) => {
     
     // Slot filter
     if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
     
     const totalCount = await TableBooking.countDocuments(filter);
     
@@ -745,7 +800,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       { 
         _id: bookingId, 
         restaurantId, 
-        status: { $in: ['pending', 'confirmed', 'notArrived'] }
+        status: { $in: ['pending', 'confirmed'] }
       },
       { 
         status: 'cancelled',

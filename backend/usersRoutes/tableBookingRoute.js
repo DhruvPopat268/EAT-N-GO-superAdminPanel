@@ -339,4 +339,58 @@ router.post('/dummy', verifyToken, async (req, res) => {
   }
 });
 
+// GET route for in-progress table bookings
+router.get('/in-progress', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const bookings = await TableBooking.find({
+      userId,
+      status: { $nin: ['completed', 'cancelled'] }
+    })
+      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state')
+      .sort({ 'bookingTimings.date': -1, createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings
+    });
+  } catch (error) {
+    console.error('Error fetching in-progress bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching in-progress bookings',
+      error: error.message
+    });
+  }
+});
+
+// GET route for past table bookings
+router.get('/past', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const bookings = await TableBooking.find({
+      userId,
+      status: { $in: ['completed', 'cancelled'] }
+    })
+      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state')
+      .sort({ 'bookingTimings.date': -1, createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings
+    });
+  } catch (error) {
+    console.error('Error fetching past bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching past bookings',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
