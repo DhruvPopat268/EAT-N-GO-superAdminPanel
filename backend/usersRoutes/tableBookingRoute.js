@@ -545,6 +545,7 @@ router.post('/calculate-bill', verifyToken, async (req, res) => {
         coverChargePaymentStatus: booking.coverChargePaymentStatus,
         offer: booking.offer ? {
           offerName: booking.offer.offerName,
+          offerDescription: booking.offer.offerDescription,
           restaurantOfferPercentage: booking.offer.restaurantOfferPercentageOnBill || 0,
           adminOfferPercentage: booking.offer.adminOfferPercentageOnBill || 0,
           totalDiscountPercentage: (booking.offer.restaurantOfferPercentageOnBill || 0) + (booking.offer.adminOfferPercentageOnBill || 0)

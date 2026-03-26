@@ -51,6 +51,15 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Restaurant not found' });
     }
 
+    // Sort time slots by time if they exist
+    if (timeSlots && timeSlots.timeSlots) {
+      timeSlots.timeSlots.sort((a, b) => {
+        const [aHour, aMin] = a.time.split(':').map(Number);
+        const [bHour, bMin] = b.time.split(':').map(Number);
+        return (aHour * 60 + aMin) - (bHour * 60 + bMin);
+      });
+    }
+
     res.json({
       tableReservationBooking: restaurant.tableReservationBooking,
       timeSlots: timeSlots || null,
@@ -444,7 +453,7 @@ router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
     // ✅ Correct booking count
     const totalActiveBookings = await TableBooking.countDocuments({
       restaurantId,
-      status: { $nin: ['completed', 'cancelled'] },
+      status: { $nin: ['completed', 'cancelled' , 'expired'] },
       'bookingTimings.date': {
         $gte: startOfDay,
         $lt: endOfDay
@@ -490,7 +499,7 @@ router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
 router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { name, percentage, status } = req.body;
+    const { name, description, percentage, status } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'Offer name is required' });
@@ -529,6 +538,10 @@ router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
       status: status !== undefined ? status : true
     };
 
+    if (description !== undefined) {
+      offerData.description = description.trim();
+    }
+
     const offer = new TableBookingOffers(offerData);
 
     await offer.save();
@@ -546,7 +559,7 @@ router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
 router.patch('/offers', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { offerId, name, percentage, status } = req.body;
+    const { offerId, name, description, percentage, status } = req.body;
 
     if (!offerId) {
       return res.status(400).json({ message: 'offerId is required' });
@@ -569,6 +582,10 @@ router.patch('/offers', restaurantAuthMiddleware, async (req, res) => {
         return res.status(400).json({ message: 'Offer name cannot be empty' });
       }
       updateObj.name = name.trim();
+    }
+    
+    if (description !== undefined) {
+      updateObj.description = description.trim();
     }
     
     if (percentage !== undefined) {

@@ -48,6 +48,7 @@ const tableBookingSchema = new mongoose.Schema(
         ref: 'TableBookingOffers'
       },
       offerName: { type: String },
+      offerDescription: { type: String },
       restaurantOfferPercentageOnBill: { type: Number },
       adminOfferPercentageOnBill: { type: Number }
     },

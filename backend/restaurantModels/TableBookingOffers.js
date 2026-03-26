@@ -12,6 +12,11 @@ const tableBookingOffersSchema = new mongoose.Schema({
     required: true
   },
   
+  description: {
+    type: String,
+    required: false
+  },
+  
   percentage: {
     type: Number,
     required: true,

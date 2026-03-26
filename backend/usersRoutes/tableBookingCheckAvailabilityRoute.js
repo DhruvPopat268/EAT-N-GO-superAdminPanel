@@ -42,7 +42,7 @@ router.post('/', verifyToken, async (req, res) => {
       status: 'approved',
       tableReservationBooking: true
     });
-    
+
     if (!restaurant) {
       return res.status(404).json({
         success: false,
@@ -63,10 +63,10 @@ router.post('/', verifyToken, async (req, res) => {
     // Handle DD-MM-YYYY format properly with UTC
     const [day, month, year] = bookingTimings.date.split('-');
     const bookingDate = new Date(Date.UTC(year, month - 1, day)); // Force UTC creation
-    
+
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0); // Use UTC for consistency
-    
+
     if (bookingDate < today) {
       return res.status(400).json({
         success: false,
@@ -84,7 +84,7 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Find the specific slot by slotId with active status
-    const requestedSlot = timeSlots.timeSlots.find(slot => 
+    const requestedSlot = timeSlots.timeSlots.find(slot =>
       slot._id.toString() === bookingTimings.slotId && slot.status === true
     );
 
@@ -97,25 +97,25 @@ router.post('/', verifyToken, async (req, res) => {
 
     // If booking is for today, validate that the slot time hasn't passed
     const isToday = bookingDate.getTime() === today.getTime();
-    
+
     if (isToday) {
       // Convert current UTC time to IST (UTC + 5:30) since slots are stored in IST
       const currentTime = new Date();
       const istOffset = 5.5 * 60; // IST is UTC + 5:30 (5.5 hours in minutes)
       const currentUTCMinutes = currentTime.getUTCHours() * 60 + currentTime.getUTCMinutes();
       const currentISTMinutes = currentUTCMinutes + istOffset;
-      
+
       // Handle day overflow (if IST time goes to next day)
       const currentISTHours = Math.floor(currentISTMinutes / 60) % 24;
       const currentISTMins = currentISTMinutes % 60;
-      
+
       // Parse slot time (format: "12:00" - assumed to be in IST)
       const [slotHours, slotMinutes] = requestedSlot.time.split(':').map(Number);
       const slotTimeInMinutes = slotHours * 60 + slotMinutes;
-      
+
       // Compare IST times
       const currentISTTimeInDay = currentISTMinutes % (24 * 60); // Handle day overflow
-      
+
       if (slotTimeInMinutes <= currentISTTimeInDay) {
         return res.status(400).json({
           success: false,
@@ -139,10 +139,10 @@ router.post('/', verifyToken, async (req, res) => {
 
     // Calculate current occupied capacity
     const currentOccupiedGuests = onlineGuests + offlineGuests;
-    
+
     // Calculate available capacity for new bookings
     const availableCapacity = maxGuests - currentOccupiedGuests;
-    
+
     // Check if there's sufficient capacity for the requested number of guests
     if (availableCapacity < numberOfGuests) {
       return res.status(400).json({
@@ -186,8 +186,9 @@ router.post('/', verifyToken, async (req, res) => {
       offerData = {
         offerId: offer._id,
         offerName: offer.name,
+        offerDescription: offer.description,
         restaurantOfferPercentageOnBill,
-        adminOfferPercentageOnBill
+        adminOfferPercentageOnBill,
       };
     }
 
@@ -223,12 +224,12 @@ router.post('/', verifyToken, async (req, res) => {
 
     // Update the TableBookingSlot - add guests to onlineGuests for this slot
     await TableBookingSlot.updateOne(
-      { 
+      {
         restaurantId,
-        'timeSlots._id': bookingTimings.slotId 
+        'timeSlots._id': bookingTimings.slotId
       },
-      { 
-        $inc: { 'timeSlots.$.onlineGuests': numberOfGuests } 
+      {
+        $inc: { 'timeSlots.$.onlineGuests': numberOfGuests }
       }
     );
 
@@ -257,7 +258,7 @@ router.post('/', verifyToken, async (req, res) => {
 router.get('/cleanup-expired', async (req, res) => {
   try {
     const now = new Date();
-    
+
     // Find all pending availability checks that have expired
     const expiredChecks = await TableBookingCheckAvailability.find({
       status: 'pending',
@@ -277,24 +278,24 @@ router.get('/cleanup-expired', async (req, res) => {
 
     // Process each expired check to release slot capacity
     const processedChecks = [];
-    
+
     for (const check of expiredChecks) {
       try {
         // Find the slot and release capacity
         const timeSlots = await TableBookingSlot.findOne({ restaurantId: check.restaurantId });
-        const requestedSlot = timeSlots?.timeSlots.find(slot => 
+        const requestedSlot = timeSlots?.timeSlots.find(slot =>
           slot.time === check.bookingTimings.slotTime
         );
-        
+
         if (requestedSlot) {
           // Decrease onlineGuests count to release the reserved capacity
           await TableBookingSlot.updateOne(
-            { 
+            {
               restaurantId: check.restaurantId,
-              'timeSlots._id': requestedSlot._id 
+              'timeSlots._id': requestedSlot._id
             },
-            { 
-              $inc: { 'timeSlots.$.onlineGuests': -check.numberOfGuests } 
+            {
+              $inc: { 'timeSlots.$.onlineGuests': -check.numberOfGuests }
             }
           );
         }
@@ -378,18 +379,18 @@ router.post('/get-slots', verifyToken, async (req, res) => {
     // Parse the provided date (DD-MM-YYYY format)
     const [day, month, year] = date.split('-');
     const providedDate = new Date(Date.UTC(year, month - 1, day));
-    
+
     // Get today's date in UTC
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
-    
+
     // Check if provided date is today
     const isToday = providedDate.getTime() === today.getTime();
 
     // Filter slots based on status and time (if today)
     let availableSlots = timeSlots.timeSlots.filter(slot => slot.status === true);
     let currentISTTime = null;
-    
+
     if (isToday) {
       // Convert current UTC time to IST since slots are stored in IST
       const currentTime = new Date();
@@ -397,22 +398,29 @@ router.post('/get-slots', verifyToken, async (req, res) => {
       const currentUTCMinutes = currentTime.getUTCHours() * 60 + currentTime.getUTCMinutes();
       const currentISTMinutes = currentUTCMinutes + istOffset;
       const currentISTTimeInDay = currentISTMinutes % (24 * 60); // Handle day overflow
-      
+
       const currentISTHours = Math.floor(currentISTTimeInDay / 60);
       const currentISTMins = currentISTTimeInDay % 60;
-      
+
       // Store formatted IST time for response
       currentISTTime = `${currentISTHours}:${currentISTMins.toString().padStart(2, '0')}`;
-      
+
       // Filter out slots that have already passed today
       availableSlots = availableSlots.filter(slot => {
         const [slotHours, slotMinutes] = slot.time.split(':').map(Number);
         const slotTimeInMinutes = slotHours * 60 + slotMinutes;
-        
+
         // Return slots that are in the future (greater than current IST time)
         return slotTimeInMinutes > currentISTTimeInDay;
       });
     }
+
+    // Sort slots by time
+    availableSlots.sort((a, b) => {
+      const [aHour, aMin] = a.time.split(':').map(Number);
+      const [bHour, bMin] = b.time.split(':').map(Number);
+      return (aHour * 60 + aMin) - (bHour * 60 + bMin);
+    });
 
     // Format the response with slot details
     const formattedSlots = availableSlots.map(slot => ({
@@ -491,12 +499,13 @@ router.post('/offers-coverCharges', verifyToken, async (req, res) => {
     const offers = await TableBookingOffers.find({
       restaurantId,
       status: true
-    }).select('_id name percentage');
+    }).select('_id name percentage description');
 
     // Calculate total discount percentage for each offer
     const formattedOffers = offers.map(offer => ({
       offerId: offer._id,
       name: offer.name,
+      description: offer.description,
       restaurantOfferPercentage: offer.percentage,
       adminOfferPercentage: adminOfferPercentageOnBill,
       totalDiscountPercentage: offer.percentage + adminOfferPercentageOnBill
