@@ -393,4 +393,188 @@ router.get('/past', verifyToken, async (req, res) => {
   }
 });
 
+// POST route to check cancellation charges
+router.post('/cancellation-charges', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { tableBookingId } = req.body;
+
+    if (!tableBookingId) {
+      return res.status(400).json({
+        success: false,
+        message: 'tableBookingId is required'
+      });
+    }
+
+    const booking = await TableBooking.findOne({
+      _id: tableBookingId,
+      userId,
+      status: { $nin: ['cancelled', 'completed'] }
+    }).populate('restaurantId', 'tableReservationBookingConfig.minBufferTimeBeforeCancel');
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found or already cancelled/completed'
+      });
+    }
+
+    // Current time in IST
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+    const istNow = new Date(now.getTime() + istOffset);
+
+    // Create slot datetime in IST (date is in UTC, slot time is in IST)
+    const bookingDate = new Date(booking.bookingTimings.date); // UTC date
+    const [hours, minutes] = booking.bookingTimings.slotTime.split(':');
+    
+    // Create IST date by adding IST offset to UTC date
+    const istDate = new Date(bookingDate.getTime() + istOffset);
+    istDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+    const timeDifferenceMinutes = (istDate - istNow) / (1000 * 60);
+    const minBufferTime = booking.restaurantId.tableReservationBookingConfig?.minBufferTimeBeforeCancel || 0;
+
+    let canCancel = true;
+    let coverChargesRefundable = true;
+    let message = '';
+
+    if (booking.status === 'pending') {
+      message = 'Free cancellation available. Full refund of cover charges.';
+    } else if (timeDifferenceMinutes < minBufferTime) {
+      coverChargesRefundable = false;
+      message = `Cancellation allowed but cover charges (${booking.currency?.symbol || '₹'}${booking.coverCharges}) will not be refunded due to insufficient buffer time.`;
+    } else {
+      message = `Free cancellation available. Cover charges (${booking.currency?.symbol || '₹'}${booking.coverCharges}) will be refunded.`;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        canCancel,
+        coverChargesRefundable,
+        coverCharges: booking.coverCharges,
+        currency: booking.currency,
+        bufferTimeRemaining: Math.max(0, timeDifferenceMinutes),
+        minBufferTimeRequired: minBufferTime,
+        bookingStatus: booking.status,
+        message
+      }
+    });
+
+  } catch (error) {
+    console.error('Error checking cancellation charges:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error checking cancellation charges',
+      error: error.message
+    });
+  }
+});
+
+// POST route to cancel table booking
+router.post('/cancel', verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { tableBookingId, reason } = req.body;
+
+    if (!tableBookingId) {
+      return res.status(400).json({
+        success: false,
+        message: 'tableBookingId is required'
+      });
+    }
+
+    const booking = await TableBooking.findOne({
+      _id: tableBookingId,
+      userId,
+      status: { $nin: ['cancelled', 'completed'] }
+    }).populate('restaurantId', 'tableReservationBookingConfig.minBufferTimeBeforeCancel');
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found or already cancelled/completed'
+      });
+    }
+
+    // Current time in IST
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+    const istNow = new Date(now.getTime() + istOffset);
+
+    // Create slot datetime in IST (date is in UTC, slot time is in IST)
+    const bookingDate = new Date(booking.bookingTimings.date); // UTC date
+    const [hours, minutes] = booking.bookingTimings.slotTime.split(':');
+    
+    // Create IST date by adding IST offset to UTC date
+    const istDate = new Date(bookingDate.getTime() + istOffset);
+    istDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+    const timeDifferenceMinutes = (istDate - istNow) / (1000 * 60);
+    const minBufferTime = booking.restaurantId.tableReservationBookingConfig?.minBufferTimeBeforeCancel || 0;
+
+    let coverChargesRefundable = true;
+    let refundStatus = 'refunded';
+
+    // Determine refund eligibility
+    if (booking.status === 'pending') {
+      coverChargesRefundable = true;
+      refundStatus = 'refunded';
+    } else if (timeDifferenceMinutes < minBufferTime) {
+      coverChargesRefundable = false;
+      refundStatus = 'not_refunded';
+    }
+
+    // Update booking status
+    booking.status = 'cancelled';
+    booking.lastStatusUpdatedBy = 'User';
+    booking.cancellation = {
+      cancelledBy: 'User',
+      reason: reason || 'Cancelled by user'
+    };
+    
+    if (coverChargesRefundable) {
+      booking.coverChargePaymentStatus = 'refunded';
+    }
+
+    await booking.save();
+
+    // Decrement online guests count from the slot
+    await TableBookingSlot.updateOne(
+      { 
+        restaurantId: booking.restaurantId,
+        'timeSlots._id': booking.bookingTimings.slotId 
+      },
+      { 
+        $inc: { 'timeSlots.$.onlineGuests': -booking.numberOfGuests } 
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking cancelled successfully',
+      data: {
+        tableBookingId: booking._id,
+        status: booking.status,
+        coverChargesRefunded: coverChargesRefundable,
+        refundAmount: coverChargesRefundable ? booking.coverCharges : 0,
+        currency: booking.currency,
+        refundStatus,
+        message: coverChargesRefundable 
+          ? `Booking cancelled. Cover charges of ${booking.currency?.symbol || '₹'}${booking.coverCharges} will be refunded.`
+          : `Booking cancelled. Cover charges of ${booking.currency?.symbol || '₹'}${booking.coverCharges} will not be refunded due to insufficient buffer time.`
+      }
+    });
+
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error cancelling booking',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
