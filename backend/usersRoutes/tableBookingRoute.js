@@ -348,7 +348,7 @@ router.get('/in-progress', verifyToken, async (req, res) => {
       userId,
       status: { $nin: ['completed', 'cancelled'] }
     })
-      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state')
+      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state contactDetails.latitude contactDetails.longitude documents.primaryImage')
       .sort({ 'bookingTimings.date': -1, createdAt: -1 });
 
     res.status(200).json({
@@ -375,7 +375,7 @@ router.get('/past', verifyToken, async (req, res) => {
       userId,
       status: { $in: ['completed', 'cancelled'] }
     })
-      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state')
+      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state contactDetails.latitude contactDetails.longitude documents.primaryImage')
       .sort({ 'bookingTimings.date': -1, createdAt: -1 });
 
     res.status(200).json({
