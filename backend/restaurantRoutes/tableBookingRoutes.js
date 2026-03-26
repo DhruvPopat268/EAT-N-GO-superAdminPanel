@@ -544,6 +544,69 @@ router.get('/not-arrived', restaurantAuthMiddleware, async (req, res) => {
   }
 });
 
+// GET route to get expired table bookings
+router.get('/expired', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurantId = req.restaurant.restaurantId;
+    const { page = 1, limit = 10, date, slot, search } = req.query;
+    
+    const skip = (page - 1) * limit;
+    
+    // Build filter object
+    const filter = { restaurantId, status: 'expired' };
+    
+    // Date range filter
+    if (date) {
+      const { startDate, endDate } = JSON.parse(date);
+      if (startDate && endDate) {
+        filter['bookingTimings.date'] = {
+          $gte: startDate,
+          $lte: endDate
+        };
+      } else if (startDate) {
+        filter['bookingTimings.date'] = { $gte: startDate };
+      } else if (endDate) {
+        filter['bookingTimings.date'] = { $lte: endDate };
+      }
+    }
+    
+    // Slot filter
+    if (slot) filter['bookingTimings.slotTime'] = slot;
+    
+    // Search functionality
+    await addSearchFilter(filter, search);
+    
+    const totalCount = await TableBooking.countDocuments(filter);
+    
+    const bookings = await TableBooking.find(filter)
+      .populate('userId', 'fullName phone')
+      .sort({  createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      message: 'Expired table bookings retrieved successfully',
+      data: {
+        bookings,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalCount / limit),
+          totalCount,
+          limit: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching expired bookings',
+      error: error.message
+    });
+  }
+});
+
 // PATCH route to allocate tables
 router.patch('/allocate-tables', restaurantAuthMiddleware, async (req, res) => {
   try {
@@ -783,6 +846,74 @@ router.patch('/did-not-arrive', restaurantAuthMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating did not arrive status',
+      error: error.message
+    });
+  }
+});
+
+// PATCH route to mark booking as expired
+router.patch('/expired', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+    const restaurantId = req.restaurant.restaurantId;
+
+    const booking = await TableBooking.findOneAndUpdate(
+      { _id: bookingId, restaurantId, status: 'notArrived' },
+      { status: 'expired' },
+      { new: true }
+    ).populate('userId', 'fullName phone');
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found or not in not arrived status'
+      });
+    }
+
+    // Update slot: remove guests from onlineGuests using slotId
+    const slotId = booking.bookingTimings.slotId;
+    const numberOfGuests = booking.numberOfGuests;
+
+    if (slotId) {
+      const slotUpdateResult = await TableBookingSlot.updateOne(
+        { 
+          restaurantId,
+          'timeSlots._id': slotId 
+        },
+        { 
+          $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
+        }
+      );
+
+      // Check if slot was found and updated
+      if (slotUpdateResult.matchedCount === 0) {
+        // Still return success for booking expiration, but log the issue
+        return res.status(200).json({
+          success: true,
+          message: 'Booking marked as expired, but slot capacity could not be updated',
+          warning: 'Slot not found - capacity may be inconsistent',
+          data: booking
+        });
+      }
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: 'Booking marked as expired, but no slotId found',
+        warning: 'Missing slotId - capacity may be inconsistent',
+        data: booking
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking marked as expired',
+      data: booking
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating expired status',
       error: error.message
     });
   }
