@@ -1,0 +1,56 @@
+{
+    "success": true,
+    "message": "Table booking retrieved successfully",
+    "data": {
+        "bookingTimings": {
+            "date": "2026-03-24T00:00:00.000Z",
+            "slotTime": "13:00"
+        },
+        "offer": {
+            "offerId": "69b7ac15bc0512cc89add149",
+            "offerName": "FLAT 20% OFF",
+            "restaurantOfferPercentageOnBill": 20,
+            "adminOfferPercentageOnBill": 10,
+            "usageStatus": "pending"
+        },
+        "currency": {
+            "code": "INR",
+            "name": "Indian Rupee",
+            "symbol": "₹"
+        },
+        "_id": "69c230171babfbc9c1656631",
+        "userId": {
+            "_id": "691741c36d4378c3f202c3ae",
+            "phone": "+919157193754",
+            "email": "dhruv@example.com",
+            "fullName": "Dhruv Thakkar"
+        },
+        "restaurantId": {
+            "basicInfo": {
+                "restaurantName": "Thakkar's Restro"
+            },
+            "_id": "69009336cda4b52998ffb143"
+        },
+        "checkAvailabilityId": "69c22fe41babfbc9c16565e0",
+        "numberOfGuests": 5,
+        "specialInstructions": "we will reach before timeslot by 15 minutes",
+        "coverCharges": 250,
+        "coverChargePaymentId": "dummy_pay_1774333975019_1f2za40pv",
+        "coverChargePaymentStatus": "paid",
+        "status": "completed",
+        "allocatedTables": [
+            {
+                "tableNumbers": [
+                    "1",
+                    "2"
+                ],
+                "allocatedAt": "2026-03-24T11:28:46.938Z",
+                "_id": "69c2756e47e0cb07caa45317"
+            }
+        ],
+        "createdAt": "2026-03-24T06:32:55.021Z",
+        "updatedAt": "2026-03-24T11:29:46.451Z",
+        "tableBookingNo": 3,
+        "__v": 0
+    }
+}

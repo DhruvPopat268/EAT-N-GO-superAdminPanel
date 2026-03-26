@@ -1,11 +1,12 @@
 // assets
-import { IconCalendarEvent, IconSettings, IconTable } from '@tabler/icons-react';
+import { IconCalendarEvent, IconSettings, IconTable, IconList } from '@tabler/icons-react';
 
 // constant
 const icons = {
     IconCalendarEvent,
     IconSettings,
-    IconTable
+    IconTable,
+    IconList
 };
 
 // ==============================|| TABLE BOOKING MENU ITEMS ||============================== //
@@ -22,6 +23,13 @@ const tableBooking = {
             type: 'item',
             icon: icons.IconSettings,
             url: '/table-booking/configuration'
+        },
+        {
+            id: 'table-bookings',
+            title: 'Bookings',
+            type: 'item',
+            icon: icons.IconList,
+            url: '/table-booking/bookings'
         }
     ]
 };
