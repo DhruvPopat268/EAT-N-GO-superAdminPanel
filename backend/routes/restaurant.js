@@ -584,6 +584,17 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
       });
     }
 
+    // Fetch restaurant to validate against tableBookingCommission
+    const restaurant = await Restaurant.findById(restaurantId, 'adminCommission.tableBookingCommission');
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
+    const maxCommission = restaurant.adminCommission?.tableBookingCommission || 0;
+
     // Validate input
     if (adminOfferPercentageOnBill !== undefined) {
       const discount = parseFloat(adminOfferPercentageOnBill);
@@ -591,6 +602,12 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
         return res.status(400).json({
           success: false,
           message: 'adminOfferPercentageOnBill must be between 0 and 100'
+        });
+      }
+      if (discount > maxCommission) {
+        return res.status(400).json({
+          success: false,
+          message: `adminOfferPercentageOnBill cannot exceed tableBookingCommission (${maxCommission}%)`
         });
       }
     }
@@ -634,25 +651,18 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
       });
     }
 
-    const restaurant = await Restaurant.findByIdAndUpdate(
+    const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
       { $set: updateObj },
       { new: true, select: 'tableReservationBooking tableReservationBookingConfig' }
     );
 
-    if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        message: 'Restaurant not found'
-      });
-    }
-
     res.status(200).json({
       success: true,
       message: 'Table reservation booking config updated successfully',
       data: {
-        tableReservationBooking: restaurant.tableReservationBooking,
-        tableReservationBookingConfig: restaurant.tableReservationBookingConfig
+        tableReservationBooking: updatedRestaurant.tableReservationBooking,
+        tableReservationBookingConfig: updatedRestaurant.tableReservationBookingConfig
       }
     });
   } catch (error) {

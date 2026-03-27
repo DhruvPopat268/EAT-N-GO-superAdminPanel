@@ -63,7 +63,7 @@ const CommissionManagement = () => {
         credentials: 'include'
       });
       const data = await response.json();
-      
+
       if (data.success) {
         setRestaurants(data.data);
         setTotalCount(data.pagination.totalCount);
@@ -94,7 +94,7 @@ const CommissionManagement = () => {
   const handleUpdateCommission = async () => {
     try {
       setUpdating(true);
-      
+
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/restaurants/admin/commission`, {
         method: 'PATCH',
         headers: {
@@ -107,9 +107,9 @@ const CommissionManagement = () => {
           tableBookingCommission: parseFloat(editData.tableBookingCommission)
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         toast.success('Commission updated successfully');
         setEditDialog(false);
@@ -162,10 +162,10 @@ const CommissionManagement = () => {
       {/* Header Section */}
       <Box sx={{ mb: 5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
-          <Avatar 
-            sx={{ 
-              bgcolor: 'white', 
-              width: 64, 
+          <Avatar
+            sx={{
+              bgcolor: 'white',
+              width: 64,
               height: 64,
             }}
           >
@@ -183,18 +183,18 @@ const CommissionManagement = () => {
       </Box>
 
       {/* Main Table */}
-      <Card 
-        sx={{ 
-          borderRadius: 3, 
+      <Card
+        sx={{
+          borderRadius: 3,
           overflow: 'hidden',
           background: 'white',
           border: '1px solid rgba(0,0,0,0.06)',
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
         }}
       >
-        <Box 
-          sx={{ 
-            p: 4, 
+        <Box
+          sx={{
+            p: 4,
             borderBottom: '1px solid #e5e7eb',
             background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)'
           }}
@@ -206,7 +206,7 @@ const CommissionManagement = () => {
             Configure commission rates for orders and table bookings
           </Typography>
         </Box>
-        
+
         <TableContainer>
           <Table sx={{ minWidth: 800 }}>
             <TableHead>
@@ -221,7 +221,7 @@ const CommissionManagement = () => {
             </TableHead>
             <TableBody>
               {restaurants.map((restaurant, index) => (
-                <TableRow 
+                <TableRow
                   key={restaurant.restaurantId}
                   sx={{
                     '&:hover': {
@@ -308,64 +308,79 @@ const CommissionManagement = () => {
           </Box>
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={3} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Order Commission (%)"
-                type="number"
-                value={editData.orderCommission}
-                onChange={(e) => setEditData({
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center", // ✅ center horizontally
+              gap: 3,
+              mt: 1,
+            }}
+          >
+            {/* Order Commission */}
+            <TextField
+              size="small"
+              label="Order Commission (%)"
+              type="number"
+              value={editData.orderCommission}
+              onChange={(e) =>
+                setEditData({
                   ...editData,
-                  orderCommission: e.target.value
-                })}
-                inputProps={{ min: 0, max: 100, step: 0.1 }}
-                helperText="Enter order commission percentage (0-100)"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  }
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <ShoppingCartIcon sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Table Booking Commission (%)"
-                type="number"
-                value={editData.tableBookingCommission}
-                onChange={(e) => setEditData({
+                  orderCommission: e.target.value,
+                })
+              }
+              inputProps={{ min: 0, max: 100, step: 0.1 }}
+              helperText="Enter order commission percentage (0-100)"
+              FormHelperTextProps={{ sx: { minHeight: 20, textAlign: "left" } }}
+              sx={{
+                width: 320,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <ShoppingCartIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            {/* Table Booking Commission */}
+            <TextField
+              size="small"
+              label="Table Booking Commission (%)"
+              type="number"
+              value={editData.tableBookingCommission}
+              onChange={(e) =>
+                setEditData({
                   ...editData,
-                  tableBookingCommission: e.target.value
-                })}
-                inputProps={{ min: 0, max: 100, step: 0.1 }}
-                helperText="Enter table booking commission percentage (0-100)"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2,
-                  }
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <TableRestaurantIcon sx={{ color: 'text.secondary' }} />
-                    </InputAdornment>
-                  )
-                }}
-              />
-            </Grid>
-          </Grid>
+                  tableBookingCommission: e.target.value,
+                })
+              }
+              inputProps={{ min: 0, max: 100, step: 0.1 }}
+              helperText="Enter table booking commission percentage (0-100)"
+              FormHelperTextProps={{ sx: { minHeight: 20, textAlign: "left" } }}
+              sx={{
+                width: 320,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <TableRestaurantIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 2 }}>
-          <Button 
-            onClick={handleCloseDialog} 
+          <Button
+            onClick={handleCloseDialog}
             startIcon={<CancelIcon />}
             sx={{ borderRadius: 2 }}
           >

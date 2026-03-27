@@ -115,13 +115,14 @@ const Configuration = () => {
       }, { withCredentials: true });
 
       if (response.data.success) {
-        toast.success('Configuration updated successfully');
+        toast.success(response.data.message);
         setEditDialog(false);
         fetchRestaurants(); // Refresh data
       }
     } catch (error) {
       console.error('Error updating configuration:', error);
-      toast.error('Error updating configuration');
+      const errorMessage = error.response?.data?.message || 'Error updating configuration';
+      toast.error(errorMessage);
     } finally {
       setUpdating(false);
     }
