@@ -6,6 +6,7 @@ const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
 const tableBookingCheckAvailabilityRoute = require('./tableBookingCheckAvailabilityRoute');
 const DepositHandler = require('../utils/depositHandler');
+const { emitToRestaurant } = require('../utils/socketUtils');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const router = express.Router();
@@ -320,6 +321,12 @@ router.post('/dummy', verifyToken, async (req, res) => {
     const populatedBooking = await TableBooking.findById(tableBooking._id)
       .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state')
       .populate('userId', 'fullName phone');
+
+    // Emit socket event to restaurant
+    const io = req.app.get('io');
+    if (io) {
+      emitToRestaurant(io, availabilityCheck.restaurantId, 'new-table-booking', populatedBooking.toObject());
+    }
 
     res.status(201).json({
       success: true,
