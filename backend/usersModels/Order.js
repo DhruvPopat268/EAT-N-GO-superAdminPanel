@@ -206,6 +206,14 @@ const orderSchema = new mongoose.Schema(
       ref: 'userRating'
     },
 
+    // Admin commission
+    adminCommission: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+
     // Flag to identify if order has post-order items
     hasPostOrderItems: {
       type: Boolean,

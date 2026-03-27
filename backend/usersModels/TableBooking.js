@@ -87,6 +87,14 @@ const tableBookingSchema = new mongoose.Schema(
       enum: ['User', 'Restaurant', 'System']
     },
 
+    // Admin commission
+    adminCommission: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
+
     // Cancellation info
     cancellation: {
       cancelledBy: {

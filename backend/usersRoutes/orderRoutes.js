@@ -200,7 +200,7 @@ router.post('/place', verifyToken, async (req, res) => {
     }
 
     // Check if restaurant is open and not manually closed
-    const restaurant = await Restaurant.findById(cart.restaurantId).select('basicInfo.operatingHours isManuallyClosed contactDetails.latitude contactDetails.longitude');
+    const restaurant = await Restaurant.findById(cart.restaurantId).select('basicInfo.operatingHours isManuallyClosed contactDetails.latitude contactDetails.longitude adminCommission.orderCommission');
     if (!restaurant) {
       return res.status(404).json({
         success: false,
@@ -337,6 +337,7 @@ router.post('/place', verifyToken, async (req, res) => {
       totalAmount: finalTotal,
       appliedCoupon: cart.appliedCoupon,
       currency: cart.currency,
+      adminCommission: restaurant.adminCommission?.orderCommission || 0,
       status: 'confirmed',
       waitingTime: orderRequest.waitingTime
     });

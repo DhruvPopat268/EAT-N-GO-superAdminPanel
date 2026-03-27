@@ -257,6 +257,15 @@ router.post('/dummy', verifyToken, async (req, res) => {
       });
     }
 
+    // Get restaurant to fetch admin commission
+    const restaurant = await Restaurant.findById(availabilityCheck.restaurantId).select('adminCommission.tableBookingCommission');
+    if (!restaurant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Restaurant not found'
+      });
+    }
+
     // Check if availability check is still valid using stored expiry time
     const now = new Date();
     
@@ -304,6 +313,7 @@ router.post('/dummy', verifyToken, async (req, res) => {
       specialInstructions: availabilityCheck.specialInstructions,
       coverCharges: availabilityCheck.coverCharges,
       currency: availabilityCheck.currency,
+      adminCommission: restaurant.adminCommission?.tableBookingCommission || 0,
       // Add dummy payment information
       coverChargePaymentId: dummyPaymentId,
       coverChargePaymentStatus: 'paid',
