@@ -319,7 +319,7 @@ router.post('/dummy', verifyToken, async (req, res) => {
 
     // Populate the response with restaurant and user details
     const populatedBooking = await TableBooking.findById(tableBooking._id)
-      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state')
+      .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state contactDetails.latitude contactDetails.longitude documents.primaryImage')
       .populate('userId', 'fullName phone');
 
     // Emit socket event to restaurant
