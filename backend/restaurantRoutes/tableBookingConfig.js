@@ -582,13 +582,8 @@ router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Get admin discount and validate restaurant discount must be greater than or equal to it
+    // Get admin discount
     const adminDiscountNum = restaurant.adminOfferPercentageOnBill || 0;
-    if (restaurantDiscountNum < adminDiscountNum) {
-      return res.status(400).json({ 
-        message: `Restaurant discount must be greater than or equal to admin offer percentage (${adminDiscountNum}%)` 
-      });
-    }
 
     // Calculate total discount
     const totalDiscountNum = restaurantDiscountNum + adminDiscountNum;
@@ -670,13 +665,8 @@ router.patch('/offers', restaurantAuthMiddleware, async (req, res) => {
         return res.status(400).json({ message: 'Valid restaurantDiscount (0-100) is required' });
       }
       
-      // Validate restaurant discount must be greater than or equal to adminOfferPercentageOnBill
+      // Get admin discount
       const adminDiscountNum = restaurant.adminOfferPercentageOnBill || 0;
-      if (restaurantDiscountNum < adminDiscountNum) {
-        return res.status(400).json({ 
-          message: `Restaurant discount must be greater than or equal to admin offer percentage (${adminDiscountNum}%)` 
-        });
-      }
       
       // Calculate new total discount
       const totalDiscountNum = restaurantDiscountNum + adminDiscountNum;
