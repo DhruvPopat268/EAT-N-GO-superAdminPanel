@@ -17,7 +17,21 @@ const tableBookingOffersSchema = new mongoose.Schema({
     required: false
   },
   
-  percentage: {
+  restaurantDiscount: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 100
+  },
+  
+  adminDiscount: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 100
+  },
+  
+  totalDiscount: {
     type: Number,
     required: true,
     min: 0,

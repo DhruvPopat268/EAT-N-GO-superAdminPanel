@@ -42,7 +42,7 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     const restaurantId = req.restaurant.restaurantId;
 
     const [restaurant, timeSlots, offers] = await Promise.all([
-      Restaurant.findById(restaurantId).select('tableReservationBooking'),
+      Restaurant.findById(restaurantId).select('tableReservationBooking tableReservationBookingConfig adminOfferPercentageOnBill'),
       TableBookingSlot.findOne({ restaurantId }),
       TableBookingOffers.find({ restaurantId })
     ]);
@@ -62,8 +62,18 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
 
     res.json({
       tableReservationBooking: restaurant.tableReservationBooking,
+      tableReservationBookingConfig: restaurant.tableReservationBookingConfig || {
+        coverChargePerPerson: 0,
+        minBufferTimeBeforeCancel: 0,
+        nonRefundSplit: {
+          restaurant: 50,
+          admin: 50
+        }
+      },
+      adminOfferPercentageOnBill: restaurant.adminOfferPercentageOnBill || 0,
       timeSlots: timeSlots || null,
-      offers: offers || []
+      offers: offers || [],
+      minOfferPercentage: restaurant.adminOfferPercentageOnBill || 0
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -89,6 +99,59 @@ router.patch('/toggle', restaurantAuthMiddleware, async (req, res) => {
     res.json({
       message: 'Table reservation booking updated successfully',
       tableReservationBooking: restaurant.tableReservationBooking
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// PATCH route to update table reservation booking config (cover charge and buffer time)
+router.patch('/updateCoverChargeConfig', restaurantAuthMiddleware, async (req, res) => {
+  try {
+    const restaurantId = req.restaurant.restaurantId;
+    const { coverChargePerPerson, minBufferTimeBeforeCancel } = req.body;
+
+    // Validate inputs
+    if (coverChargePerPerson !== undefined) {
+      const charge = parseFloat(coverChargePerPerson);
+      if (isNaN(charge) || charge < 0) {
+        return res.status(400).json({ message: 'coverChargePerPerson must be 0 or greater' });
+      }
+    }
+
+    if (minBufferTimeBeforeCancel !== undefined) {
+      const bufferTime = parseFloat(minBufferTimeBeforeCancel);
+      if (isNaN(bufferTime) || bufferTime < 0) {
+        return res.status(400).json({ message: 'minBufferTimeBeforeCancel must be 0 or greater' });
+      }
+    }
+
+    // Prepare update object
+    const updateObj = {};
+    if (coverChargePerPerson !== undefined) {
+      updateObj['tableReservationBookingConfig.coverChargePerPerson'] = parseFloat(coverChargePerPerson);
+    }
+    if (minBufferTimeBeforeCancel !== undefined) {
+      updateObj['tableReservationBookingConfig.minBufferTimeBeforeCancel'] = parseFloat(minBufferTimeBeforeCancel);
+    }
+
+    if (Object.keys(updateObj).length === 0) {
+      return res.status(400).json({ message: 'At least one field to update is required' });
+    }
+
+    const restaurant = await Restaurant.findByIdAndUpdate(
+      restaurantId,
+      { $set: updateObj },
+      { new: true, select: 'tableReservationBookingConfig' }
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({ message: 'Restaurant not found' });
+    }
+
+    res.json({
+      message: 'Table reservation booking config updated successfully',
+      tableReservationBookingConfig: restaurant.tableReservationBookingConfig
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -499,15 +562,15 @@ router.get('/active-slots', restaurantAuthMiddleware, async (req, res) => {
 router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { name, description, percentage, status } = req.body;
+    const { name, description, restaurantDiscount, status } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ message: 'Offer name is required' });
     }
 
-    const percentageNum = parseFloat(percentage);
-    if (!percentage || isNaN(percentageNum) || percentageNum < 0 || percentageNum > 100) {
-      return res.status(400).json({ message: 'Valid percentage (0-100) is required' });
+    const restaurantDiscountNum = parseFloat(restaurantDiscount);
+    if (!restaurantDiscount || isNaN(restaurantDiscountNum) || restaurantDiscountNum < 0 || restaurantDiscountNum > 100) {
+      return res.status(400).json({ message: 'Valid restaurantDiscount (0-100) is required' });
     }
 
     // Check if table reservation booking is enabled
@@ -518,6 +581,17 @@ router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
         message: 'Table reservation booking is not enabled for this restaurant' 
       });
     }
+
+    // Get admin discount and validate restaurant discount must be greater than or equal to it
+    const adminDiscountNum = restaurant.adminOfferPercentageOnBill || 0;
+    if (restaurantDiscountNum < adminDiscountNum) {
+      return res.status(400).json({ 
+        message: `Restaurant discount must be greater than or equal to admin offer percentage (${adminDiscountNum}%)` 
+      });
+    }
+
+    // Calculate total discount
+    const totalDiscountNum = restaurantDiscountNum + adminDiscountNum;
 
     // Check if offer with same name already exists
     const duplicateOffer = await TableBookingOffers.findOne({ 
@@ -534,7 +608,9 @@ router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
     const offerData = {
       restaurantId,
       name: name.trim(),
-      percentage: percentageNum,
+      restaurantDiscount: restaurantDiscountNum,
+      adminDiscount: adminDiscountNum,
+      totalDiscount: totalDiscountNum,
       status: status !== undefined ? status : true
     };
 
@@ -559,7 +635,7 @@ router.post('/offers', restaurantAuthMiddleware, async (req, res) => {
 router.patch('/offers', restaurantAuthMiddleware, async (req, res) => {
   try {
     const restaurantId = req.restaurant.restaurantId;
-    const { offerId, name, description, percentage, status } = req.body;
+    const { offerId, name, description, restaurantDiscount, status } = req.body;
 
     if (!offerId) {
       return res.status(400).json({ message: 'offerId is required' });
@@ -588,12 +664,26 @@ router.patch('/offers', restaurantAuthMiddleware, async (req, res) => {
       updateObj.description = description.trim();
     }
     
-    if (percentage !== undefined) {
-      const percentageNum = parseFloat(percentage);
-      if (isNaN(percentageNum) || percentageNum < 0 || percentageNum > 100) {
-        return res.status(400).json({ message: 'Valid percentage (0-100) is required' });
+    if (restaurantDiscount !== undefined) {
+      const restaurantDiscountNum = parseFloat(restaurantDiscount);
+      if (isNaN(restaurantDiscountNum) || restaurantDiscountNum < 0 || restaurantDiscountNum > 100) {
+        return res.status(400).json({ message: 'Valid restaurantDiscount (0-100) is required' });
       }
-      updateObj.percentage = percentageNum;
+      
+      // Validate restaurant discount must be greater than or equal to adminOfferPercentageOnBill
+      const adminDiscountNum = restaurant.adminOfferPercentageOnBill || 0;
+      if (restaurantDiscountNum < adminDiscountNum) {
+        return res.status(400).json({ 
+          message: `Restaurant discount must be greater than or equal to admin offer percentage (${adminDiscountNum}%)` 
+        });
+      }
+      
+      // Calculate new total discount
+      const totalDiscountNum = restaurantDiscountNum + adminDiscountNum;
+      
+      updateObj.restaurantDiscount = restaurantDiscountNum;
+      updateObj.adminDiscount = adminDiscountNum;
+      updateObj.totalDiscount = totalDiscountNum;
     }
     
     if (status !== undefined) {

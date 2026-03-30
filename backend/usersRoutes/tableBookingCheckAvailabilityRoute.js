@@ -179,16 +179,13 @@ router.post('/', verifyToken, async (req, res) => {
         });
       }
 
-      // Calculate offer percentages
-      const adminOfferPercentageOnBill = restaurant.tableReservationBookingConfig?.adminOfferPercentageOnBill || 0;
-      const restaurantOfferPercentageOnBill = offer.percentage; // Restaurant pays the full offer percentage
-
+      // Use stored discount values from the offer
       offerData = {
         offerId: offer._id,
         offerName: offer.name,
         offerDescription: offer.description,
-        restaurantOfferPercentageOnBill,
-        adminOfferPercentageOnBill,
+        restaurantOfferPercentageOnBill: offer.restaurantDiscount,
+        adminOfferPercentageOnBill: offer.adminDiscount,
       };
     }
 
@@ -499,16 +496,16 @@ router.post('/offers-coverCharges', verifyToken, async (req, res) => {
     const offers = await TableBookingOffers.find({
       restaurantId,
       status: true
-    }).select('_id name percentage description');
+    }).select('_id name restaurantDiscount adminDiscount totalDiscount description');
 
-    // Calculate total discount percentage for each offer
+    // Format offers with stored discount values
     const formattedOffers = offers.map(offer => ({
       offerId: offer._id,
       name: offer.name,
       description: offer.description,
-      restaurantOfferPercentage: offer.percentage,
-      adminOfferPercentage: adminOfferPercentageOnBill,
-      totalDiscountPercentage: offer.percentage + adminOfferPercentageOnBill
+      restaurantOfferPercentage: offer.restaurantDiscount,
+      adminOfferPercentage: offer.adminDiscount,
+      totalDiscountPercentage: offer.totalDiscount
     }));
 
     res.status(200).json({

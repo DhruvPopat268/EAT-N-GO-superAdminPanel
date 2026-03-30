@@ -483,7 +483,7 @@ router.get('/admin/table-reservation-config', authMiddleware, async (req, res) =
     
     const restaurants = await Restaurant.find(
       { status: 'approved' },
-      '_id basicInfo.restaurantName contactDetails.city contactDetails.state contactDetails.country tableReservationBooking tableReservationBookingConfig businessDetails.currency'
+      '_id basicInfo.restaurantName contactDetails.city contactDetails.state contactDetails.country tableReservationBooking adminOfferPercentageOnBill businessDetails.currency'
     )
     .sort({ 'basicInfo.restaurantName': 1 })
     .skip(skip)
@@ -496,11 +496,7 @@ router.get('/admin/table-reservation-config', authMiddleware, async (req, res) =
       state: restaurant.contactDetails.state,
       country: restaurant.contactDetails.country,
       tableReservationBooking: restaurant.tableReservationBooking,
-      tableReservationBookingConfig: restaurant.tableReservationBookingConfig || {
-        adminOfferPercentageOnBill: 0,
-        coverChargePerPerson: 0,
-        minBufferTimeBeforeCancel: 0
-      },
+      adminOfferPercentageOnBill: restaurant.adminOfferPercentageOnBill || 0,
       currency: restaurant.businessDetails?.currency || null
     }));
 
@@ -575,12 +571,19 @@ router.patch('/admin/table-reservation-booking', authMiddleware, async (req, res
 // Update table reservation booking config
 router.patch('/admin/table-reservation-config', authMiddleware, async (req, res) => {
   try {
-    const { restaurantId, adminOfferPercentageOnBill, coverChargePerPerson, minBufferTimeBeforeCancel } = req.body;
+    const { restaurantId, adminOfferPercentageOnBill } = req.body;
 
     if (!restaurantId) {
       return res.status(400).json({
         success: false,
         message: 'restaurantId is required'
+      });
+    }
+
+    if (adminOfferPercentageOnBill === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'adminOfferPercentageOnBill is required'
       });
     }
 
@@ -594,81 +597,40 @@ router.patch('/admin/table-reservation-config', authMiddleware, async (req, res)
     }
 
     const maxCommission = restaurant.adminCommission?.tableBookingCommission || 0;
-
-    // Validate input
-    if (adminOfferPercentageOnBill !== undefined) {
-      const discount = parseFloat(adminOfferPercentageOnBill);
-      if (isNaN(discount) || discount < 0 || discount > 100) {
-        return res.status(400).json({
-          success: false,
-          message: 'adminOfferPercentageOnBill must be between 0 and 100'
-        });
-      }
-      if (discount > maxCommission) {
-        return res.status(400).json({
-          success: false,
-          message: `adminOfferPercentageOnBill cannot exceed tableBookingCommission (${maxCommission}%)`
-        });
-      }
-    }
-
-    if (coverChargePerPerson !== undefined) {
-      const charge = parseFloat(coverChargePerPerson);
-      if (isNaN(charge) || charge < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'coverChargePerPerson must be 0 or greater'
-        });
-      }
-    }
-
-    if (minBufferTimeBeforeCancel !== undefined) {
-      const bufferTime = parseFloat(minBufferTimeBeforeCancel);
-      if (isNaN(bufferTime) || bufferTime < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'minBufferTimeBeforeCancel must be 0 or greater'
-        });
-      }
-    }
-
-    // Prepare update object
-    const updateObj = {};
-    if (adminOfferPercentageOnBill !== undefined) {
-      updateObj['tableReservationBookingConfig.adminOfferPercentageOnBill'] = parseFloat(adminOfferPercentageOnBill);
-    }
-    if (coverChargePerPerson !== undefined) {
-      updateObj['tableReservationBookingConfig.coverChargePerPerson'] = parseFloat(coverChargePerPerson);
-    }
-    if (minBufferTimeBeforeCancel !== undefined) {
-      updateObj['tableReservationBookingConfig.minBufferTimeBeforeCancel'] = parseFloat(minBufferTimeBeforeCancel);
-    }
-
-    if (Object.keys(updateObj).length === 0) {
+    const discount = parseFloat(adminOfferPercentageOnBill);
+    
+    if (isNaN(discount) || discount < 0 || discount > 100) {
       return res.status(400).json({
         success: false,
-        message: 'At least one field to update is required'
+        message: 'adminOfferPercentageOnBill must be between 0 and 100'
+      });
+    }
+    
+    if (discount > maxCommission) {
+      return res.status(400).json({
+        success: false,
+        message: `adminOfferPercentageOnBill cannot exceed tableBookingCommission (${maxCommission}%)`
       });
     }
 
     const updatedRestaurant = await Restaurant.findByIdAndUpdate(
       restaurantId,
-      { $set: updateObj },
-      { new: true, select: 'tableReservationBooking tableReservationBookingConfig' }
+      { $set: { adminOfferPercentageOnBill: discount } },
+      { new: true, select: 'tableReservationBooking adminOfferPercentageOnBill' }
     );
 
     res.status(200).json({
       success: true,
-      message: 'Table reservation booking config updated successfully',
+      message: 'Admin offer percentage updated successfully',
       data: {
         tableReservationBooking: updatedRestaurant.tableReservationBooking,
-        tableReservationBookingConfig: updatedRestaurant.tableReservationBookingConfig
+        adminOfferPercentageOnBill: updatedRestaurant.adminOfferPercentageOnBill
       }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Error updating table reservation config',
+      message: 'Error updating admin offer percentage',
       error: error.message
     });
   }

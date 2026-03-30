@@ -64,13 +64,14 @@ const restaurantSchema = new mongoose.Schema({
   // Table Reservation Booking
   tableReservationBooking: { type: Boolean, default: false },
 
+  adminOfferPercentageOnBill: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+
   tableReservationBookingConfig: {
-    adminOfferPercentageOnBill: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: 0
-    },
     coverChargePerPerson: {
       type: Number,
       min: 0,
@@ -80,6 +81,20 @@ const restaurantSchema = new mongoose.Schema({
       type: Number,
       min: 0,
       default: 0
+    },
+    nonRefundSplit: {
+      restaurant: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: 50
+      },
+      admin: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: 50
+      }
     }
   },
 
