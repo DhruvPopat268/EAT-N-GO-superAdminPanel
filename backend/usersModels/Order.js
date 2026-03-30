@@ -214,6 +214,52 @@ const orderSchema = new mongoose.Schema(
       default: 0
     },
 
+    // Payment reference
+    paymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Payment'
+    },
+
+    // Settlement tracking
+    settlement: {
+      status: {
+        type: String,
+        enum: ['pending', 'processing', 'settled', 'failed'],
+        default: 'pending'
+      },
+      settledAt: {
+        type: Date
+      },
+      restaurantAmount: {
+        type: Number  // Amount settled to restaurant
+      },
+      adminCommissionAmount: {
+        type: Number  // Commission kept by admin
+      },
+      adminCommissionInINR: {
+        type: Number  // Commission converted to INR (if applicable)
+      }
+    },
+
+    // Payment breakdown (calculated on actual received amount)
+    paymentBreakdown: {
+      receivedAmount: {
+        type: Number  // actual.amount from Payment
+      },
+      receivedCurrency: {
+        type: String
+      },
+      commissionPercentage: {
+        type: Number
+      },
+      commissionAmount: {
+        type: Number
+      },
+      restaurantShare: {
+        type: Number
+      }
+    },
+
     // Flag to identify if order has post-order items
     hasPostOrderItems: {
       type: Boolean,

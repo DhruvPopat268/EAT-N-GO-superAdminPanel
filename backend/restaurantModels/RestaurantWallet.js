@@ -14,11 +14,61 @@ const restaurantWalletSchema = new mongoose.Schema({
     min: 0
   },
   
+  // Restaurant wallet currency (based on restaurant location)
   currency: {
-    code: { type: String },
-    name: { type: String },
-    symbol: { type: String }
+    code: { 
+      type: String,
+      required: true  // USD, INR, GBP, EUR, etc.
+    },
+    name: { 
+      type: String,
+      required: true
+    },
+    symbol: { 
+      type: String,
+      required: true
+    }
+  },
+  
+  // Pending settlements
+  pendingSettlement: {
+    type: Number,
+    default: 0
+  },
+  
+  // Total earnings
+  totalEarnings: {
+    type: Number,
+    default: 0
+  },
+  
+  // Total withdrawals
+  totalWithdrawals: {
+    type: Number,
+    default: 0
+  },
+  
+  // Lock for concurrent transactions
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
+  
+  lastTransactionAt: {
+    type: Date
+  },
+  
+  // Bank details for withdrawal
+  bankDetails: {
+    accountHolderName: String,
+    accountNumber: String,
+    bankName: String,
+    ifscCode: String,  // For India
+    swiftCode: String,  // For international
+    routingNumber: String,  // For US
+    iban: String  // For Europe
   }
+  
 }, {
   timestamps: true
 });

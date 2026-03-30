@@ -95,6 +95,52 @@ const tableBookingSchema = new mongoose.Schema(
       default: 0
     },
 
+    // Payment reference
+    paymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Payment'
+    },
+
+    // Settlement tracking
+    settlement: {
+      status: {
+        type: String,
+        enum: ['pending', 'processing', 'settled', 'failed'],
+        default: 'pending'
+      },
+      settledAt: {
+        type: Date
+      },
+      restaurantAmount: {
+        type: Number
+      },
+      adminCommissionAmount: {
+        type: Number
+      },
+      adminCommissionInINR: {
+        type: Number
+      }
+    },
+
+    // Payment breakdown
+    paymentBreakdown: {
+      receivedAmount: {
+        type: Number
+      },
+      receivedCurrency: {
+        type: String
+      },
+      commissionPercentage: {
+        type: Number
+      },
+      commissionAmount: {
+        type: Number
+      },
+      restaurantShare: {
+        type: Number
+      }
+    },
+
     // Cancellation info
     cancellation: {
       cancelledBy: {
