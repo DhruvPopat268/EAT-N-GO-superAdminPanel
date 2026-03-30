@@ -322,7 +322,7 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         destinationLocation.lat, destinationLocation.lng
       );
       
-      return {
+      const responseData = {
         _id: restaurant._id,
         basicInfo: {
           restaurantName: restaurant.basicInfo.restaurantName,
@@ -346,6 +346,12 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         alcoholAvailable: restaurant.basicInfo?.alcoholAvailable,
         routeSide: routeSide
       };
+      
+      if (restaurant.tableReservationBooking) {
+        responseData.minBufferTimeBeforeCancel = restaurant.tableReservationBookingConfig?.minBufferTimeBeforeCancel || 0;
+      }
+      
+      return responseData;
     }));
 
     console.log('\n=== FINAL RESULTS ===');
