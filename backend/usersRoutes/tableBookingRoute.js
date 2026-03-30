@@ -334,6 +334,11 @@ router.post('/calculate-bill', verifyToken, async (req, res) => {
       discountedBillAmount = discountedBillAmount - coverChargesDeducted;
     }
 
+    // Ensure discountedBillAmount is not negative
+    if (discountedBillAmount < 0) {
+      discountedBillAmount = 0;
+    }
+
     res.status(200).json({
       success: true,
       data: {
