@@ -344,7 +344,8 @@ router.post('/restaurants-along-route', verifyToken, async (req, res) => {
         averageRating: restaurant.averageRating,
         totalRatings: restaurant.totalRatings,
         alcoholAvailable: restaurant.basicInfo?.alcoholAvailable,
-        routeSide: routeSide
+        routeSide: routeSide,
+        tableReservationBooking: restaurant.tableReservationBooking || false
       };
       
       if (restaurant.tableReservationBooking) {
