@@ -21,6 +21,13 @@ const walletTransactionSchema = new mongoose.Schema({
     required: true
   },
   
+  // Whether this transaction affects wallet balance
+  // Commission transactions are tracked for reporting but don't affect balance
+  affectsBalance: {
+    type: Boolean,
+    default: true
+  },
+  
   amount: {
     type: Number,
     required: true,

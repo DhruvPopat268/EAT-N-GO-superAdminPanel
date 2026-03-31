@@ -54,10 +54,6 @@ const restaurantWalletSchema = new mongoose.Schema({
     default: false
   },
   
-  lastTransactionAt: {
-    type: Date
-  },
-  
   // Bank details for withdrawal
   bankDetails: {
     accountHolderName: String,

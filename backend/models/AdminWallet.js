@@ -7,6 +7,19 @@ const adminWalletSchema = new mongoose.Schema({
     min: 0
   },
   
+  // Track total credits and debits (in INR)
+  totalCredits: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  
+  totalDebits: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  
   // Admin wallet is ALWAYS in INR
   currency: {
     code: { 
@@ -26,22 +39,10 @@ const adminWalletSchema = new mongoose.Schema({
     }
   },
   
-  // Track total commissions received by currency
-  totalCommissionsReceived: [{
-    currency: String,
-    amount: Number,
-    convertedAmount: Number,  // In INR
-    _id: false
-  }],
-  
   // Lock for concurrent transactions
   isLocked: {
     type: Boolean,
     default: false
-  },
-  
-  lastTransactionAt: {
-    type: Date
   }
   
 }, {

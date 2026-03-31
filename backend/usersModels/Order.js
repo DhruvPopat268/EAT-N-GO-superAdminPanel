@@ -172,7 +172,7 @@ const orderSchema = new mongoose.Schema(
     // Order status
     status: {
       type: String,
-      enum: ['confirmed', 'waiting', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded'],
+      enum: ['confirmed', 'waiting', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded', 'payment_failed'],
       default: 'confirmed',
     },
 
@@ -200,6 +200,9 @@ const orderSchema = new mongoose.Schema(
     },
     cancellationReason: { type: String },
     refundAmount: { type: Number },
+    
+    // Payment failure info
+    paymentFailureReason: { type: String },
 
     userRatingId: {
       type: mongoose.Schema.Types.ObjectId,

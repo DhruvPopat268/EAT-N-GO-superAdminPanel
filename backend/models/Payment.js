@@ -70,7 +70,7 @@ const paymentSchema = new mongoose.Schema({
     },
     gateway: {
       type: String,
-      enum: ['razorpay', 'stripe', 'phonepe', 'paypal']
+      enum: ['razorpay', 'stripe', 'phonepe', 'paypal', 'testing']
     },
     fees: {
       type: Number,
