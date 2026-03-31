@@ -1034,9 +1034,14 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
 
     await session.startTransaction();
 
-    const order = await Order.findOne(
-      { _id: orderId, restaurantId, status: { $in: ['served', 'ready'] } }
-    ).session(session);
+    const order = await Order.findOne({
+      _id: orderId,
+      restaurantId,
+      $or: [
+        { status: 'served' },
+        { status: 'ready', orderType: 'takeaway' }
+      ]
+    }).session(session);
 
     if (!order) {
       await session.abortTransaction();

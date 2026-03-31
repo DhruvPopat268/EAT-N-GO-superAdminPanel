@@ -350,17 +350,24 @@ router.post('/place', verifyToken, async (req, res) => {
       try {
         await handleOrderPlacement(order, restaurant);
       } catch (walletError) {
-        console.error('Payment processing failed for order:', order._id, walletError);
+        console.error('Payment processing failed for order:', order._id, 'Full error:', walletError);
         
-        // Update order to payment_failed status
-        order.status = 'payment_failed';
-        order.paymentFailureReason = walletError.message;
-        await order.save();
+        // Use targeted update to avoid persisting rolled-back transaction fields
+        await Order.findByIdAndUpdate(order._id, {
+          $set: {
+            status: 'payment_failed',
+            paymentFailureReason: 'PAYMENT_PROCESSING_ERROR'
+          },
+          $unset: {
+            paymentId: '',
+            settlement: ''
+          }
+        });
         
         return res.status(500).json({
           success: false,
           message: 'Payment processing failed. Please try again or contact support.',
-          error: walletError.message,
+          code: 'PAYMENT_PROCESSING_ERROR',
           orderId: order._id
         });
       }
