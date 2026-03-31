@@ -1143,7 +1143,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
       await session.commitTransaction();
 
       const message = totalPendingToAdd > 0
-        ? `Order cancelled successfully. Cancellation charges of ${cancellationCharges} (${cancellationPercentage}%) will be added to your next order.`
+        ? `Order cancelled successfully. Cancellation charges of ${totalPendingToAdd}  will be added to your next order.`
         : 'Order cancelled successfully. No cancellation charges applied.';
 
       return res.json({
