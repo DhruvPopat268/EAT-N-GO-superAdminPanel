@@ -22,6 +22,9 @@ const orderCancelRefundSchema = new mongoose.Schema(
     served: {
       percentage: { type: Number, default: 0 },
       status: { type: Boolean, default: false }
+    },
+    maxOrderCancellationChargesDues: {
+      type: Number
     }
   },
   {

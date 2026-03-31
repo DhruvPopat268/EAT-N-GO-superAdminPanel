@@ -163,6 +163,12 @@ const orderSchema = new mongoose.Schema(
       }
     },
 
+    // Applied pending cancellation charges
+    appliedPendingCancellationCharges: {
+      type: Number,
+      default: 0
+    },
+
     currency: {
       code: { type: String },
       name: { type: String },

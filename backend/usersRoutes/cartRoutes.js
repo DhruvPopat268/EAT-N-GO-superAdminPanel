@@ -16,7 +16,8 @@ const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 function updateCartTotals(cart) {
   const total = cart.items.reduce((sum, item) => sum + (item.itemTotal || 0), 0);
   cart.baseCartTotal = total;
-  cart.cartTotal = cart.appliedCoupon?.savedAmount ? total - cart.appliedCoupon.savedAmount : total;
+  const discountedTotal = cart.appliedCoupon?.savedAmount ? total - cart.appliedCoupon.savedAmount : total;
+  cart.cartTotal = discountedTotal + (cart.appliedPendingCancellationCharges || 0);
 }
 
 // Get user cart
@@ -84,12 +85,32 @@ router.get('/', verifyToken, async (req, res) => {
         message: 'Cart is empty',
         data: {
           items: [],
-          cartTotal: 0
+          cartTotal: 0,
+          appliedPendingCancellationCharges: 0,
+          isPayAtRestaurantAllowed: true
         }
       });
     }
 
     const cartObj = cart.toObject();
+
+    // Check if pay_at_restaurant is allowed based on pending charges
+    let isPayAtRestaurantAllowed = true;
+    const pendingCharges = cartObj.appliedPendingCancellationCharges || 0;
+    
+    if (pendingCharges > 0) {
+      // Fetch restaurant's max cancellation charges limit
+      const OrderCancelRefund = require('../restaurantModels/OrderCancelRefund');
+      const refundPolicy = await OrderCancelRefund.findOne({ restaurantId: cart.restaurantId });
+      
+      if (refundPolicy && refundPolicy.maxOrderCancellationChargesDues) {
+        if (pendingCharges >= refundPolicy.maxOrderCancellationChargesDues) {
+          isPayAtRestaurantAllowed = false;
+        }
+      }
+    }
+    
+    cartObj.isPayAtRestaurantAllowed = isPayAtRestaurantAllowed;
 
     // Validate applied coupon if exists
     if (cartObj.appliedCoupon?.couponId) {
@@ -139,10 +160,10 @@ router.get('/', verifyToken, async (req, res) => {
         if (!isEligible) {
           cartObj.appliedCoupon.toEligible = toEligible;
           // Remove discount from cartTotal if coupon is not eligible
-          cartObj.cartTotal = cartObj.baseCartTotal;
+          cartObj.cartTotal = cartObj.baseCartTotal + (cartObj.appliedPendingCancellationCharges || 0);
         } else {
           // Ensure discount is applied if coupon is eligible
-          cartObj.cartTotal = cartObj.baseCartTotal - cartObj.appliedCoupon.savedAmount;
+          cartObj.cartTotal = (cartObj.baseCartTotal - cartObj.appliedCoupon.savedAmount) + (cartObj.appliedPendingCancellationCharges || 0);
         }
       }
     }
@@ -421,6 +442,9 @@ router.post('/add', verifyToken, async (req, res) => {
         cart.currency = restaurant.businessDetails.currency;
       }
     }
+    
+    // Always update pending cancellation charges to reflect current user balance
+    cart.appliedPendingCancellationCharges = user.pendingOrderCancellationCharges || 0;
 
     // Check if item with same configuration already exists
     const existingItem = findExistingCartItem(cart.items, {
@@ -820,6 +844,11 @@ router.post('/replace', verifyToken, async (req, res) => {
     }
 
     /* -------------------- Clear Cart and Add New Item -------------------- */
+    // Get user's pending charges before deleting cart
+    const User = require('../usersModels/usersModel');
+    const user = await User.findById(userId).select('pendingOrderCancellationCharges');
+    const pendingCharges = user?.pendingOrderCancellationCharges || 0;
+    
     await Cart.findOneAndDelete({ userId });
     
     // Get item details for price calculation
@@ -912,7 +941,8 @@ router.post('/replace', verifyToken, async (req, res) => {
         addonTotal
       }],
       baseCartTotal: itemTotal,
-      cartTotal: itemTotal
+      cartTotal: itemTotal + pendingCharges,
+      appliedPendingCancellationCharges: pendingCharges
     });
     
     if (restaurant?.businessDetails?.currency) {

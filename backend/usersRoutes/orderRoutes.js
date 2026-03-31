@@ -7,6 +7,7 @@ const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
 const User = require('../usersModels/usersModel');
 const Restaurant = require('../models/Restaurant');
+const OrderCancelRefund = require('../restaurantModels/OrderCancelRefund');
 const { emitOrderToRestaurant } = require('../utils/socketUtils');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 const { getUserLocationDetails } = require('../utils/googleMapsUtils');
@@ -337,6 +338,7 @@ router.post('/place', verifyToken, async (req, res) => {
       baseTotalAmount: baseTotal,
       totalAmount: finalTotal,
       appliedCoupon: cart.appliedCoupon,
+      appliedPendingCancellationCharges: orderRequest.appliedPendingCancellationCharges || 0,
       currency: cart.currency,
       adminCommission: restaurant.adminCommission?.orderCommission || 0,
       status: 'confirmed',
@@ -344,6 +346,13 @@ router.post('/place', verifyToken, async (req, res) => {
     });
 
     await order.save();
+
+    // Clear user's pending cancellation charges if any were applied to this order
+    if (order.appliedPendingCancellationCharges > 0) {
+      await User.findByIdAndUpdate(userId, {
+        $inc: { pendingOrderCancellationCharges: -order.appliedPendingCancellationCharges }
+      });
+    }
 
     // Handle online payment - credit to admin wallet
     if (paymentMethod === 'online') {
@@ -861,6 +870,84 @@ router.put('/update', verifyToken, async (req, res) => {
   }
 });
 
+// Get cancellation details (calculate refund/charges before cancelling)
+router.get('/cancel/:orderId', verifyToken, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.userId;
+
+    const order = await Order.findOne({ _id: orderId, userId });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check if order is already cancelled or completed
+    if (order.status === 'cancelled' || order.status === 'refunded') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Order is already cancelled', 
+        code: 'ALREADY_CANCELLED' 
+      });
+    }
+
+    if (order.status === 'completed') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot cancel completed order', 
+        code: 'ORDER_COMPLETED' 
+      });
+    }
+
+    // Fetch restaurant's refund policy
+    const refundPolicy = await OrderCancelRefund.findOne({ restaurantId: order.restaurantId });
+
+    if (!refundPolicy || !refundPolicy[order.status]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refund policy not configured for this restaurant',
+        code: 'NO_REFUND_POLICY'
+      });
+    }
+
+    const { status: cancellationAllowed, percentage: cancellationPercentage } = refundPolicy[order.status];
+
+    // Check if cancellation is allowed for current order status
+    if (!cancellationAllowed) {
+      return res.status(400).json({
+        success: false,
+        message: `Cancellation not allowed at ${order.status} stage`,
+        code: 'CANCELLATION_NOT_ALLOWED',
+        currentStatus: order.status
+      });
+    }
+
+    // Calculate cancellation charges and refund amount
+    const cancellationCharges = (order.totalAmount * cancellationPercentage) / 100;
+    const refundAmount = order.totalAmount - cancellationCharges;
+    const refundPercentage = 100 - cancellationPercentage;
+
+    return res.json({
+      success: true,
+      message: 'Cancellation details calculated successfully',
+      data: {
+        orderId: order._id,
+        orderStatus: order.status,
+        totalAmount: order.totalAmount,
+        cancellationPercentage,
+        refundPercentage,
+        cancellationCharges,
+        refundAmount,
+        paymentMethod: order.paymentMethod,
+        willAddToOrderPendingCancellationCharges: cancellationCharges > 0 && order.paymentMethod === 'pay_at_restaurant'
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 router.post('/cancel', verifyToken, async (req, res) => {
   try {
     const { orderId, cancellationReason } = req.body;
@@ -885,37 +972,100 @@ router.post('/cancel', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Cannot cancel completed order', code: 'ORDER_COMPLETED' });
     }
 
-    // Only allow free cancellation for 'confirmed' status
-    if (order.status === 'confirmed') {
+    // Fetch restaurant's refund policy
+    const refundPolicy = await OrderCancelRefund.findOne({ restaurantId: order.restaurantId });
+
+    if (!refundPolicy || !refundPolicy[order.status]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refund policy not configured for this restaurant',
+        code: 'NO_REFUND_POLICY'
+      });
+    }
+
+    const { status: cancellationAllowed, percentage: cancellationPercentage } = refundPolicy[order.status];
+
+    // Check if cancellation is allowed for current order status
+    if (!cancellationAllowed) {
+      return res.status(400).json({
+        success: false,
+        message: `Cancellation not allowed at ${order.status} stage`,
+        code: 'CANCELLATION_NOT_ALLOWED',
+        currentStatus: order.status
+      });
+    }
+
+    // Calculate cancellation charges and refund amount
+    const cancellationCharges = (order.totalAmount * cancellationPercentage) / 100;
+    const refundAmount = order.totalAmount - cancellationCharges;
+    const refundPercentage = 100 - cancellationPercentage;
+
+    // Handle based on payment method
+    if (order.paymentMethod === 'online') {
+      // For online payment: Process refund directly
       await Order.findByIdAndUpdate(orderId, {
         $set: {
           status: 'cancelled',
           cancelledBy: 'User',
           cancellationReason,
-          refundAmount: order.totalAmount
+          refundAmount,
+          cancellationCharges
         }
       });
 
+      // If order had applied pending charges, add them back to user
+      if (order.appliedPendingCancellationCharges > 0) {
+        await User.findByIdAndUpdate(userId, {
+          $inc: { pendingOrderCancellationCharges: order.appliedPendingCancellationCharges }
+        });
+      }
+
       return res.json({
         success: true,
-        message: 'Order cancelled successfully. Full refund will be processed.',
-        refundAmount: order.totalAmount
+        message: `Order cancelled successfully. ${refundPercentage}% refund (${refundAmount}) will be processed.`,
+        refundAmount,
+        cancellationCharges,
+        refundPercentage,
+        cancellationPercentage
+      });
+    } else if (order.paymentMethod === 'pay_at_restaurant') {
+      // For pay_at_restaurant: Add cancellation charges to user's pending charges only if charges > 0
+      let totalPendingToAdd = cancellationCharges;
+      
+      // If order had applied pending charges, add them back too
+      if (order.appliedPendingCancellationCharges > 0) {
+        totalPendingToAdd += order.appliedPendingCancellationCharges;
+      }
+      
+      if (totalPendingToAdd > 0) {
+        await User.findByIdAndUpdate(userId, {
+          $inc: { pendingOrderCancellationCharges: totalPendingToAdd }
+        });
+      }
+
+      await Order.findByIdAndUpdate(orderId, {
+        $set: {
+          status: 'cancelled',
+          cancelledBy: 'User',
+          cancellationReason,
+          refundAmount: 0,
+          cancellationCharges
+        }
+      });
+
+      const message = cancellationCharges > 0
+        ? `Order cancelled successfully. Cancellation charges of ${cancellationCharges} (${cancellationPercentage}%) will be added to your next order.`
+        : 'Order cancelled successfully. No cancellation charges applied.';
+
+      return res.json({
+        success: true,
+        message,
+        cancellationCharges,
+        cancellationPercentage,
+        refundAmount: 0,
+        refundPercentage: 0
       });
     }
-
-    // For other statuses, return error with appropriate message
-    const errorMessages = {
-      preparing: 'Cannot cancel order. Cooking has started. Partial refund (20-80%) may apply - please contact restaurant.',
-      ready: 'Cannot cancel order. Food is already prepared. No refund available.',
-      served: 'Cannot cancel order. Order has been served.'
-    };
-
-    return res.status(400).json({
-      success: false,
-      message: errorMessages[order.status] || 'Cannot cancel order at this stage',
-      code: 'CANCELLATION_NOT_ALLOWED',
-      currentStatus: order.status
-    });
 
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
