@@ -347,17 +347,17 @@ router.post('/place', verifyToken, async (req, res) => {
 
     await order.save();
 
-    // Clear user's pending cancellation charges if any were applied to this order
-    if (order.appliedPendingCancellationCharges > 0) {
-      await User.findByIdAndUpdate(userId, {
-        $inc: { pendingOrderCancellationCharges: -order.appliedPendingCancellationCharges }
-      });
-    }
-
     // Handle online payment - credit to admin wallet
     if (paymentMethod === 'online') {
       try {
         await handleOrderPlacement(order, restaurant);
+        
+        // Clear user's pending cancellation charges ONLY after successful payment
+        if (order.appliedPendingCancellationCharges > 0) {
+          await User.findByIdAndUpdate(userId, {
+            $inc: { pendingOrderCancellationCharges: -order.appliedPendingCancellationCharges }
+          });
+        }
       } catch (walletError) {
         console.error('Payment processing failed for order:', order._id, 'Full error:', walletError);
         
@@ -373,11 +373,21 @@ router.post('/place', verifyToken, async (req, res) => {
           }
         });
         
+        // NOTE: pendingOrderCancellationCharges is NOT decremented on payment failure
+        // User's pending charges remain unchanged
+        
         return res.status(500).json({
           success: false,
           message: 'Payment processing failed. Please try again or contact support.',
           code: 'PAYMENT_PROCESSING_ERROR',
           orderId: order._id
+        });
+      }
+    } else {
+      // For pay_at_restaurant: Clear pending charges immediately since no payment processing needed
+      if (order.appliedPendingCancellationCharges > 0) {
+        await User.findByIdAndUpdate(userId, {
+          $inc: { pendingOrderCancellationCharges: -order.appliedPendingCancellationCharges }
         });
       }
     }
@@ -922,10 +932,25 @@ router.get('/cancel/:orderId', verifyToken, async (req, res) => {
       });
     }
 
-    // Calculate cancellation charges and refund amount
-    const cancellationCharges = (order.totalAmount * cancellationPercentage) / 100;
-    const refundAmount = order.totalAmount - cancellationCharges;
-    const refundPercentage = 100 - cancellationPercentage;
+    // Calculate base amount excluding carried-over pending charges to avoid double-penalty
+    const baseAmount = Math.max(0, order.totalAmount - (order.appliedPendingCancellationCharges || 0));
+    
+    // Calculate cancellation charges only on the base amount (not on carried-over dues)
+    const cancellationCharges = (baseAmount * cancellationPercentage) / 100;
+    
+    // Calculate refund amount based on payment method
+    let refundAmount;
+    let refundPercentage;
+    
+    if (order.paymentMethod === 'pay_at_restaurant') {
+      // For pay_at_restaurant: No refund, only cancellation charges added to pending
+      refundAmount = 0;
+      refundPercentage = 0;
+    } else {
+      // For online payment: Refund = totalAmount - cancellationCharges
+      refundAmount = order.totalAmount - cancellationCharges;
+      refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
+    }
 
     return res.json({
       success: true,
@@ -949,6 +974,8 @@ router.get('/cancel/:orderId', verifyToken, async (req, res) => {
 });
 
 router.post('/cancel', verifyToken, async (req, res) => {
+  const session = await Order.startSession();
+  
   try {
     const { orderId, cancellationReason } = req.body;
     const userId = req.user.userId;
@@ -957,25 +984,30 @@ router.post('/cancel', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'orderId is required' });
     }
 
-    const order = await Order.findOne({ _id: orderId, userId });
+    // Start transaction
+    await session.startTransaction();
+
+    // Find order with cancellable status check (idempotent guard)
+    const order = await Order.findOne({ 
+      _id: orderId, 
+      userId,
+      status: { $in: ['confirmed', 'waiting', 'preparing', 'ready', 'served'] } // Only cancellable statuses
+    }).session(session);
 
     if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-
-    // Check if order is already cancelled or completed
-    if (order.status === 'cancelled' || order.status === 'refunded') {
-      return res.status(400).json({ success: false, message: 'Order is already cancelled', code: 'ALREADY_CANCELLED' });
-    }
-
-    if (order.status === 'completed') {
-      return res.status(400).json({ success: false, message: 'Cannot cancel completed order', code: 'ORDER_COMPLETED' });
+      await session.abortTransaction();
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Order not found or cannot be cancelled',
+        code: 'ORDER_NOT_CANCELLABLE'
+      });
     }
 
     // Fetch restaurant's refund policy
-    const refundPolicy = await OrderCancelRefund.findOne({ restaurantId: order.restaurantId });
+    const refundPolicy = await OrderCancelRefund.findOne({ restaurantId: order.restaurantId }).session(session);
 
     if (!refundPolicy || !refundPolicy[order.status]) {
+      await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: 'Refund policy not configured for this restaurant',
@@ -987,6 +1019,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
 
     // Check if cancellation is allowed for current order status
     if (!cancellationAllowed) {
+      await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: `Cancellation not allowed at ${order.status} stage`,
@@ -995,63 +1028,114 @@ router.post('/cancel', verifyToken, async (req, res) => {
       });
     }
 
-    // Calculate cancellation charges and refund amount
-    const cancellationCharges = (order.totalAmount * cancellationPercentage) / 100;
+    // Calculate base amount excluding carried-over pending charges to avoid double-penalty
+    const baseAmount = Math.max(0, order.totalAmount - (order.appliedPendingCancellationCharges || 0));
+    
+    // Calculate cancellation charges only on the base amount (not on carried-over dues)
+    const cancellationCharges = (baseAmount * cancellationPercentage) / 100;
+    
+    // Calculate refund amount: totalAmount - cancellationCharges
     const refundAmount = order.totalAmount - cancellationCharges;
-    const refundPercentage = 100 - cancellationPercentage;
+    const refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
 
     // Handle based on payment method
     if (order.paymentMethod === 'online') {
-      // For online payment: Process refund directly
-      await Order.findByIdAndUpdate(orderId, {
-        $set: {
-          status: 'cancelled',
-          cancelledBy: 'User',
-          cancellationReason,
-          refundAmount,
-          cancellationCharges
-        }
-      });
+      // For online payment: Update order atomically with status check
+      const updatedOrder = await Order.findOneAndUpdate(
+        { 
+          _id: orderId, 
+          userId,
+          status: { $in: ['confirmed', 'waiting', 'preparing', 'ready', 'served'] } // Idempotent guard
+        },
+        {
+          $set: {
+            status: 'cancelled',
+            cancelledBy: 'User',
+            cancellationReason,
+            refundAmount,
+            cancellationCharges
+          }
+        },
+        { session, new: true }
+      );
 
-      // If order had applied pending charges, add them back to user
-      if (order.appliedPendingCancellationCharges > 0) {
-        await User.findByIdAndUpdate(userId, {
-          $inc: { pendingOrderCancellationCharges: order.appliedPendingCancellationCharges }
+      if (!updatedOrder) {
+        await session.abortTransaction();
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Order already cancelled or status changed',
+          code: 'ALREADY_CANCELLED'
         });
       }
 
+      // If order had applied pending charges, add them back to user
+      if (order.appliedPendingCancellationCharges > 0) {
+        await User.findByIdAndUpdate(
+          userId,
+          { $inc: { pendingOrderCancellationCharges: order.appliedPendingCancellationCharges } },
+          { session }
+        );
+      }
+
+      // Commit transaction
+      await session.commitTransaction();
+
       return res.json({
         success: true,
-        message: `Order cancelled successfully. ${refundPercentage}% refund (${refundAmount}) will be processed.`,
+        message: `Order cancelled successfully. ${refundPercentage.toFixed(2)}% refund (${refundAmount}) will be processed.`,
         refundAmount,
         cancellationCharges,
         refundPercentage,
         cancellationPercentage
       });
     } else if (order.paymentMethod === 'pay_at_restaurant') {
-      // For pay_at_restaurant: Add cancellation charges to user's pending charges only if charges > 0
+      // For pay_at_restaurant: Calculate total pending to add
       let totalPendingToAdd = cancellationCharges;
       
       // If order had applied pending charges, add them back too
       if (order.appliedPendingCancellationCharges > 0) {
         totalPendingToAdd += order.appliedPendingCancellationCharges;
       }
-      
-      if (totalPendingToAdd > 0) {
-        await User.findByIdAndUpdate(userId, {
-          $inc: { pendingOrderCancellationCharges: totalPendingToAdd }
+
+      // Update order atomically with status check
+      const updatedOrder = await Order.findOneAndUpdate(
+        { 
+          _id: orderId, 
+          userId,
+          status: { $in: ['confirmed', 'waiting', 'preparing', 'ready', 'served'] } // Idempotent guard
+        },
+        {
+          $set: {
+            status: 'cancelled',
+            cancelledBy: 'User',
+            cancellationReason,
+            refundAmount: 0,
+            cancellationCharges
+          }
+        },
+        { session, new: true }
+      );
+
+      if (!updatedOrder) {
+        await session.abortTransaction();
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Order already cancelled or status changed',
+          code: 'ALREADY_CANCELLED'
         });
       }
+      
+      // Add charges to user's pending balance
+      if (totalPendingToAdd > 0) {
+        await User.findByIdAndUpdate(
+          userId,
+          { $inc: { pendingOrderCancellationCharges: totalPendingToAdd } },
+          { session }
+        );
+      }
 
-      await Order.findByIdAndUpdate(orderId, {
-        $set: {
-          status: 'cancelled',
-          cancelledBy: 'User',
-          cancellationReason,
-          refundAmount: 0,
-          cancellationCharges
-        }
-      });
+      // Commit transaction
+      await session.commitTransaction();
 
       const message = cancellationCharges > 0
         ? `Order cancelled successfully. Cancellation charges of ${cancellationCharges} (${cancellationPercentage}%) will be added to your next order.`
@@ -1068,7 +1152,10 @@ router.post('/cancel', verifyToken, async (req, res) => {
     }
 
   } catch (error) {
+    await session.abortTransaction();
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  } finally {
+    session.endSession();
   }
 });
 
