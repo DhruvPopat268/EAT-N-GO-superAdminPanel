@@ -239,7 +239,7 @@ router.post('/apply', verifyToken, async (req, res) => {
       couponId: coupon._id,
       savedAmount
     };
-    cart.cartTotal = cart.baseCartTotal - savedAmount;
+    cart.cartTotal = (cart.baseCartTotal - savedAmount) + (cart.appliedPendingCancellationCharges || 0);
     await cart.save();
 
     const populatedCart = await Cart.findOne({ userId, restaurantId: cart.restaurantId })
@@ -289,7 +289,7 @@ router.post('/remove', verifyToken, async (req, res) => {
 
     // Remove appliedCoupon and reset cartTotal
     cart.set('appliedCoupon', undefined, { strict: false });
-    cart.cartTotal = cart.baseCartTotal;
+    cart.cartTotal = cart.baseCartTotal + (cart.appliedPendingCancellationCharges || 0);
     await cart.save();
 
     res.json({

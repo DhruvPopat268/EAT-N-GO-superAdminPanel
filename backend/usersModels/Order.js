@@ -163,6 +163,12 @@ const orderSchema = new mongoose.Schema(
       }
     },
 
+    // Applied pending cancellation charges
+    appliedPendingCancellationCharges: {
+      type: Number,
+      default: 0
+    },
+
     currency: {
       code: { type: String },
       name: { type: String },
@@ -172,7 +178,7 @@ const orderSchema = new mongoose.Schema(
     // Order status
     status: {
       type: String,
-      enum: ['confirmed', 'waiting', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded', 'payment_failed'],
+      enum: ['confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded', 'payment_failed'],
       default: 'confirmed',
     },
 

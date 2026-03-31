@@ -603,6 +603,7 @@ router.post('/create', verifyToken, async (req, res) => {
       baseCartTotal: cart.baseCartTotal,
       cartTotal: cart.cartTotal,
       appliedCoupon: cart.appliedCoupon,
+      appliedPendingCancellationCharges: cart.appliedPendingCancellationCharges || 0,
       currency: cart.currency
     });
 
