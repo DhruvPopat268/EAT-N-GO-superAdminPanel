@@ -10,6 +10,7 @@ const Restaurant = require('../models/Restaurant');
 const { emitOrderToRestaurant } = require('../utils/socketUtils');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 const { getUserLocationDetails } = require('../utils/googleMapsUtils');
+const { handleOrderPlacement } = require('../utils/depositTestingHandler');
 
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
@@ -343,6 +344,17 @@ router.post('/place', verifyToken, async (req, res) => {
     });
 
     await order.save();
+
+    // Handle online payment - credit to admin wallet
+    if (paymentMethod === 'online') {
+      try {
+        await handleOrderPlacement(order, restaurant);
+      } catch (walletError) {
+        console.error('Wallet operation failed:', walletError);
+        // Order is created but wallet operation failed
+        // You may want to handle this differently in production
+      }
+    }
 
     // Increment coupon usage count if coupon was applied
     if (cart.appliedCoupon && cart.appliedCoupon.couponId) {

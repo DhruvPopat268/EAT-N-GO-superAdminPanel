@@ -3,6 +3,7 @@ const router = express.Router();
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
+const { handleOrderCompletion } = require('../utils/depositTestingHandler');
 
 // Get all orders for restaurant
 router.get('/all', restaurantAuthMiddleware, async (req, res) => {
@@ -1028,14 +1029,35 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
     const { orderId } = req.params;
     const restaurantId = req.restaurant.restaurantId;
 
-    const order = await Order.findOneAndUpdate(
-      { _id: orderId, restaurantId, status: { $in: ['served', 'ready'] } },
-      { status: 'completed' },
-      { new: true }
+    const order = await Order.findOne(
+      { _id: orderId, restaurantId, status: { $in: ['served', 'ready'] } }
     );
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found or cannot be updated to completed' });
+    }
+
+    // Update order status to completed
+    order.status = 'completed';
+    order.completedAt = new Date();
+    await order.save();
+
+    // Handle settlement if payment method is online
+    if (order.paymentMethod === 'online' && order.paymentId) {
+      try {
+        const settlementResult = await handleOrderCompletion(order);
+        console.log('Settlement completed:', settlementResult.settlement);
+      } catch (settlementError) {
+        console.error('Settlement failed:', settlementError.message);
+        // Order is marked completed but settlement failed
+        // You may want to handle this differently in production
+        return res.status(500).json({
+          success: false,
+          message: 'Order completed but settlement failed',
+          error: settlementError.message,
+          data: order
+        });
+      }
     }
 
     res.json({
