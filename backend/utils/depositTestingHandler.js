@@ -91,6 +91,18 @@ async function handleOrderPlacement(order, restaurant) {
       await adminWallet.save({ session });
     }
 
+    // Convert to INR if needed (for admin wallet)
+    let amountInINR = order.totalAmount;
+    let conversionRate = 1;
+    let conversionSource = null;
+
+    if (order.currency.code !== 'INR') {
+      const exchangeData = await getExchangeRate(order.currency.code);
+      conversionRate = exchangeData.rate;
+      conversionSource = exchangeData.source;
+      amountInINR = order.totalAmount * conversionRate;
+    }
+
     // Create Payment record (simulating successful gateway payment)
     const payment = new Payment({
       userId: order.userId,
@@ -104,8 +116,8 @@ async function handleOrderPlacement(order, restaurant) {
       expected: {
         amount: order.totalAmount,
         currency: order.currency.code,
-        rate: 1,
-        source: null,
+        rate: conversionRate,           // Use actual locked-in rate
+        source: conversionSource,       // Use actual source
         calculatedAt: new Date()
       },
       actual: {
@@ -122,18 +134,6 @@ async function handleOrderPlacement(order, restaurant) {
     });
 
     await payment.save({ session });
-
-    // Convert to INR if needed (for admin wallet)
-    let amountInINR = order.totalAmount;
-    let conversionRate = 1;
-    let conversionSource = null;
-
-    if (order.currency.code !== 'INR') {
-      const exchangeData = await getExchangeRate(order.currency.code);
-      conversionRate = exchangeData.rate;
-      conversionSource = exchangeData.source;
-      amountInINR = order.totalAmount * conversionRate;
-    }
 
     // Credit full amount to AdminWallet (in INR)
     adminWallet.balance += amountInINR;
@@ -254,15 +254,13 @@ async function handleOrderCompletion(order) {
     const commissionAmount = (receivedAmount * commissionPercentage) / 100;
     const restaurantShare = receivedAmount - commissionAmount;
 
-    // Convert commission to INR if needed
+    // Use the locked-in rate from payment placement (not a new live rate)
+    let conversionRate = payment.expected.rate || 1;
+    let conversionSource = payment.expected.source || null;
+    
+    // Convert commission to INR using locked-in rate
     let commissionInINR = commissionAmount;
-    let conversionRate = 1;
-    let conversionSource = null;
-
     if (order.currency.code !== 'INR') {
-      const exchangeData = await getExchangeRate(order.currency.code);
-      conversionRate = exchangeData.rate;
-      conversionSource = exchangeData.source;
       commissionInINR = commissionAmount * conversionRate;
     }
 
