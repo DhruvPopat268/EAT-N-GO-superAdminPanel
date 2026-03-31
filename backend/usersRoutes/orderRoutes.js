@@ -518,7 +518,7 @@ router.get('/inprogress', verifyToken, async (req, res) => {
 
     const orders = await Order.find({
       userId,
-      status: { $in: ['confirmed', 'waiting', 'preparing', 'ready'] }
+      status: { $in: ['confirmed', 'preparing', 'ready'] }
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
       .populate('userRatingId')
@@ -938,18 +938,24 @@ router.get('/cancel/:orderId', verifyToken, async (req, res) => {
     // Calculate cancellation charges only on the base amount (not on carried-over dues)
     const cancellationCharges = (baseAmount * cancellationPercentage) / 100;
     
-    // Calculate refund amount based on payment method
+    // Calculate total charges including past pending charges
+    const totalCharges = cancellationCharges + (order.appliedPendingCancellationCharges || 0);
+    
+    // Calculate refund amount and pending delta based on payment method
     let refundAmount;
     let refundPercentage;
+    let pendingCancellationDelta;
     
     if (order.paymentMethod === 'pay_at_restaurant') {
-      // For pay_at_restaurant: No refund, only cancellation charges added to pending
+      // For pay_at_restaurant: No refund, cancellation charges + carried-over dues added to pending
       refundAmount = 0;
       refundPercentage = 0;
+      pendingCancellationDelta = totalCharges;
     } else {
-      // For online payment: Refund = totalAmount - cancellationCharges
-      refundAmount = order.totalAmount - cancellationCharges;
+      // For online payment: Refund = totalAmount - totalCharges (current + past charges)
+      refundAmount = order.totalAmount - totalCharges;
       refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
+      pendingCancellationDelta = 0;  // Nothing added to pending since both charges deducted from refund
     }
 
     return res.json({
@@ -964,7 +970,8 @@ router.get('/cancel/:orderId', verifyToken, async (req, res) => {
         cancellationCharges,
         refundAmount,
         paymentMethod: order.paymentMethod,
-        willAddToOrderPendingCancellationCharges: cancellationCharges > 0 && order.paymentMethod === 'pay_at_restaurant'
+        pendingCancellationDelta,
+        willAddToOrderPendingCancellationCharges: pendingCancellationDelta > 0 && order.paymentMethod === 'pay_at_restaurant'
       }
     });
 
@@ -991,7 +998,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
     const order = await Order.findOne({ 
       _id: orderId, 
       userId,
-      status: { $in: ['confirmed', 'waiting', 'preparing', 'ready', 'served'] } // Only cancellable statuses
+      status: { $in: ['confirmed', 'preparing', 'ready', 'served'] } // Only cancellable statuses
     }).session(session);
 
     if (!order) {
@@ -1034,8 +1041,11 @@ router.post('/cancel', verifyToken, async (req, res) => {
     // Calculate cancellation charges only on the base amount (not on carried-over dues)
     const cancellationCharges = (baseAmount * cancellationPercentage) / 100;
     
-    // Calculate refund amount: totalAmount - cancellationCharges
-    const refundAmount = order.totalAmount - cancellationCharges;
+    // Calculate total charges including past pending charges
+    const totalCharges = cancellationCharges + (order.appliedPendingCancellationCharges || 0);
+    
+    // Calculate refund amount: totalAmount - totalCharges (current + past charges)
+    const refundAmount = order.totalAmount - totalCharges;
     const refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
 
     // Handle based on payment method
@@ -1045,7 +1055,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
         { 
           _id: orderId, 
           userId,
-          status: { $in: ['confirmed', 'waiting', 'preparing', 'ready', 'served'] } // Idempotent guard
+          status: { $in: ['confirmed', 'preparing', 'ready', 'served'] } // Idempotent guard
         },
         {
           $set: {
@@ -1068,14 +1078,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
         });
       }
 
-      // If order had applied pending charges, add them back to user
-      if (order.appliedPendingCancellationCharges > 0) {
-        await User.findByIdAndUpdate(
-          userId,
-          { $inc: { pendingOrderCancellationCharges: order.appliedPendingCancellationCharges } },
-          { session }
-        );
-      }
+      // No need to add back pending charges - they are deducted from refund
 
       // Commit transaction
       await session.commitTransaction();
@@ -1085,8 +1088,10 @@ router.post('/cancel', verifyToken, async (req, res) => {
         message: `Order cancelled successfully. ${refundPercentage.toFixed(2)}% refund (${refundAmount}) will be processed.`,
         refundAmount,
         cancellationCharges,
+        totalCharges,
         refundPercentage,
-        cancellationPercentage
+        cancellationPercentage,
+        pendingCancellationDelta: 0
       });
     } else if (order.paymentMethod === 'pay_at_restaurant') {
       // For pay_at_restaurant: Calculate total pending to add
@@ -1102,7 +1107,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
         { 
           _id: orderId, 
           userId,
-          status: { $in: ['confirmed', 'waiting', 'preparing', 'ready', 'served'] } // Idempotent guard
+          status: { $in: ['confirmed', 'preparing', 'ready', 'served'] } // Idempotent guard
         },
         {
           $set: {
@@ -1137,7 +1142,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
       // Commit transaction
       await session.commitTransaction();
 
-      const message = cancellationCharges > 0
+      const message = totalPendingToAdd > 0
         ? `Order cancelled successfully. Cancellation charges of ${cancellationCharges} (${cancellationPercentage}%) will be added to your next order.`
         : 'Order cancelled successfully. No cancellation charges applied.';
 
@@ -1147,7 +1152,8 @@ router.post('/cancel', verifyToken, async (req, res) => {
         cancellationCharges,
         cancellationPercentage,
         refundAmount: 0,
-        refundPercentage: 0
+        refundPercentage: 0,
+        pendingCancellationDelta: totalPendingToAdd
       });
     }
 

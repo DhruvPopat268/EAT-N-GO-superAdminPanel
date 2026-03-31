@@ -178,7 +178,7 @@ const orderSchema = new mongoose.Schema(
     // Order status
     status: {
       type: String,
-      enum: ['confirmed', 'waiting', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded', 'payment_failed'],
+      enum: ['confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled', 'refunded', 'payment_failed'],
       default: 'confirmed',
     },
 
