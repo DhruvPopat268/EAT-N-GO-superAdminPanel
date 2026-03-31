@@ -1025,22 +1025,24 @@ router.patch('/served/:orderId', restaurantAuthMiddleware, async (req, res) => {
 
 // Update order status to completed
 router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) => {
+  const mongoose = require('mongoose');
+  const session = await mongoose.startSession();
+  
   try {
     const { orderId } = req.params;
     const restaurantId = req.restaurant.restaurantId;
 
+    await session.startTransaction();
+
     const order = await Order.findOne(
       { _id: orderId, restaurantId, status: { $in: ['served', 'ready'] } }
-    );
+    ).session(session);
 
     if (!order) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ success: false, message: 'Order not found or cannot be updated to completed' });
     }
-
-    // Update order status to completed
-    order.status = 'completed';
-    order.completedAt = new Date();
-    await order.save();
 
     // Handle settlement if payment method is online
     if (order.paymentMethod === 'online' && order.paymentId) {
@@ -1048,17 +1050,24 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
         const settlementResult = await handleOrderCompletion(order);
         console.log('Settlement completed:', settlementResult.settlement);
       } catch (settlementError) {
-        console.error('Settlement failed:', settlementError.message);
-        // Order is marked completed but settlement failed
-        // You may want to handle this differently in production
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Settlement failed - transaction rolled back:', settlementError);
         return res.status(500).json({
           success: false,
-          message: 'Order completed but settlement failed',
-          error: settlementError.message,
-          data: order
+          message: 'Settlement failed. Order status not changed. Please retry or contact support.',
+          error: settlementError.message
         });
       }
     }
+
+    // Only update order status after successful settlement
+    order.status = 'completed';
+    order.completedAt = new Date();
+    await order.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
 
     res.json({
       success: true,
@@ -1066,6 +1075,9 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
       data: order
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Order completion error:', error);
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });

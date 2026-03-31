@@ -350,9 +350,19 @@ router.post('/place', verifyToken, async (req, res) => {
       try {
         await handleOrderPlacement(order, restaurant);
       } catch (walletError) {
-        console.error('Wallet operation failed:', walletError);
-        // Order is created but wallet operation failed
-        // You may want to handle this differently in production
+        console.error('Payment processing failed for order:', order._id, walletError);
+        
+        // Update order to payment_failed status
+        order.status = 'payment_failed';
+        order.paymentFailureReason = walletError.message;
+        await order.save();
+        
+        return res.status(500).json({
+          success: false,
+          message: 'Payment processing failed. Please try again or contact support.',
+          error: walletError.message,
+          orderId: order._id
+        });
       }
     }
 

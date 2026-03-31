@@ -12,24 +12,46 @@ const axios = require('axios');
 async function getExchangeRate(fromCurrency) {
   try {
     if (fromCurrency === 'INR') {
+      console.log(`Exchange rate for ${fromCurrency}: Using 1:1 (same currency)`);
       return { rate: 1, source: null };
     }
 
-    // Get rates with USD as base
-    const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD');
-    const rates = response.data.rates;
+    // Get rates with USD as base (with 5 second timeout)
+    const response = await axios.get('https://api.exchangerate-api.com/v4/latest/USD', {
+      timeout: 5000
+    });
+    
+    const rates = response.data?.rates;
+    
+    // Validate rates data exists
+    if (!rates || typeof rates !== 'object') {
+      throw new Error('Invalid rates data received from API');
+    }
+    
+    // Validate fromCurrency rate exists and is valid
+    if (!rates[fromCurrency] || rates[fromCurrency] <= 0) {
+      throw new Error(`Exchange rate for ${fromCurrency} not found or invalid in API response`);
+    }
+    
+    // Validate INR rate exists and is valid
+    if (!rates.INR || rates.INR <= 0) {
+      throw new Error('INR exchange rate not found or invalid in API response');
+    }
 
     // Convert: fromCurrency -> USD -> INR
     // Example: 1 EUR = (1 / rates.EUR) USD, then USD * rates.INR = INR
     const usdRate = 1 / rates[fromCurrency]; // How many USD for 1 unit of fromCurrency
     const inrRate = usdRate * rates.INR; // Convert that USD to INR
+    
+    console.log(`Exchange rate for ${fromCurrency}: ${inrRate} INR (source: API)`);
 
     return {
       rate: inrRate,
       source: 'exchangerate-api.com'
     };
   } catch (error) {
-    console.error('Exchange rate API error:', error.message);
+    console.error(`Exchange rate API error for ${fromCurrency}:`, error.message);
+    
     // Fallback to fixed rates if API fails
     const fallbackRates = {
       'USD': 83.0,
@@ -37,8 +59,17 @@ async function getExchangeRate(fromCurrency) {
       'GBP': 105.0,
       'AED': 22.6
     };
+    
+    // Check if we have a fallback rate for this currency
+    if (!fallbackRates[fromCurrency]) {
+      console.error(`No fallback rate available for ${fromCurrency}`);
+      throw new Error(`Unable to get exchange rate for ${fromCurrency}. API failed and no fallback rate available.`);
+    }
+    
+    console.log(`Exchange rate for ${fromCurrency}: ${fallbackRates[fromCurrency]} INR (source: fallback)`);
+    
     return {
-      rate: fallbackRates[fromCurrency] || 1,
+      rate: fallbackRates[fromCurrency],
       source: 'fallback-fixed-rate'
     };
   }
