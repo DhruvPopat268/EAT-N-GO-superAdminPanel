@@ -979,7 +979,8 @@ router.get('/cancel/:orderId', verifyToken, async (req, res) => {
         refundAmount,
         paymentMethod: order.paymentMethod,
         pendingCancellationDelta,
-        willAddToOrderPendingCancellationCharges: pendingCancellationDelta > 0 && order.paymentMethod === 'pay_at_restaurant'
+        willAddToOrderPendingCancellationCharges: pendingCancellationDelta > 0 && order.paymentMethod === 'pay_at_restaurant',
+        currency: order.currency
       }
     });
 
