@@ -89,8 +89,8 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
     }
 
     // Get nonRefundSplit from restaurant
-    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant || 50;
-    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin || 50;
+    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant ?? 50;
+    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin ?? 50;
 
     // Calculate cancellation charges (amount kept, not refunded)
     const cancellationCharges = appliedPendingCharges;
@@ -302,8 +302,8 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
     }
 
     // Get nonRefundSplit from restaurant
-    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant || 50;
-    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin || 50;
+    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant ?? 50;
+    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin ?? 50;
 
     // Split cancellation charges
     const restaurantShare = (cancellationCharges * restaurantSplit) / 100;

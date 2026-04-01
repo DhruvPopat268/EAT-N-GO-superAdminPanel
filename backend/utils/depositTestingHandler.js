@@ -255,14 +255,14 @@ async function handleOrderCompletion(order, session) {
     
     // Handle appliedPendingCancellationCharges split
     const appliedPendingCharges = order.appliedPendingCancellationCharges || 0;
-    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant || 50;
-    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin || 50;
+    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant ?? 50;
+    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin ?? 50;
     
     const pendingChargesRestaurantShare = (appliedPendingCharges * restaurantSplit) / 100;
     const pendingChargesAdminShare = (appliedPendingCharges * adminSplit) / 100;
     
-    // Restaurant share = receivedAmount - commission - pendingChargesRestaurantShare
-    const restaurantShare = receivedAmount - commissionAmount - pendingChargesRestaurantShare;
+    // Restaurant share = receivedAmount - commission - admin's share of pending charges
+    const restaurantShare = receivedAmount - commissionAmount - pendingChargesAdminShare;
 
     // Use the locked-in rate from payment placement (not a new live rate)
     let conversionRate = payment.expected.rate || 1;
@@ -391,15 +391,15 @@ async function handleOrderCompletion(order, session) {
       status: 'settled',
       settledAt: new Date(),
       restaurantAmount: restaurantShare,
-      adminCommissionAmount: commissionAmount,
-      adminCommissionInINR: commissionInINR
+      adminCommissionAmount: totalAdminEarnings,
+      adminCommissionInINR: totalAdminEarningsInINR
     };
 
     order.paymentBreakdown = {
       receivedAmount: receivedAmount,
       receivedCurrency: payment.actual.currency,
       commissionPercentage: commissionPercentage,
-      commissionAmount: commissionAmount,
+      commissionAmount: totalAdminEarnings,
       restaurantShare: restaurantShare
     };
 
@@ -407,8 +407,8 @@ async function handleOrderCompletion(order, session) {
       success: true,
       settlement: {
         restaurantShare,
-        commissionAmount,
-        commissionInINR
+        commissionAmount: totalAdminEarnings,
+        commissionInINR: totalAdminEarningsInINR
       }
     };
 
@@ -460,8 +460,8 @@ async function handlePayAtRestaurantCompletion(order, session) {
     
     // Handle appliedPendingCancellationCharges split
     const appliedPendingCharges = order.appliedPendingCancellationCharges || 0;
-    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant || 50;
-    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin || 50;
+    const restaurantSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.restaurant ?? 50;
+    const adminSplit = restaurant.tableReservationBookingConfig?.nonRefundSplit?.admin ?? 50;
     
     const pendingChargesRestaurantShare = (appliedPendingCharges * restaurantSplit) / 100;
     const pendingChargesAdminShare = (appliedPendingCharges * adminSplit) / 100;
