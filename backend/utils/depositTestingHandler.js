@@ -213,23 +213,23 @@ async function handleOrderPlacement(order, restaurant) {
  * Also split appliedPendingCancellationCharges between admin and restaurant
  * Note: This function does NOT manage transactions - caller must handle session
  */
-async function handleOrderCompletion(order) {
+async function handleOrderCompletion(order, session) {
   try {
     // Get payment details
-    const payment = await Payment.findById(order.paymentId);
+    const payment = await Payment.findById(order.paymentId).session(session);
     if (!payment) {
       throw new Error('Payment record not found');
     }
 
     // Get admin wallet
-    const adminWallet = await AdminWallet.findOne();
+    const adminWallet = await AdminWallet.findOne().session(session);
     if (!adminWallet) {
       throw new Error('Admin wallet not found');
     }
 
     // Get restaurant details for nonRefundSplit
     const Restaurant = require('../models/Restaurant');
-    const restaurant = await Restaurant.findById(order.restaurantId);
+    const restaurant = await Restaurant.findById(order.restaurantId).session(session);
     if (!restaurant) {
       throw new Error('Restaurant not found');
     }
@@ -237,7 +237,7 @@ async function handleOrderCompletion(order) {
     // Get or create restaurant wallet
     let restaurantWallet = await RestaurantWallet.findOne({ 
       restaurantId: order.restaurantId 
-    });
+    }).session(session);
 
     if (!restaurantWallet) {
       restaurantWallet = new RestaurantWallet({
@@ -245,7 +245,7 @@ async function handleOrderCompletion(order) {
         balance: 0,
         currency: order.currency
       });
-      await restaurantWallet.save();
+      await restaurantWallet.save({ session });
     }
 
     // Calculate amounts in restaurant's currency
@@ -286,12 +286,12 @@ async function handleOrderCompletion(order) {
 
     adminWallet.balance -= restaurantShareInINR;
     adminWallet.totalDebits += restaurantShareInINR;
-    await adminWallet.save();
+    await adminWallet.save({ session });
 
     // Credit restaurant share to RestaurantWallet (in restaurant's currency)
     restaurantWallet.balance += restaurantShare;
     restaurantWallet.totalEarnings += restaurantShare;
-    await restaurantWallet.save();
+    await restaurantWallet.save({ session });
 
     // Create debit transaction for admin wallet
     const adminDebitTransaction = new WalletTransaction({
@@ -323,7 +323,7 @@ async function handleOrderCompletion(order) {
       }
     });
 
-    await adminDebitTransaction.save();
+    await adminDebitTransaction.save({ session });
 
     // Create credit transaction for restaurant wallet
     const restaurantCreditTransaction = new WalletTransaction({
@@ -344,7 +344,7 @@ async function handleOrderCompletion(order) {
       }
     });
 
-    await restaurantCreditTransaction.save();
+    await restaurantCreditTransaction.save({ session });
 
     // Create commission transaction for admin wallet (tracking only, doesn't affect balance)
     const totalAdminEarnings = commissionAmount + pendingChargesAdminShare;
@@ -384,7 +384,7 @@ async function handleOrderCompletion(order) {
       }
     });
 
-    await adminCommissionTransaction.save();
+    await adminCommissionTransaction.save({ session });
 
     // Update order settlement status
     order.settlement = {
@@ -424,17 +424,17 @@ async function handleOrderCompletion(order) {
  * Note: This function does NOT manage transactions - caller must handle session
  * Restaurant wallet can go negative (representing debt to admin)
  */
-async function handlePayAtRestaurantCompletion(order) {
+async function handlePayAtRestaurantCompletion(order, session) {
   try {
     // Get admin wallet
-    const adminWallet = await AdminWallet.findOne();
+    const adminWallet = await AdminWallet.findOne().session(session);
     if (!adminWallet) {
       throw new Error('Admin wallet not found');
     }
 
     // Get restaurant details for nonRefundSplit
     const Restaurant = require('../models/Restaurant');
-    const restaurant = await Restaurant.findById(order.restaurantId);
+    const restaurant = await Restaurant.findById(order.restaurantId).session(session);
     if (!restaurant) {
       throw new Error('Restaurant not found');
     }
@@ -442,7 +442,7 @@ async function handlePayAtRestaurantCompletion(order) {
     // Get restaurant wallet
     let restaurantWallet = await RestaurantWallet.findOne({ 
       restaurantId: order.restaurantId 
-    });
+    }).session(session);
 
     if (!restaurantWallet) {
       restaurantWallet = new RestaurantWallet({
@@ -450,7 +450,7 @@ async function handlePayAtRestaurantCompletion(order) {
         balance: 0,
         currency: order.currency
       });
-      await restaurantWallet.save();
+      await restaurantWallet.save({ session });
     }
 
     // Calculate commission in restaurant's currency
@@ -483,12 +483,12 @@ async function handlePayAtRestaurantCompletion(order) {
 
     // Deduct total admin earnings from RestaurantWallet (can go negative - represents debt)
     restaurantWallet.balance -= totalAdminEarnings;
-    await restaurantWallet.save();
+    await restaurantWallet.save({ session });
 
     // Credit total admin earnings to AdminWallet (in INR)
     adminWallet.balance += totalAdminEarningsInINR;
     adminWallet.totalCredits += totalAdminEarningsInINR;
-    await adminWallet.save();
+    await adminWallet.save({ session });
 
     // Create debit transaction for restaurant wallet
     const restaurantDebitTransaction = new WalletTransaction({
@@ -510,7 +510,7 @@ async function handlePayAtRestaurantCompletion(order) {
       }
     });
 
-    await restaurantDebitTransaction.save();
+    await restaurantDebitTransaction.save({ session });
 
     // Create credit transaction for admin wallet
     const adminCreditTransaction = new WalletTransaction({
@@ -543,7 +543,7 @@ async function handlePayAtRestaurantCompletion(order) {
       }
     });
 
-    await adminCreditTransaction.save();
+    await adminCreditTransaction.save({ session });
 
     // Update order settlement status
     order.settlement = {

@@ -61,31 +61,31 @@ async function getExchangeRate(fromCurrency) {
 /**
  * Handle restaurant cancellation settlement for online payment orders
  */
-async function handleRestaurantCancellationOnline(order, refundAmount, appliedPendingCharges) {
+async function handleRestaurantCancellationOnline(order, refundAmount, appliedPendingCharges, session) {
   try {
-    const payment = await Payment.findById(order.paymentId);
+    const payment = await Payment.findById(order.paymentId).session(session);
     if (!payment) {
       throw new Error('Payment record not found');
     }
 
-    const adminWallet = await AdminWallet.findOne();
+    const adminWallet = await AdminWallet.findOne().session(session);
     if (!adminWallet) {
       throw new Error('Admin wallet not found');
     }
 
-    const restaurant = await Restaurant.findById(order.restaurantId);
+    const restaurant = await Restaurant.findById(order.restaurantId).session(session);
     if (!restaurant) {
       throw new Error('Restaurant not found');
     }
 
-    let restaurantWallet = await RestaurantWallet.findOne({ restaurantId: order.restaurantId });
+    let restaurantWallet = await RestaurantWallet.findOne({ restaurantId: order.restaurantId }).session(session);
     if (!restaurantWallet) {
       restaurantWallet = new RestaurantWallet({
         restaurantId: order.restaurantId,
         balance: 0,
         currency: order.currency
       });
-      await restaurantWallet.save();
+      await restaurantWallet.save({ session });
     }
 
     // Get nonRefundSplit from restaurant
@@ -99,13 +99,19 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
     const restaurantShare = (cancellationCharges * restaurantSplit) / 100;
     const adminShare = (cancellationCharges * adminSplit) / 100;
 
-    // Convert amounts to INR for admin wallet
+    // Convert amounts to INR for admin wallet using locked-in rate from payment
     let conversionRate = 1;
     let conversionSource = null;
     if (order.currency.code !== 'INR') {
-      const exchangeData = await getExchangeRate(order.currency.code);
-      conversionRate = exchangeData.rate;
-      conversionSource = exchangeData.source;
+      // Use locked-in rate from payment, fallback to live rate if not available
+      if (payment.expected?.rate && payment.expected.rate > 0) {
+        conversionRate = payment.expected.rate;
+        conversionSource = payment.expected.source || 'locked-rate';
+      } else {
+        const exchangeData = await getExchangeRate(order.currency.code);
+        conversionRate = exchangeData.rate;
+        conversionSource = exchangeData.source;
+      }
     }
 
     const refundAmountInINR = refundAmount * conversionRate;
@@ -119,7 +125,7 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
 
       adminWallet.balance -= refundAmountInINR;
       adminWallet.totalDebits += refundAmountInINR;
-      await adminWallet.save();
+      await adminWallet.save({ session });
 
       // Create refund transaction for admin wallet
       const adminRefundTransaction = new WalletTransaction({
@@ -150,7 +156,7 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
           notes: 'Restaurant cancellation refund'
         }
       });
-      await adminRefundTransaction.save();
+      await adminRefundTransaction.save({ session });
     }
 
     // 2. Credit admin commission (affectsBalance: false)
@@ -185,7 +191,7 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
         notes: 'Admin share of cancellation charges (restaurant cancelled)'
       }
     });
-    await adminCommissionTransaction.save();
+    await adminCommissionTransaction.save({ session });
 
     // 3. Debit restaurant share from AdminWallet and credit to RestaurantWallet
     if (restaurantShare > 0) {
@@ -195,7 +201,7 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
 
       adminWallet.balance -= restaurantShareInINR;
       adminWallet.totalDebits += restaurantShareInINR;
-      await adminWallet.save();
+      await adminWallet.save({ session });
 
       // Debit from admin wallet
       const adminDebitTransaction = new WalletTransaction({
@@ -226,12 +232,12 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
           notes: 'Restaurant share of cancellation charges'
         }
       });
-      await adminDebitTransaction.save();
+      await adminDebitTransaction.save({ session });
 
       // Credit to restaurant wallet
       restaurantWallet.balance += restaurantShare;
       restaurantWallet.totalEarnings += restaurantShare;
-      await restaurantWallet.save();
+      await restaurantWallet.save({ session });
 
       const restaurantCreditTransaction = new WalletTransaction({
         walletId: restaurantWallet._id,
@@ -250,7 +256,7 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
           notes: 'Restaurant share of cancellation charges'
         }
       });
-      await restaurantCreditTransaction.save();
+      await restaurantCreditTransaction.save({ session });
     }
 
     return {
@@ -268,31 +274,31 @@ async function handleRestaurantCancellationOnline(order, refundAmount, appliedPe
 /**
  * Handle user cancellation settlement for online payment orders
  */
-async function handleUserCancellationOnline(order, refundAmount, cancellationCharges) {
+async function handleUserCancellationOnline(order, refundAmount, cancellationCharges, session) {
   try {
-    const payment = await Payment.findById(order.paymentId);
+    const payment = await Payment.findById(order.paymentId).session(session);
     if (!payment) {
       throw new Error('Payment record not found');
     }
 
-    const adminWallet = await AdminWallet.findOne();
+    const adminWallet = await AdminWallet.findOne().session(session);
     if (!adminWallet) {
       throw new Error('Admin wallet not found');
     }
 
-    const restaurant = await Restaurant.findById(order.restaurantId);
+    const restaurant = await Restaurant.findById(order.restaurantId).session(session);
     if (!restaurant) {
       throw new Error('Restaurant not found');
     }
 
-    let restaurantWallet = await RestaurantWallet.findOne({ restaurantId: order.restaurantId });
+    let restaurantWallet = await RestaurantWallet.findOne({ restaurantId: order.restaurantId }).session(session);
     if (!restaurantWallet) {
       restaurantWallet = new RestaurantWallet({
         restaurantId: order.restaurantId,
         balance: 0,
         currency: order.currency
       });
-      await restaurantWallet.save();
+      await restaurantWallet.save({ session });
     }
 
     // Get nonRefundSplit from restaurant
@@ -303,13 +309,19 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
     const restaurantShare = (cancellationCharges * restaurantSplit) / 100;
     const adminShare = (cancellationCharges * adminSplit) / 100;
 
-    // Convert amounts to INR for admin wallet
+    // Convert amounts to INR for admin wallet using locked-in rate from payment
     let conversionRate = 1;
     let conversionSource = null;
     if (order.currency.code !== 'INR') {
-      const exchangeData = await getExchangeRate(order.currency.code);
-      conversionRate = exchangeData.rate;
-      conversionSource = exchangeData.source;
+      // Use locked-in rate from payment, fallback to live rate if not available
+      if (payment.expected?.rate && payment.expected.rate > 0) {
+        conversionRate = payment.expected.rate;
+        conversionSource = payment.expected.source || 'locked-rate';
+      } else {
+        const exchangeData = await getExchangeRate(order.currency.code);
+        conversionRate = exchangeData.rate;
+        conversionSource = exchangeData.source;
+      }
     }
 
     const refundAmountInINR = refundAmount * conversionRate;
@@ -323,7 +335,7 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
 
       adminWallet.balance -= refundAmountInINR;
       adminWallet.totalDebits += refundAmountInINR;
-      await adminWallet.save();
+      await adminWallet.save({ session });
 
       const adminRefundTransaction = new WalletTransaction({
         walletId: adminWallet._id,
@@ -353,7 +365,17 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
           notes: 'User cancellation refund'
         }
       });
-      await adminRefundTransaction.save();
+      await adminRefundTransaction.save({ session });
+
+      // Update payment record to reflect refund
+      payment.status = 'refunded';
+      payment.refund = {
+        amount: refundAmount,
+        currency: order.currency.code,
+        reason: 'Order cancelled by user',
+        refundedAt: new Date()
+      };
+      await payment.save({ session });
     }
 
     // 2. Credit admin commission (affectsBalance: false)
@@ -388,7 +410,7 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
         notes: 'Admin share of cancellation charges (user cancelled)'
       }
     });
-    await adminCommissionTransaction.save();
+    await adminCommissionTransaction.save({ session });
 
     // 3. Debit restaurant share from AdminWallet and credit to RestaurantWallet
     if (restaurantShare > 0) {
@@ -398,7 +420,7 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
 
       adminWallet.balance -= restaurantShareInINR;
       adminWallet.totalDebits += restaurantShareInINR;
-      await adminWallet.save();
+      await adminWallet.save({ session });
 
       const adminDebitTransaction = new WalletTransaction({
         walletId: adminWallet._id,
@@ -428,11 +450,11 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
           notes: 'Restaurant share of cancellation charges'
         }
       });
-      await adminDebitTransaction.save();
+      await adminDebitTransaction.save({ session });
 
       restaurantWallet.balance += restaurantShare;
       restaurantWallet.totalEarnings += restaurantShare;
-      await restaurantWallet.save();
+      await restaurantWallet.save({ session });
 
       const restaurantCreditTransaction = new WalletTransaction({
         walletId: restaurantWallet._id,
@@ -451,7 +473,7 @@ async function handleUserCancellationOnline(order, refundAmount, cancellationCha
           notes: 'Restaurant share of cancellation charges'
         }
       });
-      await restaurantCreditTransaction.save();
+      await restaurantCreditTransaction.save({ session });
     }
 
     return {

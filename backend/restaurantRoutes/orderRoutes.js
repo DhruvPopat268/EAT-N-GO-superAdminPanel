@@ -1063,7 +1063,7 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
     // Handle settlement based on payment method
     if (order.paymentMethod === 'online' && order.paymentId) {
       try {
-        const settlementResult = await handleOrderCompletion(order);
+        const settlementResult = await handleOrderCompletion(order, session);
         console.log('Online payment settlement completed:', settlementResult.settlement);
       } catch (settlementError) {
         await session.abortTransaction();
@@ -1077,7 +1077,7 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
       }
     } else if (order.paymentMethod === 'pay_at_restaurant') {
       try {
-        const settlementResult = await handlePayAtRestaurantCompletion(order);
+        const settlementResult = await handlePayAtRestaurantCompletion(order, session);
         console.log('Pay at restaurant settlement completed:', settlementResult.settlement);
       } catch (settlementError) {
         await session.abortTransaction();
@@ -1165,14 +1165,23 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         });
       }
 
-      // Deduct only appliedPendingCharges from online payment, refund the rest
-      if (appliedPendingCharges > order.totalAmount) {
-        // If applied charges exceed total amount, deduct full amount and store remaining in pending
+      // Clamp appliedPendingCharges to actually collected amount
+      const collectedAmount = payment.actual?.amount || order.totalAmount;
+      const clampedAppliedPendingCharges = Math.min(
+        order.appliedPendingCancellationCharges || 0,
+        order.totalAmount,
+        collectedAmount
+      );
+
+      // Deduct only clampedAppliedPendingCharges from online payment, refund the rest
+      let refundAmount;
+      if (clampedAppliedPendingCharges > collectedAmount) {
+        // If clamped charges exceed collected amount, deduct full amount and store remaining in pending
         refundAmount = 0;
-        willAddInPendingCancellationCharges = appliedPendingCharges - order.totalAmount;
+        willAddInPendingCancellationCharges = clampedAppliedPendingCharges - collectedAmount;
       } else {
-        // Normal case: Refund = totalAmount - appliedPendingCharges
-        refundAmount = order.totalAmount - appliedPendingCharges;
+        // Normal case: Refund = collectedAmount - clampedAppliedPendingCharges
+        refundAmount = collectedAmount - clampedAppliedPendingCharges;
         willAddInPendingCancellationCharges = 0;
       }
       
@@ -1188,20 +1197,18 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       }
       await payment.save({ session });
       
-      // Handle settlement - split cancellation charges between admin and restaurant
-      if (appliedPendingCharges > 0) {
-        try {
-          await handleRestaurantCancellationOnline(order, refundAmount, appliedPendingCharges);
-        } catch (settlementError) {
-          await session.abortTransaction();
-          session.endSession();
-          console.error('Cancellation settlement failed:', settlementError);
-          return res.status(500).json({
-            success: false,
-            message: 'Cancellation settlement failed. Please retry or contact support.',
-            error: settlementError.message
-          });
-        }
+      // Always handle settlement for online payment orders
+      try {
+        await handleRestaurantCancellationOnline(order, refundAmount, clampedAppliedPendingCharges, session);
+      } catch (settlementError) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Cancellation settlement failed:', settlementError);
+        return res.status(500).json({
+          success: false,
+          message: 'Cancellation settlement failed. Please retry or contact support.',
+          error: settlementError.message
+        });
       }
       
       // Update order
@@ -1212,7 +1219,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       order.cancellationCharges = 0; // No new cancellation charges for restaurant cancellation
       await order.save({ session });
 
-      // Add remaining charges to user's pending balance if any
+      // Add remaining charges to user's pending balance if any (only genuinely uncollected funds)
       if (willAddInPendingCancellationCharges > 0) {
         await User.findByIdAndUpdate(
           order.userId,
@@ -1228,10 +1235,10 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         success: true,
         message: refundAmount > 0 
           ? `Order cancelled. Refund of ${refundAmount} will be processed${willAddInPendingCancellationCharges > 0 ? `. Remaining pending charges of ${willAddInPendingCancellationCharges} added to user's balance.` : '.'}`
-          : `Order cancelled. Applied pending charges of ${appliedPendingCharges} ${willAddInPendingCancellationCharges > 0 ? `exceeded payment. Remaining ${willAddInPendingCancellationCharges} added to user's pending balance.` : 'deducted from payment.'}`,
+          : `Order cancelled. Applied pending charges of ${clampedAppliedPendingCharges} ${willAddInPendingCancellationCharges > 0 ? `exceeded payment. Remaining ${willAddInPendingCancellationCharges} added to user's pending balance.` : 'deducted from payment.'}`,
         data: order,
         refundAmount,
-        appliedPendingCharges,
+        appliedPendingCharges: clampedAppliedPendingCharges,
         willAddInPendingCancellationCharges
       });
     } else if (order.paymentMethod === 'pay_at_restaurant') {

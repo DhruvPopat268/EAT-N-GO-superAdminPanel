@@ -1113,6 +1113,42 @@ router.post('/cancel', verifyToken, async (req, res) => {
 
     // Handle based on payment method
     if (order.paymentMethod === 'online') {
+      // Get payment record to determine actually collected amount
+      const Payment = require('../models/Payment');
+      const payment = await Payment.findById(order.paymentId).session(session);
+      
+      if (!payment) {
+        await session.abortTransaction();
+        return res.status(400).json({
+          success: false,
+          message: 'Payment record not found for online order',
+          code: 'PAYMENT_NOT_FOUND'
+        });
+      }
+
+      // Clamp totalCancellationCharges to actually collected amount
+      const collectedAmount = payment.actual?.amount || order.totalAmount;
+      const clampedTotalCancellationCharges = Math.min(
+        totalCancellationCharges,
+        collectedAmount
+      );
+
+      // Recalculate refund with clamped charges
+      if (clampedTotalCancellationCharges > collectedAmount) {
+        refundAmount = 0;
+        refundPercentage = 0;
+        willAddInPendingCancellationCharges = clampedTotalCancellationCharges - collectedAmount;
+      } else {
+        refundAmount = collectedAmount - clampedTotalCancellationCharges;
+        refundPercentage = baseAmount > 0 ? ((baseAmount - currentOrderCancellationCharges) / baseAmount) * 100 : 0;
+        willAddInPendingCancellationCharges = totalCancellationCharges > collectedAmount ? totalCancellationCharges - collectedAmount : 0;
+      }
+
+      // Calculate collected portion: only the actually collected cancellation charges
+      // collectedPortion = totalCancellationCharges - pendingCharges, capped to never exceed (collectedAmount - refundAmount)
+      const collectedPortion = totalCancellationCharges - (order.appliedPendingCancellationCharges || 0);
+      const cappedCollectedPortion = Math.max(0, Math.min(collectedPortion, collectedAmount - refundAmount));
+
       // For online payment: Update order atomically with status check
       const updatedOrder = await Order.findOneAndUpdate(
         { 
@@ -1141,10 +1177,10 @@ router.post('/cancel', verifyToken, async (req, res) => {
         });
       }
 
-      // Handle settlement - split cancellation charges between admin and restaurant
-      if (totalCancellationCharges > 0) {
+      // Only handle settlement if there's a collected portion to settle
+      if (cappedCollectedPortion > 0) {
         try {
-          await handleUserCancellationOnline(order, refundAmount, totalCancellationCharges);
+          await handleUserCancellationOnline(order, refundAmount, cappedCollectedPortion, session);
         } catch (settlementError) {
           await session.abortTransaction();
           console.error('User cancellation settlement failed:', settlementError);
@@ -1156,7 +1192,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
         }
       }
 
-      // If there are remaining unpaid charges, add them to user's pending balance
+      // If there are remaining unpaid charges, add them to user's pending balance (only genuinely uncollected funds)
       if (willAddInPendingCancellationCharges > 0) {
         await User.findByIdAndUpdate(
           userId,
