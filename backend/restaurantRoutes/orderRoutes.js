@@ -5,6 +5,8 @@ const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
 const Payment = require('../models/Payment');
+const User = require('../usersModels/usersModel');
+const OrderCancelRefund = require('../restaurantModels/OrderCancelRefund');
 const { handleOrderCompletion, handlePayAtRestaurantCompletion } = require('../utils/depositTestingHandler');
 
 // Get all orders for restaurant
@@ -1133,7 +1135,12 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found or cannot be cancelled from current status' });
     }
 
-    // Handle refund for online payment
+    // For restaurant cancellation: No new cancellation charges, only handle appliedPendingCancellationCharges
+    const appliedPendingCharges = order.appliedPendingCancellationCharges || 0;
+    let refundAmount;
+    let willAddInPendingCancellationCharges = 0;
+
+    // Handle based on payment method
     if (order.paymentMethod === 'online' && order.paymentId) {
       const payment = await Payment.findById(order.paymentId).session(session);
       
@@ -1156,51 +1163,102 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
           code: 'INVALID_PAYMENT_STATUS'
         });
       }
+
+      // Deduct only appliedPendingCharges from online payment, refund the rest
+      if (appliedPendingCharges > order.totalAmount) {
+        // If applied charges exceed total amount, deduct full amount and store remaining in pending
+        refundAmount = 0;
+        willAddInPendingCancellationCharges = appliedPendingCharges - order.totalAmount;
+      } else {
+        // Normal case: Refund = totalAmount - appliedPendingCharges
+        refundAmount = order.totalAmount - appliedPendingCharges;
+        willAddInPendingCancellationCharges = 0;
+      }
       
-      const refundAmount = order.totalAmount;
-      
-      // Update payment status to refunded
-      payment.status = 'refunded';
-      payment.refund = {
-        amount: refundAmount,
-        currency: order.currency?.code || payment.actual.currency,
-        reason: 'Order cancelled by restaurant',
-        refundedAt: new Date()
-      };
+      // Update payment status
+      payment.status = refundAmount > 0 ? 'refunded' : 'cancelled';
+      if (refundAmount > 0) {
+        payment.refund = {
+          amount: refundAmount,
+          currency: order.currency?.code || payment.actual.currency,
+          reason: 'Order cancelled by restaurant',
+          refundedAt: new Date()
+        };
+      }
       await payment.save({ session });
       
-      // Update order with refund info
-      order.status = 'refunded';
+      // Update order
+      order.status = refundAmount > 0 ? 'refunded' : 'cancelled';
       order.cancelledBy = 'Restaurant';
       order.cancellationReasonId = cancellationReasonId;
       order.refundAmount = refundAmount;
+      order.cancellationCharges = 0; // No new cancellation charges for restaurant cancellation
       await order.save({ session });
+
+      // Add remaining charges to user's pending balance if any
+      if (willAddInPendingCancellationCharges > 0) {
+        await User.findByIdAndUpdate(
+          order.userId,
+          { $inc: { pendingOrderCancellationCharges: willAddInPendingCancellationCharges } },
+          { session }
+        );
+      }
       
       await session.commitTransaction();
       session.endSession();
       
       return res.json({
         success: true,
-        message: 'Order cancelled and full refund initiated',
+        message: refundAmount > 0 
+          ? `Order cancelled. Refund of ${refundAmount} will be processed${willAddInPendingCancellationCharges > 0 ? `. Remaining pending charges of ${willAddInPendingCancellationCharges} added to user's balance.` : '.'}`
+          : `Order cancelled. Applied pending charges of ${appliedPendingCharges} ${willAddInPendingCancellationCharges > 0 ? `exceeded payment. Remaining ${willAddInPendingCancellationCharges} added to user's pending balance.` : 'deducted from payment.'}`,
         data: order,
-        refundAmount
+        refundAmount,
+        appliedPendingCharges,
+        willAddInPendingCancellationCharges
+      });
+    } else if (order.paymentMethod === 'pay_at_restaurant') {
+      // For pay_at_restaurant: Return appliedPendingCharges back to user's pending balance
+      willAddInPendingCancellationCharges = appliedPendingCharges;
+      refundAmount = 0;
+
+      // Update order
+      order.status = 'cancelled';
+      order.cancelledBy = 'Restaurant';
+      order.cancellationReasonId = cancellationReasonId;
+      order.refundAmount = 0;
+      order.cancellationCharges = 0; // No new cancellation charges for restaurant cancellation
+      await order.save({ session });
+
+      // Return appliedPendingCharges back to user's pending balance
+      if (willAddInPendingCancellationCharges > 0) {
+        await User.findByIdAndUpdate(
+          order.userId,
+          { $inc: { pendingOrderCancellationCharges: willAddInPendingCancellationCharges } },
+          { session }
+        );
+      }
+      
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.json({
+        success: true,
+        message: willAddInPendingCancellationCharges > 0
+          ? `Order cancelled. Applied pending charges of ${willAddInPendingCancellationCharges} returned to user's pending balance.`
+          : 'Order cancelled successfully.',
+        data: order,
+        refundAmount: 0,
+        appliedPendingCharges,
+        willAddInPendingCancellationCharges
       });
     }
     
-    // For pay_at_restaurant or if no payment found, just cancel
-    order.status = 'cancelled';
-    order.cancelledBy = 'Restaurant';
-    order.cancellationReasonId = cancellationReasonId;
-    await order.save({ session });
-    
-    await session.commitTransaction();
+    // Fallback (should not reach here)
+    await session.abortTransaction();
     session.endSession();
+    return res.status(400).json({ success: false, message: 'Invalid payment method' });
 
-    res.json({
-      success: true,
-      message: 'Order cancelled successfully',
-      data: order
-    });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
