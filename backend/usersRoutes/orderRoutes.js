@@ -952,10 +952,18 @@ router.get('/cancel/:orderId', verifyToken, async (req, res) => {
       refundPercentage = 0;
       pendingCancellationDelta = totalCharges;
     } else {
-      // For online payment: Refund = totalAmount - totalCharges (current + past charges)
-      refundAmount = order.totalAmount - totalCharges;
-      refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
-      pendingCancellationDelta = 0;  // Nothing added to pending since both charges deducted from refund
+      // For online payment: Check if total charges exceed order amount
+      if (totalCharges > order.totalAmount) {
+        // Deduct full order amount, store remaining charges in pending
+        refundAmount = 0;
+        refundPercentage = 0;
+        pendingCancellationDelta = totalCharges - order.totalAmount;
+      } else {
+        // Normal case: Refund = totalAmount - totalCharges
+        refundAmount = order.totalAmount - totalCharges;
+        refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
+        pendingCancellationDelta = 0;  // Nothing added to pending since both charges deducted from refund
+      }
     }
 
     return res.json({
@@ -1045,8 +1053,20 @@ router.post('/cancel', verifyToken, async (req, res) => {
     const totalCharges = cancellationCharges + (order.appliedPendingCancellationCharges || 0);
     
     // Calculate refund amount: totalAmount - totalCharges (current + past charges)
-    const refundAmount = order.totalAmount - totalCharges;
-    const refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
+    let refundAmount;
+    let refundPercentage = baseAmount > 0 ? ((baseAmount - cancellationCharges) / baseAmount) * 100 : 0;
+    let pendingCancellationDelta = 0;
+
+    // Check if total charges exceed order amount
+    if (totalCharges > order.totalAmount) {
+      // Deduct full order amount, store remaining charges in pending
+      refundAmount = 0;
+      refundPercentage = 0;
+      pendingCancellationDelta = totalCharges - order.totalAmount;
+    } else {
+      // Normal case: Refund = totalAmount - totalCharges
+      refundAmount = order.totalAmount - totalCharges;
+    }
 
     // Handle based on payment method
     if (order.paymentMethod === 'online') {
@@ -1078,20 +1098,33 @@ router.post('/cancel', verifyToken, async (req, res) => {
         });
       }
 
-      // No need to add back pending charges - they are deducted from refund
+      // If there are remaining unpaid charges, add them to user's pending balance
+      if (pendingCancellationDelta > 0) {
+        await User.findByIdAndUpdate(
+          userId,
+          { $inc: { pendingOrderCancellationCharges: pendingCancellationDelta } },
+          { session }
+        );
+      }
 
       // Commit transaction
       await session.commitTransaction();
 
+      const message = refundAmount > 0
+        ? `Order cancelled successfully. ${refundPercentage.toFixed(2)}% refund (${refundAmount}) will be processed.`
+        : pendingCancellationDelta > 0
+        ? `Order cancelled. Remaining charges of ${pendingCancellationDelta} will be added to your next order.`
+        : 'Order cancelled successfully. No refund available.';
+
       return res.json({
         success: true,
-        message: `Order cancelled successfully. ${refundPercentage.toFixed(2)}% refund (${refundAmount}) will be processed.`,
+        message,
         refundAmount,
         cancellationCharges,
         totalCharges,
         refundPercentage,
         cancellationPercentage,
-        pendingCancellationDelta: 0
+        pendingCancellationDelta
       });
     } else if (order.paymentMethod === 'pay_at_restaurant') {
       // For pay_at_restaurant: Calculate total pending to add
