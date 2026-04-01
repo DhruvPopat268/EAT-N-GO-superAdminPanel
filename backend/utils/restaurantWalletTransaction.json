@@ -1,0 +1,264 @@
+{
+    "success": true,
+    "message": "Restaurant wallet transactions retrieved successfully",
+    "wallet": {
+        "balance": 386.7,
+        "totalEarnings": 612,
+        "totalWithdrawals": 0,
+        "pendingSettlement": 0,
+        "currency": {
+            "code": "INR",
+            "name": "Indian Rupee",
+            "symbol": "₹"
+        }
+    },
+    "data": [
+        {
+            "currency": {
+                "code": "INR",
+                "name": "Indian Rupee",
+                "symbol": "₹"
+            },
+            "metadata": {
+                "initiatedBy": "system",
+                "notes": "Admin commission for pay at restaurant order"
+            },
+            "_id": "69ccf28cdceb3edd32b4f8c0",
+            "walletId": "69ca76cc3a21b9a180504a67",
+            "walletType": "RestaurantWallet",
+            "transactionType": "debit",
+            "affectsBalance": true,
+            "amount": 78.3,
+            "source": "commission",
+            "orderId": {
+                "_id": "69ccee78dceb3edd32b4f55d",
+                "orderNo": 59
+            },
+            "restaurantId": {
+                "basicInfo": {
+                    "restaurantName": "Thakkar's Restro"
+                },
+                "contactDetails": {
+                    "city": "Amreli",
+                    "state": "Gujarat",
+                    "country": "India"
+                },
+                "_id": "69009336cda4b52998ffb143"
+            },
+            "commissionPercentage": 15,
+            "commissionAmount": 78.3,
+            "description": "Commission deducted - Order #59 (Pay at Restaurant)",
+            "status": "completed",
+            "createdAt": "2026-04-01T10:25:16.378Z",
+            "updatedAt": "2026-04-01T10:25:16.378Z",
+            "__v": 0
+        },
+        {
+            "currency": {
+                "code": "INR",
+                "name": "Indian Rupee",
+                "symbol": "₹"
+            },
+            "metadata": {
+                "initiatedBy": "system",
+                "notes": "Admin commission for pay at restaurant order"
+            },
+            "_id": "69cced4cdceb3edd32b4f0d3",
+            "walletId": "69ca76cc3a21b9a180504a67",
+            "walletType": "RestaurantWallet",
+            "transactionType": "debit",
+            "affectsBalance": true,
+            "amount": 39,
+            "source": "commission",
+            "orderId": {
+                "_id": "69cced16dceb3edd32b4f061",
+                "orderNo": 56
+            },
+            "restaurantId": {
+                "basicInfo": {
+                    "restaurantName": "Thakkar's Restro"
+                },
+                "contactDetails": {
+                    "city": "Amreli",
+                    "state": "Gujarat",
+                    "country": "India"
+                },
+                "_id": "69009336cda4b52998ffb143"
+            },
+            "commissionPercentage": 15,
+            "commissionAmount": 39,
+            "description": "Commission deducted - Order #56 (Pay at Restaurant)",
+            "status": "completed",
+            "createdAt": "2026-04-01T10:02:52.532Z",
+            "updatedAt": "2026-04-01T10:02:52.532Z",
+            "__v": 0
+        },
+        {
+            "currency": {
+                "code": "INR",
+                "name": "Indian Rupee",
+                "symbol": "₹"
+            },
+            "metadata": {
+                "initiatedBy": "system",
+                "notes": "Admin commission for pay at restaurant order"
+            },
+            "_id": "69ccaed024929c5d6fd87aef",
+            "walletId": "69ca76cc3a21b9a180504a67",
+            "walletType": "RestaurantWallet",
+            "transactionType": "debit",
+            "affectsBalance": true,
+            "amount": 36,
+            "source": "commission",
+            "orderId": {
+                "_id": "69ccae4424929c5d6fd87a0a",
+                "orderNo": 51
+            },
+            "restaurantId": {
+                "basicInfo": {
+                    "restaurantName": "Thakkar's Restro"
+                },
+                "contactDetails": {
+                    "city": "Amreli",
+                    "state": "Gujarat",
+                    "country": "India"
+                },
+                "_id": "69009336cda4b52998ffb143"
+            },
+            "commissionPercentage": 15,
+            "commissionAmount": 36,
+            "description": "Commission deducted - Order #51 (Pay at Restaurant)",
+            "status": "completed",
+            "createdAt": "2026-04-01T05:36:16.138Z",
+            "updatedAt": "2026-04-01T05:36:16.138Z",
+            "__v": 0
+        },
+        {
+            "currency": {
+                "code": "INR",
+                "name": "Indian Rupee",
+                "symbol": "₹"
+            },
+            "metadata": {
+                "initiatedBy": "system",
+                "notes": "Admin commission for pay at restaurant order"
+            },
+            "_id": "69cbd936df93dab27fe15ba2",
+            "walletId": "69ca76cc3a21b9a180504a67",
+            "walletType": "RestaurantWallet",
+            "transactionType": "debit",
+            "affectsBalance": true,
+            "amount": 36,
+            "source": "commission",
+            "orderId": {
+                "_id": "69cbd926df93dab27fe15b3e",
+                "orderNo": 49
+            },
+            "restaurantId": {
+                "basicInfo": {
+                    "restaurantName": "Thakkar's Restro"
+                },
+                "contactDetails": {
+                    "city": "Amreli",
+                    "state": "Gujarat",
+                    "country": "India"
+                },
+                "_id": "69009336cda4b52998ffb143"
+            },
+            "commissionPercentage": 15,
+            "commissionAmount": 36,
+            "description": "Commission deducted - Order #49 (Pay at Restaurant)",
+            "status": "completed",
+            "createdAt": "2026-03-31T14:24:54.974Z",
+            "updatedAt": "2026-03-31T14:24:54.974Z",
+            "__v": 0
+        },
+        {
+            "currency": {
+                "code": "INR",
+                "name": "Indian Rupee",
+                "symbol": "₹"
+            },
+            "metadata": {
+                "initiatedBy": "system",
+                "notes": "Admin commission for pay at restaurant order"
+            },
+            "_id": "69cbd7e2d6c06ac61e56e366",
+            "walletId": "69ca76cc3a21b9a180504a67",
+            "walletType": "RestaurantWallet",
+            "transactionType": "debit",
+            "affectsBalance": true,
+            "amount": 36,
+            "source": "commission",
+            "orderId": {
+                "_id": "69cbd7d2d6c06ac61e56e2d7",
+                "orderNo": 48
+            },
+            "restaurantId": {
+                "basicInfo": {
+                    "restaurantName": "Thakkar's Restro"
+                },
+                "contactDetails": {
+                    "city": "Amreli",
+                    "state": "Gujarat",
+                    "country": "India"
+                },
+                "_id": "69009336cda4b52998ffb143"
+            },
+            "commissionPercentage": 15,
+            "commissionAmount": 36,
+            "description": "Commission deducted - Order #48 (Pay at Restaurant)",
+            "status": "completed",
+            "createdAt": "2026-03-31T14:19:14.977Z",
+            "updatedAt": "2026-03-31T14:19:14.977Z",
+            "__v": 0
+        },
+        {
+            "currency": {
+                "code": "INR",
+                "name": "Indian Rupee",
+                "symbol": "₹"
+            },
+            "metadata": {
+                "initiatedBy": "system",
+                "notes": "Order completed - Settlement received"
+            },
+            "_id": "69cb68d2383aec691f556ecf",
+            "walletId": "69ca76cc3a21b9a180504a67",
+            "walletType": "RestaurantWallet",
+            "transactionType": "credit",
+            "affectsBalance": true,
+            "amount": 204,
+            "source": "order_payment",
+            "paymentId": "69cb68be383aec691f556e6c",
+            "orderId": {
+                "_id": "69cb68be383aec691f556e64",
+                "orderNo": 41
+            },
+            "restaurantId": {
+                "basicInfo": {
+                    "restaurantName": "Thakkar's Restro"
+                },
+                "contactDetails": {
+                    "city": "Amreli",
+                    "state": "Gujarat",
+                    "country": "India"
+                },
+                "_id": "69009336cda4b52998ffb143"
+            },
+            "commissionPercentage": 15,
+            "commissionAmount": 36,
+            "description": "Order settlement received - Order #41",
+            "status": "completed",
+            "createdAt": "2026-03-31T06:25:22.750Z",
+            "updatedAt": "2026-03-31T06:25:22.750Z",
+            "__v": 0
+        }
+    ],
+    "pagination": {
+        "page": 1,
+        "limit": 10,
+        "totalCount": 6,
+        "totalPages": 1
+    }
+}

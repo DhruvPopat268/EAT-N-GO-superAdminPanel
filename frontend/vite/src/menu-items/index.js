@@ -12,6 +12,8 @@ import support from './support';
 import activityLogs from './activityLogs';
 import coupons from './coupons';
 import userRatings from './userRatings';
+import adminWallet from './adminWallet';
+import restaurantWallet from './restaurantWallet';
 
 // ==============================|| MENU ITEMS ||============================== //
 
@@ -22,6 +24,8 @@ const menuItems = {
     tableBooking,
      orders,
     // payments,
+    adminWallet,
+    restaurantWallet,
     users,
     coupons,
     userRatings,
