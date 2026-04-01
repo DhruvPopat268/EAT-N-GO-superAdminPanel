@@ -10,8 +10,7 @@ const restaurantWalletSchema = new mongoose.Schema({
   
   balance: {
     type: Number,
-    default: 0,
-    min: 0
+    default: 0
   },
   
   // Restaurant wallet currency (based on restaurant location)

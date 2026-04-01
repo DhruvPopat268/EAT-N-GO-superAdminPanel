@@ -95,11 +95,13 @@ Both functions handle multi-currency:
 
 ## Error Handling
 
-Both functions use MongoDB transactions:
-- All operations are atomic
-- If any step fails, entire transaction rolls back
-- Order status only updates after successful settlement
-- Detailed error messages for debugging
+**Transaction Boundaries**: handleOrderCompletion and handlePayAtRestaurantCompletion do NOT manage transactions internally. Neither function accepts a session parameter nor calls .session() on wallet operations. The route-level transaction (in orderRoutes.js) covers only the order status update, not the wallet/ledger operations.
+
+**Atomicity**: Partial - order updates are transactional, but wallet operations (adminWallet.save(), restaurantWallet.save(), WalletTransaction saves) occur outside the route transaction. If wallet operations fail after starting, the order transaction rolls back, but if they partially succeed then fail, inconsistencies may occur.
+
+**Risks**: Wallet balance updates and transaction records could fail independently, potentially leaving wallets in inconsistent states if errors occur mid-execution.
+
+**Remediation Options**: Pass a session parameter into handleOrderCompletion and handlePayAtRestaurantCompletion, then use .session(session) on all wallet operations to achieve full atomicity within the route transaction.
 
 ---
 
@@ -131,7 +133,7 @@ Both functions use MongoDB transactions:
 - [ ] Order completion deducts commission from restaurant
 - [ ] AdminWallet receives commission
 - [ ] Settlement status updated
-- [ ] Handles insufficient restaurant balance
+- [ ] Restaurant wallet can go negative (debt) if insufficient balance
 
 ### Multi-Currency:
 - [ ] Currency conversion works correctly
@@ -142,9 +144,9 @@ Both functions use MongoDB transactions:
 
 ## Notes
 
-1. **Restaurant Balance Requirement**: For pay_at_restaurant orders, the restaurant must have sufficient balance to pay the commission. If not, the order completion will fail with error: "Insufficient balance in restaurant wallet for commission deduction"
+1. **Restaurant Balance and Debt**: For pay_at_restaurant orders, commission is always deducted from the restaurant wallet regardless of current balance. If the restaurant has insufficient balance, the wallet will go negative, representing debt owed to the admin. The RestaurantWallet.balance has no minimum constraint, allowing negative values. Restaurants can clear debt through future online payment settlements which credit their wallet.
 
-2. **Transaction Safety**: All operations use MongoDB sessions and transactions to ensure data consistency.
+2. **Transaction Safety**: handleOrderPlacement uses MongoDB sessions and transactions. However, handleOrderCompletion and handlePayAtRestaurantCompletion do NOT manage transactions internally - wallet operations occur outside the route-level transaction (see Error Handling section).
 
 3. **Commission Tracking**: For online payments, commission is tracked separately (affectsBalance: false) since it's already part of the original credit.
 
