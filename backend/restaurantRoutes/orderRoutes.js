@@ -1137,36 +1137,54 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     if (order.paymentMethod === 'online' && order.paymentId) {
       const payment = await Payment.findById(order.paymentId).session(session);
       
-      if (payment && payment.status === 'success') {
-        const refundAmount = order.totalAmount;
-        
-        // Update payment status to refunded
-        payment.status = 'refunded';
-        payment.refund = {
-          amount: refundAmount,
-          currency: order.currency?.code || payment.actual.currency,
-          reason: 'Order cancelled by restaurant',
-          refundedAt: new Date()
-        };
-        await payment.save({ session });
-        
-        // Update order with refund info
-        order.status = 'refunded';
-        order.cancelledBy = 'Restaurant';
-        order.cancellationReasonId = cancellationReasonId;
-        order.refundAmount = refundAmount;
-        await order.save({ session });
-        
-        await session.commitTransaction();
+      if (!payment) {
+        await session.abortTransaction();
         session.endSession();
-        
-        return res.json({
-          success: true,
-          message: 'Order cancelled and full refund initiated',
-          data: order,
-          refundAmount
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Payment record not found for online order. Cannot proceed with cancellation.',
+          code: 'PAYMENT_NOT_FOUND'
         });
       }
+      
+      if (payment.status !== 'success') {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ 
+          success: false, 
+          message: `Payment status is ${payment.status}. Cannot refund non-successful payment.`,
+          code: 'INVALID_PAYMENT_STATUS'
+        });
+      }
+      
+      const refundAmount = order.totalAmount;
+      
+      // Update payment status to refunded
+      payment.status = 'refunded';
+      payment.refund = {
+        amount: refundAmount,
+        currency: order.currency?.code || payment.actual.currency,
+        reason: 'Order cancelled by restaurant',
+        refundedAt: new Date()
+      };
+      await payment.save({ session });
+      
+      // Update order with refund info
+      order.status = 'refunded';
+      order.cancelledBy = 'Restaurant';
+      order.cancellationReasonId = cancellationReasonId;
+      order.refundAmount = refundAmount;
+      await order.save({ session });
+      
+      await session.commitTransaction();
+      session.endSession();
+      
+      return res.json({
+        success: true,
+        message: 'Order cancelled and full refund initiated',
+        data: order,
+        refundAmount
+      });
     }
     
     // For pay_at_restaurant or if no payment found, just cancel
