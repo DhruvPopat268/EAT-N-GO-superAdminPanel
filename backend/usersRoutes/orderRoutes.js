@@ -12,6 +12,7 @@ const { emitOrderToRestaurant } = require('../utils/socketUtils');
 const { isRestaurantOpen } = require('../utils/restaurantOperatingTiming');
 const { getUserLocationDetails } = require('../utils/googleMapsUtils');
 const { handleOrderPlacement } = require('../utils/depositTestingHandler');
+const { handleUserCancellationOnline } = require('../utils/orderCancellationSettlement');
 
 // Helper function to compare cart items with order request items
 function compareItemsConfiguration(cartItems, orderRequestItems) {
@@ -1138,6 +1139,21 @@ router.post('/cancel', verifyToken, async (req, res) => {
           message: 'Order already cancelled or status changed',
           code: 'ALREADY_CANCELLED'
         });
+      }
+
+      // Handle settlement - split cancellation charges between admin and restaurant
+      if (totalCancellationCharges > 0) {
+        try {
+          await handleUserCancellationOnline(order, refundAmount, totalCancellationCharges);
+        } catch (settlementError) {
+          await session.abortTransaction();
+          console.error('User cancellation settlement failed:', settlementError);
+          return res.status(500).json({
+            success: false,
+            message: 'Cancellation settlement failed. Please retry or contact support.',
+            error: settlementError.message
+          });
+        }
       }
 
       // If there are remaining unpaid charges, add them to user's pending balance

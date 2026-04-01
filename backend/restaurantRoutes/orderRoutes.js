@@ -8,6 +8,7 @@ const Payment = require('../models/Payment');
 const User = require('../usersModels/usersModel');
 const OrderCancelRefund = require('../restaurantModels/OrderCancelRefund');
 const { handleOrderCompletion, handlePayAtRestaurantCompletion } = require('../utils/depositTestingHandler');
+const { handleRestaurantCancellationOnline } = require('../utils/orderCancellationSettlement');
 
 // Get all orders for restaurant
 router.get('/all', restaurantAuthMiddleware, async (req, res) => {
@@ -1186,6 +1187,22 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         };
       }
       await payment.save({ session });
+      
+      // Handle settlement - split cancellation charges between admin and restaurant
+      if (appliedPendingCharges > 0) {
+        try {
+          await handleRestaurantCancellationOnline(order, refundAmount, appliedPendingCharges);
+        } catch (settlementError) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error('Cancellation settlement failed:', settlementError);
+          return res.status(500).json({
+            success: false,
+            message: 'Cancellation settlement failed. Please retry or contact support.',
+            error: settlementError.message
+          });
+        }
+      }
       
       // Update order
       order.status = refundAmount > 0 ? 'refunded' : 'cancelled';
