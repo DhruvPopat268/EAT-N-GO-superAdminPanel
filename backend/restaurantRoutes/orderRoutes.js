@@ -3,7 +3,7 @@ const router = express.Router();
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
-const { handleOrderCompletion } = require('../utils/depositTestingHandler');
+const { handleOrderCompletion, handlePayAtRestaurantCompletion } = require('../utils/depositTestingHandler');
 
 // Get all orders for restaurant
 router.get('/all', restaurantAuthMiddleware, async (req, res) => {
@@ -1049,11 +1049,18 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
       return res.status(404).json({ success: false, message: 'Order not found or cannot be updated to completed' });
     }
 
-    // Handle settlement if payment method is online
+    // Check if already settled to prevent duplicate settlement
+    if (order.settlement?.status === 'settled') {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'Order already settled' });
+    }
+
+    // Handle settlement based on payment method
     if (order.paymentMethod === 'online' && order.paymentId) {
       try {
         const settlementResult = await handleOrderCompletion(order);
-        console.log('Settlement completed:', settlementResult.settlement);
+        console.log('Online payment settlement completed:', settlementResult.settlement);
       } catch (settlementError) {
         await session.abortTransaction();
         session.endSession();
@@ -1061,6 +1068,20 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
         return res.status(500).json({
           success: false,
           message: 'Settlement failed. Order status not changed. Please retry or contact support.',
+          error: settlementError.message
+        });
+      }
+    } else if (order.paymentMethod === 'pay_at_restaurant') {
+      try {
+        const settlementResult = await handlePayAtRestaurantCompletion(order);
+        console.log('Pay at restaurant settlement completed:', settlementResult.settlement);
+      } catch (settlementError) {
+        await session.abortTransaction();
+        session.endSession();
+        console.error('Pay at restaurant settlement failed - transaction rolled back:', settlementError);
+        return res.status(500).json({
+          success: false,
+          message: 'Commission settlement failed. Order status not changed. Please retry or contact support.',
           error: settlementError.message
         });
       }
