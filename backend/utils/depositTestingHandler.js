@@ -208,27 +208,20 @@ async function handleOrderPlacement(order, restaurant) {
 }
 
 /**
- * Handle settlement when order status is updated to 'completed'
+ * Handle settlement when order status is updated to 'completed' (for online payment orders)
  * Split money between admin (commission) and restaurant (their share)
+ * Note: This function does NOT manage transactions - caller must handle session
  */
 async function handleOrderCompletion(order) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    // Check if already settled
-    if (order.settlement?.status === 'settled') {
-      throw new Error('Order already settled');
-    }
-
     // Get payment details
-    const payment = await Payment.findById(order.paymentId).session(session);
+    const payment = await Payment.findById(order.paymentId);
     if (!payment) {
       throw new Error('Payment record not found');
     }
 
     // Get admin wallet
-    const adminWallet = await AdminWallet.findOne().session(session);
+    const adminWallet = await AdminWallet.findOne();
     if (!adminWallet) {
       throw new Error('Admin wallet not found');
     }
@@ -236,16 +229,15 @@ async function handleOrderCompletion(order) {
     // Get or create restaurant wallet
     let restaurantWallet = await RestaurantWallet.findOne({ 
       restaurantId: order.restaurantId 
-    }).session(session);
+    });
 
     if (!restaurantWallet) {
-      // Create restaurant wallet if doesn't exist
       restaurantWallet = new RestaurantWallet({
         restaurantId: order.restaurantId,
         balance: 0,
         currency: order.currency
       });
-      await restaurantWallet.save({ session });
+      await restaurantWallet.save();
     }
 
     // Calculate amounts in restaurant's currency
@@ -276,12 +268,12 @@ async function handleOrderCompletion(order) {
 
     adminWallet.balance -= restaurantShareInINR;
     adminWallet.totalDebits += restaurantShareInINR;
-    await adminWallet.save({ session });
+    await adminWallet.save();
 
     // Credit restaurant share to RestaurantWallet (in restaurant's currency)
     restaurantWallet.balance += restaurantShare;
     restaurantWallet.totalEarnings += restaurantShare;
-    await restaurantWallet.save({ session });
+    await restaurantWallet.save();
 
     // Create debit transaction for admin wallet
     const adminDebitTransaction = new WalletTransaction({
@@ -309,11 +301,11 @@ async function handleOrderCompletion(order) {
       status: 'completed',
       metadata: {
         initiatedBy: 'system',
-        notes: 'Order completed - Restaurant share settled'
+        notes: 'Order completion settlement'
       }
     });
 
-    await adminDebitTransaction.save({ session });
+    await adminDebitTransaction.save();
 
     // Create credit transaction for restaurant wallet
     const restaurantCreditTransaction = new WalletTransaction({
@@ -322,28 +314,26 @@ async function handleOrderCompletion(order) {
       transactionType: 'credit',
       amount: restaurantShare,
       currency: order.currency,
-      source: 'order_payment',
+      source: 'settlement',
       paymentId: payment._id,
       orderId: order._id,
       restaurantId: order.restaurantId,
-      commissionPercentage: commissionPercentage,
-      commissionAmount: commissionAmount,
       description: `Order settlement received - Order #${order.orderNo}`,
       status: 'completed',
       metadata: {
         initiatedBy: 'system',
-        notes: 'Order completed - Settlement received'
+        notes: 'Restaurant share from order'
       }
     });
 
-    await restaurantCreditTransaction.save({ session });
+    await restaurantCreditTransaction.save();
 
-    // Create commission transaction for admin wallet (DOES NOT AFFECT BALANCE)
-    const commissionTransaction = new WalletTransaction({
+    // Create commission transaction for admin wallet (tracking only, doesn't affect balance)
+    const adminCommissionTransaction = new WalletTransaction({
       walletId: adminWallet._id,
       walletType: 'AdminWallet',
       transactionType: 'credit',
-      affectsBalance: false,  // Commission is already part of the original credit
+      affectsBalance: false,
       amount: commissionInINR,
       currency: {
         code: 'INR',
@@ -367,13 +357,13 @@ async function handleOrderCompletion(order) {
       status: 'completed',
       metadata: {
         initiatedBy: 'system',
-        notes: 'Order completed - Commission tracked (does not affect balance)'
+        notes: 'Admin commission from order'
       }
     });
 
-    await commissionTransaction.save({ session });
+    await adminCommissionTransaction.save();
 
-    // Update order settlement details
+    // Update order settlement status
     order.settlement = {
       status: 'settled',
       settledAt: new Date(),
@@ -384,22 +374,14 @@ async function handleOrderCompletion(order) {
 
     order.paymentBreakdown = {
       receivedAmount: receivedAmount,
-      receivedCurrency: order.currency.code,
+      receivedCurrency: payment.actual.currency,
       commissionPercentage: commissionPercentage,
       commissionAmount: commissionAmount,
       restaurantShare: restaurantShare
     };
 
-    await order.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-
     return {
       success: true,
-      adminDebitTransaction,
-      restaurantCreditTransaction,
-      commissionTransaction,
       settlement: {
         restaurantShare,
         commissionAmount,
@@ -408,13 +390,152 @@ async function handleOrderCompletion(order) {
     };
 
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+    throw error;
+  }
+}
+
+/**
+ * Handle settlement for pay_at_restaurant orders
+ * Deduct commission from restaurant wallet and credit to admin wallet
+ * Note: This function does NOT manage transactions - caller must handle session
+ * Restaurant wallet can go negative (representing debt to admin)
+ */
+async function handlePayAtRestaurantCompletion(order) {
+  try {
+    // Get admin wallet
+    const adminWallet = await AdminWallet.findOne();
+    if (!adminWallet) {
+      throw new Error('Admin wallet not found');
+    }
+
+    // Get restaurant wallet
+    let restaurantWallet = await RestaurantWallet.findOne({ 
+      restaurantId: order.restaurantId 
+    });
+
+    if (!restaurantWallet) {
+      restaurantWallet = new RestaurantWallet({
+        restaurantId: order.restaurantId,
+        balance: 0,
+        currency: order.currency
+      });
+      await restaurantWallet.save();
+    }
+
+    // Calculate commission in restaurant's currency
+    const totalAmount = order.totalAmount;
+    const commissionPercentage = order.adminCommission;
+    const commissionAmount = (totalAmount * commissionPercentage) / 100;
+
+    // Convert commission to INR for admin wallet
+    let commissionInINR = commissionAmount;
+    let conversionRate = 1;
+    let conversionSource = null;
+
+    if (order.currency.code !== 'INR') {
+      const exchangeData = await getExchangeRate(order.currency.code);
+      conversionRate = exchangeData.rate;
+      conversionSource = exchangeData.source;
+      commissionInINR = commissionAmount * conversionRate;
+    }
+
+    // Deduct commission from RestaurantWallet (can go negative - represents debt)
+    restaurantWallet.balance -= commissionAmount;
+    await restaurantWallet.save();
+
+    // Credit commission to AdminWallet (in INR)
+    adminWallet.balance += commissionInINR;
+    adminWallet.totalCredits += commissionInINR;
+    await adminWallet.save();
+
+    // Create debit transaction for restaurant wallet
+    const restaurantDebitTransaction = new WalletTransaction({
+      walletId: restaurantWallet._id,
+      walletType: 'RestaurantWallet',
+      transactionType: 'debit',
+      amount: commissionAmount,
+      currency: order.currency,
+      source: 'commission',
+      orderId: order._id,
+      restaurantId: order.restaurantId,
+      commissionPercentage: commissionPercentage,
+      commissionAmount: commissionAmount,
+      description: `Commission deducted - Order #${order.orderNo} (Pay at Restaurant)`,
+      status: 'completed',
+      metadata: {
+        initiatedBy: 'system',
+        notes: 'Admin commission for pay at restaurant order'
+      }
+    });
+
+    await restaurantDebitTransaction.save();
+
+    // Create credit transaction for admin wallet
+    const adminCreditTransaction = new WalletTransaction({
+      walletId: adminWallet._id,
+      walletType: 'AdminWallet',
+      transactionType: 'credit',
+      amount: commissionInINR,
+      currency: {
+        code: 'INR',
+        name: 'Indian Rupee',
+        symbol: '₹'
+      },
+      conversion: order.currency.code !== 'INR' ? {
+        originalAmount: commissionAmount,
+        originalCurrency: order.currency.code,
+        conversionRate: conversionRate,
+        conversionSource: conversionSource,
+        convertedAt: new Date()
+      } : undefined,
+      source: 'commission',
+      orderId: order._id,
+      restaurantId: order.restaurantId,
+      commissionPercentage: commissionPercentage,
+      commissionAmount: commissionAmount,
+      description: `Commission received - Order #${order.orderNo} (Pay at Restaurant)`,
+      status: 'completed',
+      metadata: {
+        initiatedBy: 'system',
+        notes: 'Admin commission from pay at restaurant order'
+      }
+    });
+
+    await adminCreditTransaction.save();
+
+    // Update order settlement status
+    order.settlement = {
+      status: 'settled',
+      settledAt: new Date(),
+      restaurantAmount: totalAmount - commissionAmount,
+      adminCommissionAmount: commissionAmount,
+      adminCommissionInINR: commissionInINR
+    };
+
+    order.paymentBreakdown = {
+      receivedAmount: totalAmount,
+      receivedCurrency: order.currency.code,
+      commissionPercentage: commissionPercentage,
+      commissionAmount: commissionAmount,
+      restaurantShare: totalAmount - commissionAmount
+    };
+
+    return {
+      success: true,
+      settlement: {
+        commissionAmount,
+        commissionInINR,
+        restaurantShare: totalAmount - commissionAmount
+      }
+    };
+
+  } catch (error) {
     throw error;
   }
 }
 
 module.exports = {
   handleOrderPlacement,
-  handleOrderCompletion
+  handleOrderCompletion,
+  handlePayAtRestaurantCompletion
 };
