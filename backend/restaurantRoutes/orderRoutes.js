@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const Order = require('../usersModels/Order');
 const OrderRequest = require('../usersModels/OrderRequest');
+const Payment = require('../models/Payment');
 const { handleOrderCompletion, handlePayAtRestaurantCompletion } = require('../utils/depositTestingHandler');
 
 // Get all orders for restaurant
@@ -1025,7 +1027,6 @@ router.patch('/served/:orderId', restaurantAuthMiddleware, async (req, res) => {
 
 // Update order status to completed
 router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) => {
-  const mongoose = require('mongoose');
   const session = await mongoose.startSession();
   
   try {
@@ -1110,6 +1111,8 @@ router.patch('/completed/:orderId', restaurantAuthMiddleware, async (req, res) =
 
 // Cancel order
 router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
+  const session = await mongoose.startSession();
+  
   try {
     const { orderId, cancellationReasonId } = req.body;
     const restaurantId = req.restaurant.restaurantId;
@@ -1118,19 +1121,62 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: 'orderId and cancellationReasonId are required' });
     }
 
-    const order = await Order.findOneAndUpdate(
-      { _id: orderId, restaurantId, status: { $in: ['confirmed', 'preparing', 'ready', 'served'] } },
-      { 
-        status: 'cancelled',
-        cancelledBy: 'Restaurant',
-        cancellationReasonId
-      },
-      { new: true }
-    );
+    await session.startTransaction();
+
+    const order = await Order.findOne(
+      { _id: orderId, restaurantId, status: { $in: ['confirmed', 'preparing', 'ready', 'served'] } }
+    ).session(session);
 
     if (!order) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ success: false, message: 'Order not found or cannot be cancelled from current status' });
     }
+
+    // Handle refund for online payment
+    if (order.paymentMethod === 'online' && order.paymentId) {
+      const payment = await Payment.findById(order.paymentId).session(session);
+      
+      if (payment && payment.status === 'success') {
+        const refundAmount = order.totalAmount;
+        
+        // Update payment status to refunded
+        payment.status = 'refunded';
+        payment.refund = {
+          amount: refundAmount,
+          currency: order.currency?.code || payment.actual.currency,
+          reason: 'Order cancelled by restaurant',
+          refundedAt: new Date()
+        };
+        await payment.save({ session });
+        
+        // Update order with refund info
+        order.status = 'refunded';
+        order.cancelledBy = 'Restaurant';
+        order.cancellationReasonId = cancellationReasonId;
+        order.refundAmount = refundAmount;
+        await order.save({ session });
+        
+        await session.commitTransaction();
+        session.endSession();
+        
+        return res.json({
+          success: true,
+          message: 'Order cancelled and full refund initiated',
+          data: order,
+          refundAmount
+        });
+      }
+    }
+    
+    // For pay_at_restaurant or if no payment found, just cancel
+    order.status = 'cancelled';
+    order.cancelledBy = 'Restaurant';
+    order.cancellationReasonId = cancellationReasonId;
+    await order.save({ session });
+    
+    await session.commitTransaction();
+    session.endSession();
 
     res.json({
       success: true,
@@ -1138,6 +1184,8 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       data: order
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
