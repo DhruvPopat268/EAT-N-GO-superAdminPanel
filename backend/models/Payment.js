@@ -26,6 +26,15 @@ const paymentSchema = new mongoose.Schema({
     refPath: 'referenceType'
   },
   
+  // For table bookings: specify payment type
+  tableBookingPaymentType: {
+    type: String,
+    enum: ['cover_charges', 'final_bill'],
+    required: function() {
+      return this.referenceType === 'table_booking';
+    }
+  },
+  
   // What user initiated payment for
   original: {
     amount: {

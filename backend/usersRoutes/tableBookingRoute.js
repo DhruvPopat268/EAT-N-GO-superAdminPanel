@@ -13,15 +13,29 @@ router.use('/check-availability', tableBookingCheckAvailabilityRoute);
 
 // POST route to create a new table booking
 router.post('/dummy', verifyToken, async (req, res) => {
+  const session = await TableBooking.startSession();
+  session.startTransaction();
+
   try {
     const userId = req.user.userId;
-    const { checkAvailabilityId } = req.body;
+    const { checkAvailabilityId, coverChargesPaid } = req.body;
 
     // Validate required fields
     if (!checkAvailabilityId) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         success: false,
         message: 'checkAvailabilityId is required'
+      });
+    }
+
+    if (coverChargesPaid === undefined) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'coverChargesPaid is required'
       });
     }
 
@@ -30,18 +44,37 @@ router.post('/dummy', verifyToken, async (req, res) => {
       _id: checkAvailabilityId,
       userId,
       status: 'pending'
-    });
+    }).session(session);
 
     if (!availabilityCheck) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({
         success: false,
         message: 'Availability check not found or expired'
       });
     }
 
+    // Verify cover charges match
+    if (Math.abs(availabilityCheck.coverCharges - coverChargesPaid) > 0.01) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Cover charges mismatch. Please refresh and try again.',
+        expected: availabilityCheck.coverCharges,
+        received: coverChargesPaid
+      });
+    }
+
     // Get restaurant to fetch admin commission
-    const restaurant = await Restaurant.findById(availabilityCheck.restaurantId).select('adminCommission.tableBookingCommission');
+    const restaurant = await Restaurant.findById(availabilityCheck.restaurantId)
+      .select('adminCommission.tableBookingCommission')
+      .session(session);
+    
     if (!restaurant) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({
         success: false,
         message: 'Restaurant not found'
@@ -54,10 +87,13 @@ router.post('/dummy', verifyToken, async (req, res) => {
     if (now > availabilityCheck.expiresAt) {
       // Mark as expired and release the slot capacity
       availabilityCheck.status = 'expired';
-      await availabilityCheck.save();
+      await availabilityCheck.save({ session });
       
       // Find the slot ID from the availability check data
-      const timeSlots = await TableBookingSlot.findOne({ restaurantId: availabilityCheck.restaurantId });
+      const timeSlots = await TableBookingSlot.findOne({ 
+        restaurantId: availabilityCheck.restaurantId 
+      }).session(session);
+      
       const requestedSlot = timeSlots?.timeSlots.find(slot => 
         slot.time === availabilityCheck.bookingTimings.slotTime
       );
@@ -71,10 +107,13 @@ router.post('/dummy', verifyToken, async (req, res) => {
           },
           { 
             $inc: { 'timeSlots.$.onlineGuests': -availabilityCheck.numberOfGuests } 
-          }
+          },
+          { session }
         );
       }
       
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         success: false,
         message: 'Availability check has expired. Please check availability again.',
@@ -82,37 +121,75 @@ router.post('/dummy', verifyToken, async (req, res) => {
       });
     }
 
-    // Generate dummy payment ID
-    const dummyPaymentId = `dummy_pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Create Payment record for cover charges (testing mode - no actual gateway)
+    const Payment = require('../models/Payment');
+    const coverChargePayment = new Payment({
+      userId: availabilityCheck.userId,
+      restaurantId: availabilityCheck.restaurantId,
+      referenceType: 'table_booking',
+      referenceId: checkAvailabilityId, // Temporary reference, will be updated after booking creation
+      tableBookingPaymentType: 'cover_charges',
+      original: {
+        amount: availabilityCheck.coverCharges,
+        currency: availabilityCheck.currency.code
+      },
+      expected: {
+        amount: availabilityCheck.coverCharges,
+        currency: availabilityCheck.currency.code,
+        rate: 1,
+        source: null,
+        calculatedAt: new Date()
+      },
+      actual: {
+        amount: availabilityCheck.coverCharges,
+        currency: availabilityCheck.currency.code,
+        gateway: 'testing',
+        fees: 0,
+        tax: 0,
+        gatewayTransactionId: `TEST_COVER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        gatewayOrderId: `COVER_${Date.now()}`,
+        processedAt: new Date()
+      },
+      status: 'success'
+    });
+
+    await coverChargePayment.save({ session });
 
     // Create table booking using data from availability check snapshot
     const tableBookingData = {
       userId: availabilityCheck.userId,
       restaurantId: availabilityCheck.restaurantId,
-      checkAvailabilityId: checkAvailabilityId, // Store reference
+      checkAvailabilityId: checkAvailabilityId,
       numberOfGuests: availabilityCheck.numberOfGuests,
       bookingTimings: availabilityCheck.bookingTimings,
       specialInstructions: availabilityCheck.specialInstructions,
       coverCharges: availabilityCheck.coverCharges,
       currency: availabilityCheck.currency,
       adminCommission: restaurant.adminCommission?.tableBookingCommission || 0,
-      // Add dummy payment information
-      coverChargePaymentId: dummyPaymentId,
+      coverChargePaymentId: coverChargePayment._id,
       coverChargePaymentStatus: 'paid',
       ...(availabilityCheck.offer && { offer: availabilityCheck.offer })
     };
 
     const tableBooking = new TableBooking(tableBookingData);
-    await tableBooking.save();
+    await tableBooking.save({ session });
+
+    // Update payment referenceId to actual table booking ID
+    coverChargePayment.referenceId = tableBooking._id;
+    await coverChargePayment.save({ session });
 
     // Mark availability check as completed
     availabilityCheck.status = 'completed';
-    await availabilityCheck.save();
+    await availabilityCheck.save({ session });
 
     // Populate the response with restaurant and user details
     const populatedBooking = await TableBooking.findById(tableBooking._id)
       .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state contactDetails.latitude contactDetails.longitude documents.primaryImage')
-      .populate('userId', 'fullName phone');
+      .populate('userId', 'fullName phone')
+      .session(session);
+
+    await session.commitTransaction();
+    session.endSession();
 
     // Emit socket event to restaurant
     const io = req.app.get('io');
@@ -124,11 +201,14 @@ router.post('/dummy', verifyToken, async (req, res) => {
       success: true,
       message: 'Table booking created successfully (dummy payment)',
       data: {
-        ...populatedBooking.toObject()
+        ...populatedBooking.toObject(),
+        coverChargePaymentId: coverChargePayment._id
       }
     });
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error('Error creating table booking:', error);
     res.status(500).json({
       success: false,
@@ -370,6 +450,182 @@ router.post('/calculate-bill', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error calculating bill',
+      error: error.message
+    });
+  }
+});
+
+// POST route to pay final bill (testing mode)
+router.post('/pay-final-bill', verifyToken, async (req, res) => {
+  const session = await TableBooking.startSession();
+  session.startTransaction();
+
+  try {
+    const userId = req.user.userId;
+    const { tableBookingId, originalFinalBill, discountedFinalBill } = req.body;
+
+    if (!tableBookingId || originalFinalBill === undefined || discountedFinalBill === undefined) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'tableBookingId, originalFinalBill, and discountedFinalBill are required'
+      });
+    }
+
+    if (originalFinalBill <= 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'originalFinalBill must be greater than 0'
+      });
+    }
+
+    const booking = await TableBooking.findOne({
+      _id: tableBookingId,
+      userId,
+      status: 'seated'
+    }).session(session);
+
+    if (!booking) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found or not in seated status'
+      });
+    }
+
+    // Calculate bill on backend to verify
+    let discountBreakup = {
+      restaurantDiscount: 0,
+      adminDiscount: 0,
+      totalDiscount: 0
+    };
+    let calculatedDiscountedBill = originalFinalBill;
+    let coverChargesDeducted = 0;
+
+    if (booking.offer) {
+      const restaurantOfferPercentage = booking.offer.restaurantOfferPercentageOnBill || 0;
+      const adminOfferPercentage = booking.offer.adminOfferPercentageOnBill || 0;
+
+      const restaurantDiscountAmount = (originalFinalBill * restaurantOfferPercentage) / 100;
+      const adminDiscountAmount = (originalFinalBill * adminOfferPercentage) / 100;
+      const totalDiscountAmount = restaurantDiscountAmount + adminDiscountAmount;
+      
+      calculatedDiscountedBill = originalFinalBill - totalDiscountAmount;
+
+      discountBreakup = {
+        restaurantDiscount: restaurantDiscountAmount,
+        adminDiscount: adminDiscountAmount,
+        totalDiscount: totalDiscountAmount
+      };
+    }
+
+    if (booking.coverChargePaymentStatus === 'paid') {
+      coverChargesDeducted = booking.coverCharges;
+      calculatedDiscountedBill = calculatedDiscountedBill - coverChargesDeducted;
+    }
+
+    if (calculatedDiscountedBill < 0) {
+      calculatedDiscountedBill = 0;
+    }
+
+    // Verify frontend calculation matches backend
+    if (Math.abs(calculatedDiscountedBill - discountedFinalBill) > 0.01) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Bill calculation mismatch. Please refresh and try again.',
+        calculated: parseFloat(calculatedDiscountedBill.toFixed(2)),
+        received: discountedFinalBill
+      });
+    }
+
+    // Create Payment record (testing mode - no actual gateway)
+    const Payment = require('../models/Payment');
+    const payment = new Payment({
+      userId: booking.userId,
+      restaurantId: booking.restaurantId,
+      referenceType: 'table_booking',
+      referenceId: booking._id,
+      tableBookingPaymentType: 'final_bill',
+      original: {
+        amount: discountedFinalBill,
+        currency: booking.currency.code
+      },
+      expected: {
+        amount: discountedFinalBill,
+        currency: booking.currency.code,
+        rate: 1,
+        source: null,
+        calculatedAt: new Date()
+      },
+      actual: {
+        amount: discountedFinalBill,
+        currency: booking.currency.code,
+        gateway: 'testing',
+        fees: 0,
+        tax: 0,
+        gatewayTransactionId: `TEST_FINAL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        gatewayOrderId: `FINAL_BILL_${Date.now()}`,
+        processedAt: new Date()
+      },
+      status: 'success'
+    });
+
+    await payment.save({ session });
+
+    // Update table booking
+    booking.finalBillPaymentId = payment._id;
+    booking.restaurantCollectedFinalBill = originalFinalBill;
+    booking.finalBillPaidBreakdown = {
+      originalFinalBill: originalFinalBill,
+      restaurantDiscount: discountBreakup.restaurantDiscount,
+      adminDiscount: discountBreakup.adminDiscount,
+      coverChargesDeducted: coverChargesDeducted,
+      discountedFinalBill: calculatedDiscountedBill
+    };
+    booking.status = 'completed';
+
+    await booking.save({ session });
+
+    // Decrement online guests count from the slot
+    await TableBookingSlot.updateOne(
+      { 
+        restaurantId: booking.restaurantId,
+        'timeSlots._id': booking.bookingTimings.slotId 
+      },
+      { 
+        $inc: { 'timeSlots.$.onlineGuests': -booking.numberOfGuests } 
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({
+      success: true,
+      message: 'Final bill paid successfully and booking completed',
+      data: {
+        tableBookingId: booking._id,
+        paymentId: payment._id,
+        status: booking.status,
+        finalBillPaidBreakdown: booking.finalBillPaidBreakdown,
+        currency: booking.currency
+      }
+    });
+
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error processing final bill payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing final bill payment',
       error: error.message
     });
   }

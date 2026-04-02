@@ -58,10 +58,6 @@ const tableBookingSchema = new mongoose.Schema(
       required: true
     },
 
-    coverChargePaymentId: {
-      type: String
-    },
-
     coverChargePaymentStatus: {
       type: String,
       enum: ['pending', 'paid', 'failed', 'refunded', 'redeemed'],
@@ -95,10 +91,29 @@ const tableBookingSchema = new mongoose.Schema(
       default: 0
     },
 
-    // Payment reference
-    paymentId: {
+    // Payment references
+    coverChargePaymentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Payment'
+    },
+
+    finalBillPaymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Payment'
+    },
+
+    // Track final bill amount collected at restaurant
+    restaurantCollectedFinalBill: {
+      type: Number
+    },
+
+    // Final bill payment breakdown
+    finalBillPaidBreakdown: {
+      originalFinalBill: { type: Number },
+      restaurantDiscount: { type: Number },
+      adminDiscount: { type: Number },
+      coverChargesDeducted: { type: Number },
+      discountedFinalBill: { type: Number }
     },
 
     // Settlement tracking
