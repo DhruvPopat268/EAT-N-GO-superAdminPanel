@@ -65,6 +65,13 @@ const RestaurantWalletTransactions = () => {
       const response = await fetch(url, {
         credentials: 'include'
       });
+      
+      if (response.status === 404 || response.status === 400) {
+        setTransactions([]);
+        setTotalCount(0);
+        return;
+      }
+      
       const data = await response.json();
       if (data.success) {
         setTransactions(data.data);
@@ -73,6 +80,8 @@ const RestaurantWalletTransactions = () => {
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      setTransactions([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
