@@ -25,6 +25,7 @@ router.get('/transactions', authMiddleware, async (req, res) => {
     const transactions = await WalletTransaction.find(filter)
       .populate('restaurantId', 'basicInfo.restaurantName contactDetails.city contactDetails.state contactDetails.country')
       .populate('orderId', 'orderNo')
+      .populate('tableBookingId','tableBookingNo')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

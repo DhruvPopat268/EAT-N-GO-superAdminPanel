@@ -6,6 +6,7 @@ const Restaurant = require('../models/Restaurant');
 const { verifyToken } = require('../middleware/userAuth');
 const tableBookingCheckAvailabilityRoute = require('./tableBookingCheckAvailabilityRoute');
 const { emitToRestaurant } = require('../utils/socketUtils');
+const { handleCoverChargePayment, handleFinalBillPayment, handleUserCancellation } = require('../utils/tableBookingSettlementHandler');
 const router = express.Router();
 
 // Use check availability route
@@ -177,6 +178,9 @@ router.post('/dummy', verifyToken, async (req, res) => {
     // Update payment referenceId to actual table booking ID
     coverChargePayment.referenceId = tableBooking._id;
     await coverChargePayment.save({ session });
+
+    // Handle cover charge payment - Credit to AdminWallet
+    await handleCoverChargePayment(tableBooking, coverChargePayment, session);
 
     // Mark availability check as completed
     availabilityCheck.status = 'completed';
@@ -384,6 +388,32 @@ router.post('/calculate-bill', verifyToken, async (req, res) => {
       });
     }
 
+    // Check if restaurant has set final bill
+    if (!booking.finalBill || !booking.finalBill.amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Final bill not yet set by restaurant. Please wait for restaurant to generate the bill.'
+      });
+    }
+
+    // Check if payment was already collected at restaurant
+    if (booking.finalBill.collectedBy === 'restaurant') {
+      return res.status(400).json({
+        success: false,
+        message: 'Bill already paid at restaurant. No payment required via app.'
+      });
+    }
+
+    // Validate billAmount matches restaurant's finalBill amount
+    if (Math.abs(booking.finalBill.amount - billAmount) > 0.01) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bill amount mismatch. You must use the exact amount set by restaurant.',
+        restaurantSetAmount: booking.finalBill.amount,
+        yourAmount: billAmount
+      });
+    }
+
     let discountBreakup = {
       restaurantDiscount: 0,
       adminDiscount: 0,
@@ -497,6 +527,38 @@ router.post('/pay-final-bill', verifyToken, async (req, res) => {
       });
     }
 
+    // Check if restaurant has set final bill
+    if (!booking.finalBill || !booking.finalBill.amount) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Final bill not yet set by restaurant. Please wait for restaurant to generate the bill.'
+      });
+    }
+
+    // Check if payment was already collected at restaurant
+    if (booking.finalBill.collectedBy === 'restaurant') {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Bill already paid at restaurant. No payment required via app.'
+      });
+    }
+
+    // Validate originalFinalBill matches restaurant's finalBill amount
+    if (Math.abs(booking.finalBill.amount - originalFinalBill) > 0.01) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Bill amount mismatch. You must pay the exact amount set by restaurant.',
+        restaurantSetAmount: booking.finalBill.amount,
+        yourAmount: originalFinalBill
+      });
+    }
+
     // Calculate bill on backend to verify
     let discountBreakup = {
       restaurantDiscount: 0,
@@ -580,7 +642,6 @@ router.post('/pay-final-bill', verifyToken, async (req, res) => {
 
     // Update table booking
     booking.finalBillPaymentId = payment._id;
-    booking.restaurantCollectedFinalBill = originalFinalBill;
     booking.finalBillPaidBreakdown = {
       originalFinalBill: originalFinalBill,
       restaurantDiscount: discountBreakup.restaurantDiscount,
@@ -591,6 +652,9 @@ router.post('/pay-final-bill', verifyToken, async (req, res) => {
     booking.status = 'completed';
 
     await booking.save({ session });
+
+    // Handle final bill payment and settlement
+    await handleFinalBillPayment(booking, payment, session);
 
     // Decrement online guests count from the slot
     await TableBookingSlot.updateOne(
@@ -633,11 +697,16 @@ router.post('/pay-final-bill', verifyToken, async (req, res) => {
 
 // POST route to cancel table booking
 router.post('/cancel', verifyToken, async (req, res) => {
+  const session = await TableBooking.startSession();
+  session.startTransaction();
+
   try {
     const userId = req.user.userId;
     const { tableBookingId, reason } = req.body;
 
     if (!tableBookingId) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({
         success: false,
         message: 'tableBookingId is required'
@@ -648,9 +717,11 @@ router.post('/cancel', verifyToken, async (req, res) => {
       _id: tableBookingId,
       userId,
       status: { $nin: ['cancelled', 'completed'] }
-    }).populate('restaurantId', 'tableReservationBookingConfig.minBufferTimeBeforeCancel');
+    }).populate('restaurantId', 'tableReservationBookingConfig.minBufferTimeBeforeCancel').session(session);
 
     if (!booking) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({
         success: false,
         message: 'Booking not found or already cancelled/completed'
@@ -700,7 +771,10 @@ router.post('/cancel', verifyToken, async (req, res) => {
       booking.coverChargesRefundedAmount = 0;
     }
 
-    await booking.save();
+    await booking.save({ session });
+
+    // Handle user cancellation refund (if applicable)
+    await handleUserCancellation(booking, coverChargesRefundable, session);
 
     // Decrement online guests count from the slot
     await TableBookingSlot.updateOne(
@@ -710,8 +784,12 @@ router.post('/cancel', verifyToken, async (req, res) => {
       },
       { 
         $inc: { 'timeSlots.$.onlineGuests': -booking.numberOfGuests } 
-      }
+      },
+      { session }
     );
+
+    await session.commitTransaction();
+    session.endSession();
 
     res.status(200).json({
       success: true,
@@ -730,6 +808,8 @@ router.post('/cancel', verifyToken, async (req, res) => {
     });
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error('Error cancelling booking:', error);
     res.status(500).json({
       success: false,

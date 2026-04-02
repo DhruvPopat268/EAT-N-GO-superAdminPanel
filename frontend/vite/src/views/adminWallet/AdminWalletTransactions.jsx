@@ -194,6 +194,7 @@ const AdminWalletTransactions = () => {
                       <TableCell sx={{ fontWeight: 700, py: 3, textAlign: 'center' }}>#</TableCell>
                       <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Restaurant</TableCell>
                       <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Order No</TableCell>
+                      <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Table Booking No</TableCell>
                       <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Transaction Type</TableCell>
                       <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Source</TableCell>
                       <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Commission %</TableCell>
@@ -206,13 +207,13 @@ const AdminWalletTransactions = () => {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={10} sx={{ textAlign: 'center', py: 8 }}>
+                        <TableCell colSpan={11} sx={{ textAlign: 'center', py: 8 }}>
                           <ThemeSpinner message="Loading transactions..." />
                         </TableCell>
                       </TableRow>
                     ) : transactions.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} sx={{ textAlign: 'center', py: 8 }}>
+                        <TableCell colSpan={11} sx={{ textAlign: 'center', py: 8 }}>
                           <Typography variant="h6" color="text.secondary">
                             No transactions found
                           </Typography>
@@ -248,6 +249,11 @@ const AdminWalletTransactions = () => {
                             <TableCell sx={{ textAlign: 'center' }}>
                               <Typography variant="body2" color="text.primary">
                                 {transaction.orderId?.orderNo ? `#${transaction.orderId.orderNo}` : '-'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell sx={{ textAlign: 'center' }}>
+                              <Typography variant="body2" color="text.primary">
+                                {transaction.tableBookingId?.tableBookingNo ? `#${transaction.tableBookingId.tableBookingNo}` : '-'}
                               </Typography>
                             </TableCell>
                             <TableCell sx={{ textAlign: 'center' }}>
