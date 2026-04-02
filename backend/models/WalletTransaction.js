@@ -73,15 +73,16 @@ const walletTransactionSchema = new mongoose.Schema({
   source: {
     type: String,
     enum: [
-      'order_payment',           // Restaurant receives payment
-      'table_booking_payment',   // Restaurant receives booking payment
-      'commission',              // Admin receives commission
-      'settlement',              // Money movement between wallets
-      'refund',                  // Refund to user
-      'withdrawal',              // Restaurant withdraws money
-      'adjustment',              // Manual adjustment
-      'penalty',                 // Penalty deduction
-      'bonus'                    // Bonus credit
+      'order_payment',                        // Restaurant receives payment
+      'table_booking_cover_charge_payment',   // Cover charge payment
+      'table_booking_final_bill_payment',     // Final bill payment
+      'commission',                           // Admin receives commission
+      'settlement',                           // Money movement between wallets
+      'refund',                               // Refund to user
+      'withdrawal',                           // Restaurant withdraws money
+      'adjustment',                           // Manual adjustment
+      'penalty',                              // Penalty deduction
+      'bonus'                                 // Bonus credit
     ],
     required: true
   },

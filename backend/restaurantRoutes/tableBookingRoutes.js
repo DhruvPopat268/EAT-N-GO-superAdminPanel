@@ -2,6 +2,7 @@ const express = require('express');
 const TableBooking = require('../usersModels/TableBooking');
 const TableBookingSlot = require('../restaurantModels/TableBookingSlot');
 const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
+const { handleRestaurantCancellation, handleRestaurantCollectedPayment } = require('../utils/tableBookingSettlementHandler');
 const router = express.Router();
 
 // Helper function for search
@@ -751,29 +752,88 @@ router.patch('/seated', restaurantAuthMiddleware, async (req, res) => {
 
 // PATCH route to mark booking as completed
 router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
+  const session = await TableBooking.startSession();
+  session.startTransaction();
+
   try {
-    const { bookingId, restaurantCollectedFinalBill } = req.body;
+    const { bookingId, finalBillAmount, collectedBy } = req.body;
     const restaurantId = req.restaurant.restaurantId;
 
-    const updateData = { status: 'completed' };
-    if (restaurantCollectedFinalBill !== undefined) {
-      updateData.restaurantCollectedFinalBill = restaurantCollectedFinalBill;
-    }
-
-    const booking = await TableBooking.findOneAndUpdate(
-      { _id: bookingId, restaurantId, status: 'seated' },
-      updateData,
-      { new: true }
-    ).populate('userId', 'fullName phone');
-
-    if (!booking) {
-      return res.status(404).json({
+    if (!finalBillAmount || !collectedBy) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
         success: false,
-        message: 'Booking not found or customer is not seated yet'
+        message: 'finalBillAmount and collectedBy are required'
       });
     }
 
-    // Update slot: remove guests from onlineGuests using slotId
+    if (!['restaurant', 'app'].includes(collectedBy)) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'collectedBy must be either "restaurant" or "app"'
+      });
+    }
+
+    // Check if already completed
+    const existingBooking = await TableBooking.findOne({ 
+      _id: bookingId, 
+      restaurantId 
+    }).session(session);
+
+    if (!existingBooking) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+
+    if (existingBooking.status === 'completed') {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Booking already completed. Cannot modify final bill details.'
+      });
+    }
+
+    if (existingBooking.status !== 'seated') {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({
+        success: false,
+        message: 'Booking must be in seated status to complete'
+      });
+    }
+
+    // Determine status based on collectedBy
+    const newStatus = collectedBy === 'restaurant' ? 'completed' : 'seated';
+    
+    existingBooking.status = newStatus;
+    existingBooking.finalBill = {
+      amount: finalBillAmount,
+      collectedBy: collectedBy,
+      setAt: new Date()
+    };
+
+    await existingBooking.save({ session });
+
+    // If collected by restaurant, handle settlement
+    if (collectedBy === 'restaurant') {
+      await handleRestaurantCollectedPayment(existingBooking, finalBillAmount, session);
+      await existingBooking.save({ session });
+    }
+
+    const booking = await TableBooking.findById(bookingId)
+      .populate('userId', 'fullName phone')
+      .session(session);
+
+    // Update slot capacity regardless of payment method
+    // Customer has finished dining, slot should be freed
     const slotId = booking.bookingTimings.slotId;
     const numberOfGuests = booking.numberOfGuests;
 
@@ -785,35 +845,56 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
         },
         { 
           $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
-        }
+        },
+        { session }
       );
 
-      // Check if slot was found and updated
       if (slotUpdateResult.matchedCount === 0) {
-        // Still return success for booking completion, but log the issue
+        await session.commitTransaction();
+        session.endSession();
         return res.status(200).json({
           success: true,
-          message: 'Booking marked as completed, but slot capacity could not be updated',
+          message: collectedBy === 'restaurant' 
+            ? 'Booking marked as completed, but slot capacity could not be updated'
+            : 'Final bill set, but slot capacity could not be updated',
           warning: 'Slot not found - capacity may be inconsistent',
           data: booking
         });
       }
     } else {
+      await session.commitTransaction();
+      session.endSession();
       return res.status(200).json({
         success: true,
-        message: 'Booking marked as completed, but no slotId found',
+        message: collectedBy === 'restaurant'
+          ? 'Booking marked as completed, but no slotId found'
+          : 'Final bill set, but no slotId found',
         warning: 'Missing slotId - capacity may be inconsistent',
         data: booking
       });
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'Booking marked as completed',
-      data: booking
-    });
+    await session.commitTransaction();
+    session.endSession();
+
+    if (collectedBy === 'restaurant') {
+      return res.status(200).json({
+        success: true,
+        message: 'Booking marked as completed and settlement processed',
+        data: booking
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: 'Final bill set. Waiting for customer payment via app.',
+        data: booking
+      });
+    }
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error updating completed status:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating completed status',
@@ -926,6 +1007,9 @@ router.patch('/expired', restaurantAuthMiddleware, async (req, res) => {
 
 // PATCH route to cancel booking
 router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
+  const session = await TableBooking.startSession();
+  session.startTransaction();
+
   try {
     const { bookingId, reason } = req.body;
     const restaurantId = req.restaurant.restaurantId;
@@ -934,9 +1018,11 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       _id: bookingId,
       restaurantId,
       status: { $in: ['pending', 'confirmed'] }
-    });
+    }).session(session);
 
     if (!booking) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({
         success: false,
         message: 'Booking not found or cannot be cancelled'
@@ -952,10 +1038,14 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       reason: reason
     };
 
-    await booking.save();
+    await booking.save({ session });
+
+    // Handle restaurant cancellation refund
+    await handleRestaurantCancellation(booking, session);
 
     const populatedBooking = await TableBooking.findById(booking._id)
-      .populate('userId', 'fullName phone');
+      .populate('userId', 'fullName phone')
+      .session(session);
 
     // Update slot: remove guests from onlineGuests using slotId
     const slotId = populatedBooking.bookingTimings.slotId;
@@ -969,11 +1059,14 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         },
         { 
           $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
-        }
+        },
+        { session }
       );
 
       // Check if slot was found and updated
       if (slotUpdateResult.matchedCount === 0) {
+        await session.commitTransaction();
+        session.endSession();
         // Still return success for booking cancellation, but log the issue
         return res.status(200).json({
           success: true,
@@ -983,6 +1076,8 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         });
       }
     } else {
+      await session.commitTransaction();
+      session.endSession();
       return res.status(200).json({
         success: true,
         message: 'Booking cancelled successfully and cover charges will be refunded, but no slotId found',
@@ -991,6 +1086,9 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       });
     }
 
+    await session.commitTransaction();
+    session.endSession();
+
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully and cover charges will be refunded',
@@ -998,6 +1096,9 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error cancelling booking:', error);
     res.status(500).json({
       success: false,
       message: 'Error cancelling booking',

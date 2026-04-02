@@ -107,6 +107,16 @@ const tableBookingSchema = new mongoose.Schema(
       ref: 'Payment'
     },
 
+    // Final bill details set by restaurant
+    finalBill: {
+      amount: { type: Number },
+      collectedBy: {
+        type: String,
+        enum: ['restaurant', 'app']
+      },
+      setAt: { type: Date }
+    },
+
     // Track final bill amount collected at restaurant
     restaurantCollectedFinalBill: {
       type: Number
