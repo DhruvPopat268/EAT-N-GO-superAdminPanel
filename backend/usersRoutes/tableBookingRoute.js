@@ -695,6 +695,9 @@ router.post('/cancel', verifyToken, async (req, res) => {
     
     if (coverChargesRefundable) {
       booking.coverChargePaymentStatus = 'refunded';
+      booking.coverChargesRefundedAmount = booking.coverCharges;
+    } else {
+      booking.coverChargesRefundedAmount = 0;
     }
 
     await booking.save();
