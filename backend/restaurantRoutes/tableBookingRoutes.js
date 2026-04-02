@@ -930,20 +930,11 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
     const { bookingId, reason } = req.body;
     const restaurantId = req.restaurant.restaurantId;
 
-    const booking = await TableBooking.findOneAndUpdate(
-      { 
-        _id: bookingId, 
-        restaurantId, 
-        status: { $in: ['pending', 'confirmed'] }
-      },
-      { 
-        status: 'cancelled',
-        coverChargePaymentStatus: 'refunded',
-        'cancellation.cancelledBy': 'Restaurant',
-        'cancellation.reason': reason
-      },
-      { new: true }
-    ).populate('userId', 'fullName phone');
+    const booking = await TableBooking.findOne({
+      _id: bookingId,
+      restaurantId,
+      status: { $in: ['pending', 'confirmed'] }
+    });
 
     if (!booking) {
       return res.status(404).json({
@@ -952,12 +943,22 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
       });
     }
 
-    // TODO: Initiate cover charge refund process here
-    // The coverChargePaymentStatus is updated to 'refunded'
-    // Actual refund to payment gateway should be implemented
+    // Restaurant cancellation always refunds full amount
+    booking.status = 'cancelled';
+    booking.coverChargePaymentStatus = 'refunded';
+    booking.coverChargesRefundedAmount = booking.coverCharges;
+    booking.cancellation = {
+      cancelledBy: 'Restaurant',
+      reason: reason
+    };
+
+    await booking.save();
+
+    const populatedBooking = await TableBooking.findById(booking._id)
+      .populate('userId', 'fullName phone');
 
     // Update slot: remove guests from onlineGuests using slotId
-    const slotId = booking.bookingTimings.slotId;
+    const slotId = populatedBooking.bookingTimings.slotId;
     const numberOfGuests = booking.numberOfGuests;
 
     if (slotId) {
@@ -978,7 +979,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
           success: true,
           message: 'Booking cancelled successfully and cover charges will be refunded, but slot capacity could not be updated',
           warning: 'Slot not found - capacity may be inconsistent',
-          data: booking
+          data: populatedBooking
         });
       }
     } else {
@@ -986,14 +987,14 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
         success: true,
         message: 'Booking cancelled successfully and cover charges will be refunded, but no slotId found',
         warning: 'Missing slotId - capacity may be inconsistent',
-        data: booking
+        data: populatedBooking
       });
     }
 
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully and cover charges will be refunded',
-      data: booking
+      data: populatedBooking
     });
 
   } catch (error) {

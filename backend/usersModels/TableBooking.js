@@ -64,6 +64,11 @@ const tableBookingSchema = new mongoose.Schema(
       default: 'pending'
     },
 
+    coverChargesRefundedAmount: {
+      type: Number,
+      default: 0
+    },
+
     currency: {
       code: { type: String },
       name: { type: String },
