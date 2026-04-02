@@ -427,16 +427,56 @@ export default function OrderDetail() {
                   ))}
                 </Stack>
                 
-                {/* Order Total */}
+                {/* Order Total Breakdown */}
                 <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid #e5e7eb' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight={600} color="text.primary">
-                      Order Request Total
-                    </Typography>
-                    <Typography variant="h5" fontWeight={700} sx={{ color: '#00a63e' }}>
-                      {order.currency?.symbol || '₹'}{order.orderTotal || order.totalAmount || 0}
-                    </Typography>
-                  </Box>
+                  <Stack spacing={1.5}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body1" color="text.secondary">
+                        Subtotal
+                      </Typography>
+                      <Typography variant="body1" fontWeight={500} color="text.primary">
+                        {order.currency?.symbol || '₹'}{order.orderTotal || order.totalAmount || 0}
+                      </Typography>
+                    </Box>
+                    
+                    {order.appliedCoupon?.savedAmount > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" color="error.main">
+                          Discount
+                        </Typography>
+                        <Typography variant="body1" fontWeight={500} color="error.main">
+                          - {order.currency?.symbol || '₹'}{order.appliedCoupon.savedAmount}
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    {order.appliedPendingCancellationCharges > 0 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" color="success.main">
+                          Cancellation Charges
+                        </Typography>
+                        <Typography variant="body1" fontWeight={500} color="success.main">
+                          + {order.currency?.symbol || '₹'}{order.appliedPendingCancellationCharges}
+                        </Typography>
+                      </Box>
+                    )}
+                    
+                    <Divider sx={{ my: 1 }} />
+                    
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="h6" fontWeight={600} color="text.primary">
+                        Order Total
+                      </Typography>
+                      <Typography variant="h5" fontWeight={700} sx={{ color: '#00a63e' }}>
+                        {order.currency?.symbol || '₹'}
+                        {(
+                          (order.orderTotal || order.totalAmount || 0) - 
+                          (order.appliedCoupon?.savedAmount || 0) + 
+                          (order.appliedPendingCancellationCharges || 0)
+                        ).toFixed(2)}
+                      </Typography>
+                    </Box>
+                  </Stack>
                 </Box>
               </Box>
             </Card>
