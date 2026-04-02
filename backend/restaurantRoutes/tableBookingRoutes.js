@@ -752,12 +752,17 @@ router.patch('/seated', restaurantAuthMiddleware, async (req, res) => {
 // PATCH route to mark booking as completed
 router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const { bookingId } = req.body;
+    const { bookingId, restaurantCollectedFinalBill } = req.body;
     const restaurantId = req.restaurant.restaurantId;
+
+    const updateData = { status: 'completed' };
+    if (restaurantCollectedFinalBill !== undefined) {
+      updateData.restaurantCollectedFinalBill = restaurantCollectedFinalBill;
+    }
 
     const booking = await TableBooking.findOneAndUpdate(
       { _id: bookingId, restaurantId, status: 'seated' },
-      { status: 'completed' },
+      updateData,
       { new: true }
     ).populate('userId', 'fullName phone');
 
