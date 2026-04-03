@@ -49,7 +49,7 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     
     // Filter out completed and cancelled bookings if activeBookings is true
     if (activeBookings === 'true') {
-      filter.status = { $nin: ['completed', 'cancelled'] };
+      filter.status = { $nin: ['completed', 'cancelled', 'expired'] };
     }
     
     // Date range filter

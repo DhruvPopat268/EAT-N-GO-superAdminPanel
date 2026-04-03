@@ -650,6 +650,11 @@ router.post('/pay-final-bill', verifyToken, async (req, res) => {
       discountedFinalBill: calculatedDiscountedBill
     };
     booking.status = 'completed';
+    
+    // Update cover charge status to redeemed (cover charges are deducted from final bill)
+    if (booking.coverChargePaymentStatus === 'paid') {
+      booking.coverChargePaymentStatus = 'redeemed';
+    }
 
     await booking.save({ session });
 
@@ -768,6 +773,7 @@ router.post('/cancel', verifyToken, async (req, res) => {
       booking.coverChargePaymentStatus = 'refunded';
       booking.coverChargesRefundedAmount = booking.coverCharges;
     } else {
+      booking.coverChargePaymentStatus = 'not_refunded';
       booking.coverChargesRefundedAmount = 0;
     }
 

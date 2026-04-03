@@ -412,8 +412,10 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
     // Note: Do not overwrite adminDiscount in finalBillPaidBreakdown as it's the payment-of-record
     // It should only be set once during the payment calculation phase
 
-    // Update cover charge status to redeemed
-    tableBooking.coverChargePaymentStatus = 'redeemed';
+    // Update cover charge status to redeemed (only when paid via app)
+    if (tableBooking.coverChargePaymentStatus === 'paid') {
+      tableBooking.coverChargePaymentStatus = 'redeemed';
+    }
 
     return {
       success: true,
@@ -999,8 +1001,8 @@ async function handleRestaurantCollectedPayment(tableBooking, finalBillAmount, s
 
           await adminCommissionFromCoverCharge.save({ session });
 
-          // Update table booking cover charge status
-          tableBooking.coverChargePaymentStatus = 'redeemed';
+          // Keep cover charge status as 'paid' when collected at restaurant
+          // Cover charges are not redeemed/deducted in restaurant payments
         }
       }
     }

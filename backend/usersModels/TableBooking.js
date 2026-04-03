@@ -60,7 +60,7 @@ const tableBookingSchema = new mongoose.Schema(
 
     coverChargePaymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'failed', 'refunded', 'redeemed'],
+      enum: ['pending', 'paid', 'failed', 'refunded', 'not_refunded', 'redeemed'],
       default: 'pending'
     },
 
