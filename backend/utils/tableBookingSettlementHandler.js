@@ -240,10 +240,9 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
 
     await adminFinalBillTransaction.save({ session });
 
-    // Now calculate settlement
+    // Now calculate settlement (Industry standard: Zomato/Swiggy model)
     const originalFinalBill = tableBooking.finalBillPaidBreakdown.originalFinalBill;
     const restaurantDiscount = tableBooking.finalBillPaidBreakdown.restaurantDiscount;
-    const adminDiscount = tableBooking.finalBillPaidBreakdown.adminDiscount;
 
     // Restaurant revenue base (after their discount)
     const restaurantRevenueBase = originalFinalBill - restaurantDiscount;
@@ -252,16 +251,28 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
     const commissionPercentage = tableBooking.adminCommission;
     const commissionAmount = (restaurantRevenueBase * commissionPercentage) / 100;
 
-    // Admin's net earnings = commission - admin discount given
+    // Use the already-stored admin discount from finalBillPaidBreakdown (payment-of-record)
+    // Only recalculate if not present (fallback for legacy data)
+    let adminDiscount = tableBooking.finalBillPaidBreakdown.adminDiscount;
+    if (adminDiscount === undefined || adminDiscount === null) {
+      // Fallback: recalculate but don't persist as authoritative value
+      const adminDiscountPercentage = tableBooking.offer?.adminOfferPercentageOnBill || 0;
+      adminDiscount = (restaurantRevenueBase * adminDiscountPercentage) / 100;
+      console.warn(`Admin discount not found in finalBillPaidBreakdown for booking #${tableBooking.tableBookingNo}, using fallback calculation: ${adminDiscount}`);
+    }
+
+    // Restaurant's share = Revenue base - Admin commission
+    // Restaurant gets their full share regardless of admin discount
+    const restaurantShare = restaurantRevenueBase - commissionAmount;
+
+    // Admin's net earnings = commission - admin discount given to user
+    // Admin absorbs the cost of discount given to user
     const adminNetEarnings = commissionAmount - adminDiscount;
 
     // Total collected from user (cover charge + final bill payment)
     const coverChargeAmount = tableBooking.coverCharges;
     const finalBillPaymentAmount = payment.actual.amount;
     const totalCollected = coverChargeAmount + finalBillPaymentAmount;
-
-    // Restaurant's share
-    const restaurantShare = totalCollected - adminNetEarnings;
 
     // Convert amounts to INR for admin wallet operations
     const restaurantShareInINR = tableBooking.currency.code !== 'INR' 
@@ -271,6 +282,10 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
     const adminNetEarningsInINR = tableBooking.currency.code !== 'INR' 
       ? adminNetEarnings * conversionRate 
       : adminNetEarnings;
+
+    const commissionAmountInINR = tableBooking.currency.code !== 'INR' 
+      ? commissionAmount * conversionRate 
+      : commissionAmount;
 
     // Debit restaurant share from AdminWallet (in INR)
     if (adminWallet.balance < restaurantShareInINR) {
@@ -364,11 +379,17 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
       restaurantId: tableBooking.restaurantId,
       commissionPercentage: commissionPercentage,
       commissionAmount: adminNetEarnings,
-      description: `Commission earned - Booking #${tableBooking.tableBookingNo} (${commissionAmount} commission - ${adminDiscount} admin discount)`,
+      description: `Commission earned - Booking #${tableBooking.tableBookingNo} (Revenue: ₹${restaurantRevenueBase.toFixed(2)}, Commission: ₹${commissionAmount.toFixed(2)} @ ${commissionPercentage}%, Admin discount: ₹${adminDiscount.toFixed(2)}, Net: ₹${adminNetEarnings.toFixed(2)})`,
       status: 'completed',
       metadata: {
         initiatedBy: 'system',
-        notes: 'Admin commission from table booking'
+        notes: 'Admin commission from table booking',
+        breakdown: {
+          restaurantRevenueBase: restaurantRevenueBase,
+          commissionAmount: commissionAmount,
+          adminDiscount: adminDiscount,
+          netEarnings: adminNetEarnings
+        }
       }
     });
 
@@ -387,9 +408,12 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
       receivedAmount: totalCollected,
       receivedCurrency: tableBooking.currency.code,
       commissionPercentage: commissionPercentage,
-      commissionAmount: adminNetEarnings,
+      commissionAmount: commissionAmount,
       restaurantShare: restaurantShare
     };
+
+    // Note: Do not overwrite adminDiscount in finalBillPaidBreakdown as it's the payment-of-record
+    // It should only be set once during the payment calculation phase
 
     // Update cover charge status to redeemed
     tableBooking.coverChargePaymentStatus = 'redeemed';
@@ -398,8 +422,20 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
       success: true,
       settlement: {
         restaurantShare,
+        restaurantShareInINR,
+        commissionAmount,
+        commissionAmountInINR,
+        adminDiscount,
         adminNetEarnings,
-        adminNetEarningsInINR
+        adminNetEarningsInINR,
+        totalCollected,
+        breakdown: {
+          originalFinalBill,
+          restaurantDiscount,
+          restaurantRevenueBase,
+          commissionPercentage,
+          adminDiscountPercentage
+        }
       }
     };
 
