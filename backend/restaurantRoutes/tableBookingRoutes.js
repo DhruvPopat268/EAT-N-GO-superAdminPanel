@@ -77,6 +77,7 @@ router.get('/', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -140,6 +141,7 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -203,6 +205,7 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -266,6 +269,7 @@ router.get('/arrived', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -329,6 +333,7 @@ router.get('/seated', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -392,6 +397,7 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -455,6 +461,7 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -518,6 +525,7 @@ router.get('/not-arrived', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -581,6 +589,7 @@ router.get('/expired', restaurantAuthMiddleware, async (req, res) => {
     
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
+      .populate('finalBillPaymentId', 'status')
       .sort({  createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -658,7 +667,8 @@ router.post('/details', restaurantAuthMiddleware, async (req, res) => {
       _id: tableBookingId, 
       restaurantId 
     })
-      .populate('userId', 'fullName phone email');
+      .populate('userId', 'fullName phone email')
+      .populate('finalBillPaymentId', 'status');
 
     if (!booking) {
       return res.status(404).json({

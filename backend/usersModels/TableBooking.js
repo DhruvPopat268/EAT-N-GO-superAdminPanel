@@ -141,7 +141,16 @@ const tableBookingSchema = new mongoose.Schema(
       settledAt: {
         type: Date
       },
-      restaurantAmount: {
+      finalBillAmount: {
+        type: Number
+      },
+      restaurantDiscount: {
+        type: Number
+      },
+      adminDiscount: {
+        type: Number
+      },
+      restaurantEarn: {
         type: Number
       },
       adminCommissionAmount: {
