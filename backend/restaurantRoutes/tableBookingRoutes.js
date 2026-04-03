@@ -822,57 +822,57 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
 
     await existingBooking.save({ session });
 
-    // If collected by restaurant, handle settlement
+    // If collected by restaurant, handle settlement and decrement slot capacity
     if (collectedBy === 'restaurant') {
       await handleRestaurantCollectedPayment(existingBooking, finalBillAmount, session);
       await existingBooking.save({ session });
+
+      // Decrement slot capacity only for restaurant collection
+      // For app payment, capacity is already decremented in /pay-final-bill route
+      const slotId = existingBooking.bookingTimings.slotId;
+      const numberOfGuests = existingBooking.numberOfGuests;
+
+      if (slotId) {
+        const slotUpdateResult = await TableBookingSlot.updateOne(
+          { 
+            restaurantId,
+            'timeSlots._id': slotId 
+          },
+          { 
+            $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
+          },
+          { session }
+        );
+
+        if (slotUpdateResult.matchedCount === 0) {
+          await session.commitTransaction();
+          session.endSession();
+          const booking = await TableBooking.findById(bookingId)
+            .populate('userId', 'fullName phone');
+          return res.status(200).json({
+            success: true,
+            message: 'Booking marked as completed, but slot capacity could not be updated',
+            warning: 'Slot not found - capacity may be inconsistent',
+            data: booking
+          });
+        }
+      } else {
+        await session.commitTransaction();
+        session.endSession();
+        const booking = await TableBooking.findById(bookingId)
+          .populate('userId', 'fullName phone');
+        return res.status(200).json({
+          success: true,
+          message: 'Booking marked as completed, but no slotId found',
+          warning: 'Missing slotId - capacity may be inconsistent',
+          data: booking
+        });
+      }
     }
 
     const booking = await TableBooking.findById(bookingId)
       .populate('userId', 'fullName phone')
       .session(session);
-
-    // Update slot capacity regardless of payment method
-    // Customer has finished dining, slot should be freed
-    const slotId = booking.bookingTimings.slotId;
-    const numberOfGuests = booking.numberOfGuests;
-
-    if (slotId) {
-      const slotUpdateResult = await TableBookingSlot.updateOne(
-        { 
-          restaurantId,
-          'timeSlots._id': slotId 
-        },
-        { 
-          $inc: { 'timeSlots.$.onlineGuests': -numberOfGuests }
-        },
-        { session }
-      );
-
-      if (slotUpdateResult.matchedCount === 0) {
-        await session.commitTransaction();
-        session.endSession();
-        return res.status(200).json({
-          success: true,
-          message: collectedBy === 'restaurant' 
-            ? 'Booking marked as completed, but slot capacity could not be updated'
-            : 'Final bill set, but slot capacity could not be updated',
-          warning: 'Slot not found - capacity may be inconsistent',
-          data: booking
-        });
-      }
-    } else {
-      await session.commitTransaction();
-      session.endSession();
-      return res.status(200).json({
-        success: true,
-        message: collectedBy === 'restaurant'
-          ? 'Booking marked as completed, but no slotId found'
-          : 'Final bill set, but no slotId found',
-        warning: 'Missing slotId - capacity may be inconsistent',
-        data: booking
-      });
-    }
 
     await session.commitTransaction();
     session.endSession();

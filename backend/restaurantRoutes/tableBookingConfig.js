@@ -303,12 +303,6 @@ router.patch('/time-slots/status', restaurantAuthMiddleware, async (req, res) =>
           return res.status(400).json({ message: 'maxGuests must be a positive number for each slot' });
         }
       }
-      if (slot.onlineGuests !== undefined) {
-        const onlineGuestsNum = parseInt(slot.onlineGuests);
-        if (isNaN(onlineGuestsNum) || onlineGuestsNum < 0) {
-          return res.status(400).json({ message: 'onlineGuests must be a non-negative number for each slot' });
-        }
-      }
       if (slot.offlineGuests !== undefined) {
         const offlineGuestsNum = parseInt(slot.offlineGuests);
         if (isNaN(offlineGuestsNum) || offlineGuestsNum < 0) {
@@ -339,9 +333,6 @@ router.patch('/time-slots/status', restaurantAuthMiddleware, async (req, res) =>
       const updateObj = { 'timeSlots.$.status': slot.status };
       if (slot.maxGuests !== undefined) {
         updateObj['timeSlots.$.maxGuests'] = parseInt(slot.maxGuests);
-      }
-      if (slot.onlineGuests !== undefined) {
-        updateObj['timeSlots.$.onlineGuests'] = parseInt(slot.onlineGuests);
       }
       if (slot.offlineGuests !== undefined) {
         updateObj['timeSlots.$.offlineGuests'] = parseInt(slot.offlineGuests);
