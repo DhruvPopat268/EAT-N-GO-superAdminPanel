@@ -251,9 +251,15 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
     const commissionPercentage = tableBooking.adminCommission;
     const commissionAmount = (restaurantRevenueBase * commissionPercentage) / 100;
 
-    // Calculate admin discount on restaurant revenue base (industry standard)
-    const adminDiscountPercentage = tableBooking.offer?.adminOfferPercentageOnBill || 0;
-    const adminDiscount = (restaurantRevenueBase * adminDiscountPercentage) / 100;
+    // Use the already-stored admin discount from finalBillPaidBreakdown (payment-of-record)
+    // Only recalculate if not present (fallback for legacy data)
+    let adminDiscount = tableBooking.finalBillPaidBreakdown.adminDiscount;
+    if (adminDiscount === undefined || adminDiscount === null) {
+      // Fallback: recalculate but don't persist as authoritative value
+      const adminDiscountPercentage = tableBooking.offer?.adminOfferPercentageOnBill || 0;
+      adminDiscount = (restaurantRevenueBase * adminDiscountPercentage) / 100;
+      console.warn(`Admin discount not found in finalBillPaidBreakdown for booking #${tableBooking.tableBookingNo}, using fallback calculation: ${adminDiscount}`);
+    }
 
     // Restaurant's share = Revenue base - Admin commission
     // Restaurant gets their full share regardless of admin discount
@@ -406,8 +412,8 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
       restaurantShare: restaurantShare
     };
 
-    // Update final bill paid breakdown with corrected admin discount
-    tableBooking.finalBillPaidBreakdown.adminDiscount = adminDiscount;
+    // Note: Do not overwrite adminDiscount in finalBillPaidBreakdown as it's the payment-of-record
+    // It should only be set once during the payment calculation phase
 
     // Update cover charge status to redeemed
     tableBooking.coverChargePaymentStatus = 'redeemed';
