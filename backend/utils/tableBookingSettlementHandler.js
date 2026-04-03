@@ -242,7 +242,10 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
 
     // Now calculate settlement (Industry standard: Zomato/Swiggy model)
     const originalFinalBill = tableBooking.finalBillPaidBreakdown.originalFinalBill;
-    const restaurantDiscount = tableBooking.finalBillPaidBreakdown.restaurantDiscount;
+    
+    // Calculate restaurant discount from offer percentage on original bill
+    const restaurantDiscountPercentage = tableBooking.offer?.restaurantOfferPercentageOnBill || 0;
+    const restaurantDiscount = (originalFinalBill * restaurantDiscountPercentage) / 100;
 
     // Restaurant revenue base (after their discount)
     const restaurantRevenueBase = originalFinalBill - restaurantDiscount;
@@ -251,15 +254,9 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
     const commissionPercentage = tableBooking.adminCommission;
     const commissionAmount = (restaurantRevenueBase * commissionPercentage) / 100;
 
-    // Use the already-stored admin discount from finalBillPaidBreakdown (payment-of-record)
-    // Only recalculate if not present (fallback for legacy data)
-    let adminDiscount = tableBooking.finalBillPaidBreakdown.adminDiscount;
-    if (adminDiscount === undefined || adminDiscount === null) {
-      // Fallback: recalculate but don't persist as authoritative value
-      const adminDiscountPercentage = tableBooking.offer?.adminOfferPercentageOnBill || 0;
-      adminDiscount = (restaurantRevenueBase * adminDiscountPercentage) / 100;
-      console.warn(`Admin discount not found in finalBillPaidBreakdown for booking #${tableBooking.tableBookingNo}, using fallback calculation: ${adminDiscount}`);
-    }
+    // Calculate admin discount from offer percentage on restaurant revenue base
+    const adminDiscountPercentage = tableBooking.offer?.adminOfferPercentageOnBill || 0;
+    const adminDiscount = (restaurantRevenueBase * adminDiscountPercentage) / 100;
 
     // Restaurant's share = Revenue base - Admin commission
     // Restaurant gets their full share regardless of admin discount
@@ -432,6 +429,7 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
         breakdown: {
           originalFinalBill,
           restaurantDiscount,
+          restaurantDiscountPercentage,
           restaurantRevenueBase,
           commissionPercentage,
           adminDiscountPercentage
