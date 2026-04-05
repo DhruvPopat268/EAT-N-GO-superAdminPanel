@@ -426,8 +426,15 @@ router.post('/calculate-bill', verifyToken, async (req, res) => {
       const restaurantOfferPercentage = booking.offer.restaurantOfferPercentageOnBill || 0;
       const adminOfferPercentage = booking.offer.adminOfferPercentageOnBill || 0;
 
+      // Calculate restaurant discount on original bill
       const restaurantDiscountAmount = (billAmount * restaurantOfferPercentage) / 100;
-      const adminDiscountAmount = (billAmount * adminOfferPercentage) / 100;
+      
+      // Calculate restaurant revenue base (after restaurant discount)
+      const restaurantRevenueBase = billAmount - restaurantDiscountAmount;
+      
+      // Calculate admin discount on restaurant revenue base (industry standard)
+      const adminDiscountAmount = (restaurantRevenueBase * adminOfferPercentage) / 100;
+      
       const totalDiscountAmount = restaurantDiscountAmount + adminDiscountAmount;
       
       discountedBillAmount = billAmount - totalDiscountAmount;
@@ -572,8 +579,15 @@ router.post('/pay-final-bill', verifyToken, async (req, res) => {
       const restaurantOfferPercentage = booking.offer.restaurantOfferPercentageOnBill || 0;
       const adminOfferPercentage = booking.offer.adminOfferPercentageOnBill || 0;
 
+      // Calculate restaurant discount on original bill
       const restaurantDiscountAmount = (originalFinalBill * restaurantOfferPercentage) / 100;
-      const adminDiscountAmount = (originalFinalBill * adminOfferPercentage) / 100;
+      
+      // Calculate restaurant revenue base (after restaurant discount)
+      const restaurantRevenueBase = originalFinalBill - restaurantDiscountAmount;
+      
+      // Calculate admin discount on restaurant revenue base (industry standard)
+      const adminDiscountAmount = (restaurantRevenueBase * adminOfferPercentage) / 100;
+      
       const totalDiscountAmount = restaurantDiscountAmount + adminDiscountAmount;
       
       calculatedDiscountedBill = originalFinalBill - totalDiscountAmount;
