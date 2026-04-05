@@ -256,7 +256,7 @@ router.get('/past', verifyToken, async (req, res) => {
 
     const bookings = await TableBooking.find({
       userId,
-      status: { $in: ['completed', 'cancelled'] }
+      status: { $in: ['completed', 'cancelled' , 'expired'] }
     })
       .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state contactDetails.latitude contactDetails.longitude documents.primaryImage')
       .sort({ 'bookingTimings.date': -1, createdAt: -1 });
