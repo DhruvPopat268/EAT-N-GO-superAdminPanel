@@ -420,6 +420,9 @@ async function handleFinalBillPayment(tableBooking, payment, session) {
       tableBooking.coverChargePaymentStatus = 'redeemed';
     }
 
+    // Save the updated table booking with settlement and payment breakdown
+    await tableBooking.save({ session });
+
     return {
       success: true,
       settlement: {
