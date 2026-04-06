@@ -224,7 +224,7 @@ const RestaurantWalletTransactions = () => {
         <>
           <Fade in timeout={1000}>
             <Grid container spacing={3} sx={{ mb: 4 }}>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid item xs={12} sm={6} md={2}>
                 <StatCard
                   title="Current Balance"
                   value={`${walletData?.currency?.symbol || '₹'}${walletData?.balance?.toFixed(2) || '0.00'}`}
@@ -233,7 +233,7 @@ const RestaurantWalletTransactions = () => {
                   subtitle={walletData?.currency?.code || 'INR'}
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid item xs={12} sm={6} md={2}>
                 <StatCard
                   title="Total Earnings"
                   value={`${walletData?.currency?.symbol || '₹'}${walletData?.totalEarnings?.toFixed(2) || '0.00'}`}
@@ -242,7 +242,16 @@ const RestaurantWalletTransactions = () => {
                   subtitle="All time earnings"
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid item xs={12} sm={6} md={2}>
+                <StatCard
+                  title="Total Debits"
+                  value={`${walletData?.currency?.symbol || '₹'}${walletData?.totalDebits?.toFixed(2) || '0.00'}`}
+                  icon={IconTrendingDown}
+                  color="#FF5722"
+                  subtitle="All time debits"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
                 <StatCard
                   title="Total Withdrawals"
                   value={`${walletData?.currency?.symbol || '₹'}${walletData?.totalWithdrawals?.toFixed(2) || '0.00'}`}
@@ -251,7 +260,7 @@ const RestaurantWalletTransactions = () => {
                   subtitle="All time withdrawals"
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid item xs={12} sm={6} md={2}>
                 <StatCard
                   title="Pending Settlement"
                   value={`${walletData?.currency?.symbol || '₹'}${walletData?.pendingSettlement?.toFixed(2) || '0.00'}`}
@@ -260,7 +269,7 @@ const RestaurantWalletTransactions = () => {
                   subtitle="Awaiting settlement"
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={2.4}>
+              <Grid item xs={12} sm={6} md={2}>
                 <StatCard
                   title="Currency"
                   value={walletData?.currency?.code || 'INR'}

@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/auth');
+const restaurantAuthMiddleware = require('../middleware/restaurantAuth');
 const WalletTransaction = require('../models/WalletTransaction');
 const RestaurantWallet = require('../restaurantModels/RestaurantWallet');
 
 // Get restaurant wallet transactions with pagination
-router.get('/transactions/:restaurantId', authMiddleware, async (req, res) => {
+router.get('/transactions', restaurantAuthMiddleware, async (req, res) => {
   try {
-    const { restaurantId } = req.params;
+    const restaurantId = req.restaurant.restaurantId;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;

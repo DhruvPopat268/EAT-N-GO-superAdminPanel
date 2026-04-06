@@ -35,8 +35,14 @@ const restaurantWalletSchema = new mongoose.Schema({
     default: 0
   },
   
-  // Total earnings
+  // Total earnings (credits)
   totalEarnings: {
+    type: Number,
+    default: 0
+  },
+  
+  // Total debits (refunds, chargebacks, etc.)
+  totalDebits: {
     type: Number,
     default: 0
   },

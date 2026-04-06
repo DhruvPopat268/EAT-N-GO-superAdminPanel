@@ -483,6 +483,7 @@ async function handlePayAtRestaurantCompletion(order, session) {
 
     // Deduct total admin earnings from RestaurantWallet (can go negative - represents debt)
     restaurantWallet.balance -= totalAdminEarnings;
+    restaurantWallet.totalDebits += totalAdminEarnings;
     await restaurantWallet.save({ session });
 
     // Credit total admin earnings to AdminWallet (in INR)

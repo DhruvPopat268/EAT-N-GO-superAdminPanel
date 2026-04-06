@@ -1027,6 +1027,7 @@ async function handleRestaurantCollectedPayment(tableBooking, finalBillAmount, s
 
     // Deduct admin commission from RestaurantWallet (can go negative - represents debt)
     restaurantWallet.balance -= adminCommissionFromBill;
+    restaurantWallet.totalDebits += adminCommissionFromBill;
     await restaurantWallet.save({ session });
 
     // Credit admin commission to AdminWallet (in INR)
