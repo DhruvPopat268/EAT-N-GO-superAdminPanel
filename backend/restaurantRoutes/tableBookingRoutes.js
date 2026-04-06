@@ -834,6 +834,59 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
 
     // If collected by restaurant, handle settlement and decrement slot capacity
     if (collectedBy === 'restaurant') {
+      // Calculate admin commission
+      const commissionPercentage = existingBooking.adminCommission;
+      const adminCommissionFromBill = (finalBillAmount * commissionPercentage) / 100;
+      
+      // Calculate cover charge split if applicable
+      let coverChargeSplit = { restaurantShare: 0, adminShare: 0 };
+      if (existingBooking.coverChargePaymentStatus === 'paid') {
+        const Restaurant = require('../models/Restaurant');
+        const restaurant = await Restaurant.findById(existingBooking.restaurantId).session(session);
+        const restaurantSplitPercentage = restaurant?.tableReservationBookingConfig?.nonRefundSplit?.restaurant ?? 50;
+        const adminSplitPercentage = restaurant?.tableReservationBookingConfig?.nonRefundSplit?.admin ?? 50;
+        
+        coverChargeSplit.restaurantShare = (existingBooking.coverCharges * restaurantSplitPercentage) / 100;
+        coverChargeSplit.adminShare = (existingBooking.coverCharges * adminSplitPercentage) / 100;
+      }
+      
+      // Calculate totals
+      const totalAdminEarnings = adminCommissionFromBill + coverChargeSplit.adminShare;
+      const restaurantShare = finalBillAmount - adminCommissionFromBill + coverChargeSplit.restaurantShare;
+      
+      // Convert to INR if needed
+      let conversionRate = 1;
+      if (existingBooking.currency.code !== 'INR') {
+        const coverChargePayment = await require('../models/Payment').findById(existingBooking.coverChargePaymentId).session(session);
+        conversionRate = coverChargePayment?.expected?.rate || 1;
+      }
+      const totalAdminEarningsInINR = existingBooking.currency.code !== 'INR' 
+        ? totalAdminEarnings * conversionRate 
+        : totalAdminEarnings;
+      
+      // Set finalBillPaidBreakdown (no discounts for restaurant collection)
+      existingBooking.finalBillPaidBreakdown = {
+        originalFinalBill: finalBillAmount,
+        restaurantDiscount: 0,
+        adminDiscount: 0,
+        coverChargesDeducted: 0,
+        discountedFinalBill: finalBillAmount
+      };
+      
+      // Set settlement object
+      existingBooking.settlement = {
+        status: 'settled',
+        settledAt: new Date(),
+        finalBillAmount: finalBillAmount,
+        restaurantDiscount: 0,
+        adminDiscount: 0,
+        restaurantEarn: restaurantShare,
+        adminCommissionAmount: totalAdminEarnings,
+        adminCommissionInINR: totalAdminEarningsInINR
+      };
+      
+      existingBooking.restaurantCollectedFinalBill = finalBillAmount;
+      
       await handleRestaurantCollectedPayment(existingBooking, finalBillAmount, session);
       await existingBooking.save({ session });
 
