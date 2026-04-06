@@ -449,6 +449,121 @@ export default function BookingDetail() {
                 </Box>
               </Card>
             )}
+
+            {/* Payment Breakdown */}
+            {booking.finalBillPaidBreakdown && (
+              <Card sx={{ borderRadius: 2, border: '1px solid #e5e7eb' }}>
+                <Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                  <Typography variant="h6" fontWeight={600} color="text.primary">
+                    Payment Breakdown
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 3 }}>
+                  <Stack spacing={2}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">Original Final Bill</Typography>
+                      <Typography variant="body1" fontWeight={500}>{booking.currency?.symbol || '₹'}{booking.finalBillPaidBreakdown.originalFinalBill}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">Restaurant Discount</Typography>
+                      <Typography variant="body1" color="error.main">-{booking.currency?.symbol || '₹'}{booking.finalBillPaidBreakdown.restaurantDiscount}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">Admin Discount</Typography>
+                      <Typography variant="body1" color="error.main">-{booking.currency?.symbol || '₹'}{booking.finalBillPaidBreakdown.adminDiscount}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body2" color="text.secondary">Cover Charges Deducted</Typography>
+                      <Typography variant="body1" color="error.main">-{booking.currency?.symbol || '₹'}{booking.finalBillPaidBreakdown.coverChargesDeducted}</Typography>
+                    </Box>
+                    <Divider />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography variant="body1" fontWeight={600}>Discounted Final Bill</Typography>
+                      <Typography variant="h6" fontWeight={600} sx={{ color: '#00a63e' }}>{booking.currency?.symbol || '₹'}{booking.finalBillPaidBreakdown.discountedFinalBill}</Typography>
+                    </Box>
+                  </Stack>
+                </Box>
+              </Card>
+            )}
+
+            {/* Settlement */}
+            {booking.settlement && (
+              <Card sx={{ borderRadius: 2, border: '1px solid #e5e7eb' }}>
+                <Box sx={{ p: 3, borderBottom: '1px solid #e5e7eb' }}>
+                  <Typography variant="h6" fontWeight={600} color="text.primary">
+                    Settlement
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 3 }}>
+                  <Stack spacing={2}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Typography variant="body2" color="text.secondary">Status:</Typography>
+                      <Chip 
+                        label={booking.settlement.status?.toUpperCase() || 'UNKNOWN'}
+                        sx={{ 
+                          bgcolor: booking.settlement.status === 'settled' ? '#4CAF50' : '#FF9800',
+                          color: 'white',
+                          fontSize: '0.75rem',
+                          fontWeight: 500
+                        }}
+                        size="small"
+                      />
+                    </Box>
+                    
+                    {booking.settlement.status === 'settled' && (
+                      <>
+                        {booking.settlement.settledAt && (
+                          <Box>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', mb: 0.5 }}>
+                              Settled At
+                            </Typography>
+                            <Typography variant="body1" color="text.primary">
+                              {formatDateTime(booking.settlement.settledAt).replace('\n', ' - ')}
+                            </Typography>
+                          </Box>
+                        )}
+                        
+                        <Divider />
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Final Bill Amount</Typography>
+                          <Typography variant="body1" fontWeight={500}>{booking.currency?.symbol || '₹'}{booking.settlement.finalBillAmount}</Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Restaurant Discount</Typography>
+                          <Typography variant="body1">{booking.currency?.symbol || '₹'}{booking.settlement.restaurantDiscount}</Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body2" color="text.secondary">Admin Discount</Typography>
+                          <Typography variant="body1">{booking.currency?.symbol || '₹'}{booking.settlement.adminDiscount}</Typography>
+                        </Box>
+                        
+                        <Divider />
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body1" fontWeight={600}>Restaurant Earn</Typography>
+                          <Typography variant="h6" fontWeight={600} sx={{ color: '#00a63e' }}>{booking.currency?.symbol || '₹'}{booking.settlement.restaurantEarn}</Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="body1" fontWeight={600}>Admin Commission</Typography>
+                          <Typography variant="h6" fontWeight={600} sx={{ color: '#2196F3' }}>{booking.currency?.symbol || '₹'}{booking.settlement.adminCommissionAmount}</Typography>
+                        </Box>
+                        
+                        {booking.settlement.adminCommissionInINR && booking.currency?.code !== 'INR' && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">Admin Commission (INR)</Typography>
+                            <Typography variant="body1">₹{booking.settlement.adminCommissionInINR}</Typography>
+                          </Box>
+                        )}
+                      </>
+                    )}
+                  </Stack>
+                </Box>
+              </Card>
+            )}
           </Box>
         </Box>
       </Box>

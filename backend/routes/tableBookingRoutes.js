@@ -76,6 +76,7 @@ router.get('/', authMiddleware, async (req, res) => {
     const bookings = await TableBooking.find(filter)
       .populate('userId', 'fullName phone')
       .populate('restaurantId', 'basicInfo.restaurantName')
+      .populate('finalBillPaymentId',"status")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -156,7 +157,8 @@ router.get('/detail', authMiddleware, async (req, res) => {
 
     const booking = await TableBooking.findOne({ _id: bookingId, restaurantId })
       .populate('userId', 'fullName phone email')
-      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.address');
+      .populate('restaurantId', 'basicInfo.restaurantName basicInfo.address')
+      .populate('finalBillPaymentId',"status")
 
     if (!booking) {
       return res.status(404).json({ 

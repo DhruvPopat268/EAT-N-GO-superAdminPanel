@@ -240,7 +240,7 @@ const Bookings = () => {
   };
 
   const getPaymentStatusChip = (status) => {
-    const config = status === 'paid' 
+    const config = status === 'paid' || status === 'success'
       ? { bgcolor: '#4CAF50', textColor: 'white' }
       : { bgcolor: '#F44336', textColor: 'white' };
     
@@ -425,6 +425,8 @@ const Bookings = () => {
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Guests</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Cover Charges</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Payment Status</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Final Bill</TableCell>
+                  <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Final Bill Payment</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Status</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Created At</TableCell>
                   <TableCell sx={{ fontWeight: 700, textAlign: 'center' }}>Updated At</TableCell>
@@ -434,13 +436,13 @@ const Bookings = () => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
                       <ThemeSpinner message="Loading bookings..." />
                     </TableCell>
                   </TableRow>
                 ) : bookings.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 11 : 10} sx={{ textAlign: 'center', py: 8 }}>
+                    <TableCell colSpan={selectedRestaurant?.restaurantId === 'all' ? 13 : 12} sx={{ textAlign: 'center', py: 8 }}>
                       <Typography variant="h6" color="text.secondary">
                         No bookings found
                       </Typography>
@@ -496,6 +498,19 @@ const Bookings = () => {
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           {getPaymentStatusChip(booking.coverChargePaymentStatus)}
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
+                          <Box>
+                            <Typography variant="body2" color="black">
+                              {booking.finalBill?.amount ? `${booking.currency?.symbol || '₹'}${booking.finalBill.amount}` : 'N/A'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                              {booking.finalBill?.collectedBy ? `By ${booking.finalBill.collectedBy}` : ''}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ textAlign: 'center' }}>
+                          {booking.finalBillPaymentId?.status ? getPaymentStatusChip(booking.finalBillPaymentId.status) : <Typography variant="body2" color="text.secondary">N/A</Typography>}
                         </TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           {getStatusChip(booking.status)}
