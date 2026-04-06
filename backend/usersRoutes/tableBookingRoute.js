@@ -232,12 +232,27 @@ router.get('/in-progress', verifyToken, async (req, res) => {
       status: { $nin: ['completed', 'cancelled' , 'expired'] }
     })
       .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state contactDetails.latitude contactDetails.longitude documents.primaryImage')
-      .sort({ 'bookingTimings.date': -1, createdAt: -1 });
+      .sort({ 'bookingTimings.date': -1, createdAt: -1 })
+      .lean();
+
+    const bookingsWithTotalDiscount = bookings.map(booking => {
+      if (booking.finalBillPaidBreakdown) {
+        const totalDiscount = (booking.finalBillPaidBreakdown.restaurantDiscount || 0) + (booking.finalBillPaidBreakdown.adminDiscount || 0);
+        return {
+          ...booking,
+          finalBillPaidBreakdown: {
+            ...booking.finalBillPaidBreakdown,
+            totalDiscount
+          }
+        };
+      }
+      return booking;
+    });
 
     res.status(200).json({
       success: true,
-      count: bookings.length,
-      data: bookings
+      count: bookingsWithTotalDiscount.length,
+      data: bookingsWithTotalDiscount
     });
   } catch (error) {
     console.error('Error fetching in-progress bookings:', error);
@@ -259,12 +274,27 @@ router.get('/past', verifyToken, async (req, res) => {
       status: { $in: ['completed', 'cancelled' , 'expired'] }
     })
       .populate('restaurantId', 'basicInfo.restaurantName contactDetails.address contactDetails.city contactDetails.state contactDetails.latitude contactDetails.longitude documents.primaryImage')
-      .sort({ 'bookingTimings.date': -1, createdAt: -1 });
+      .sort({ 'bookingTimings.date': -1, createdAt: -1 })
+      .lean();
+
+    const bookingsWithTotalDiscount = bookings.map(booking => {
+      if (booking.finalBillPaidBreakdown) {
+        const totalDiscount = (booking.finalBillPaidBreakdown.restaurantDiscount || 0) + (booking.finalBillPaidBreakdown.adminDiscount || 0);
+        return {
+          ...booking,
+          finalBillPaidBreakdown: {
+            ...booking.finalBillPaidBreakdown,
+            totalDiscount
+          }
+        };
+      }
+      return booking;
+    });
 
     res.status(200).json({
       success: true,
-      count: bookings.length,
-      data: bookings
+      count: bookingsWithTotalDiscount.length,
+      data: bookingsWithTotalDiscount
     });
   } catch (error) {
     console.error('Error fetching past bookings:', error);
