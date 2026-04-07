@@ -603,9 +603,8 @@ router.get('/active', verifyToken, async (req, res) => {
     const ordersWithItemsCount = orders.map(order => {
       const orderObj = order.toObject();
       orderObj.itemsCount = orderObj.items ? orderObj.items.length : 0;
-      orderObj.items = orderObj.items?.map(item => ({
-        images: item.itemId?.images
-      }));
+      orderObj.orderItemsImages = orderObj.items?.flatMap(item => item.itemId?.images || []) || [];
+      delete orderObj.items;
       return orderObj;
     });
 
