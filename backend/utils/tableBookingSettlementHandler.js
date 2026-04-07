@@ -1103,7 +1103,10 @@ async function handleRestaurantCollectedPayment(tableBooking, finalBillAmount, s
     tableBooking.settlement = {
       status: 'settled',
       settledAt: new Date(),
-      restaurantAmount: restaurantShare,
+      finalBillAmount: originalFinalBill,
+      restaurantDiscount: 0,
+      adminDiscount: 0,
+      restaurantEarn: restaurantShare,
       adminCommissionAmount: totalAdminEarnings,
       adminCommissionInINR: totalAdminEarningsInINR
     };

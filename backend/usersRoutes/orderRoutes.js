@@ -597,12 +597,15 @@ router.get('/active', verifyToken, async (req, res) => {
     })
       .populate('restaurantId', 'basicInfo.restaurantName basicInfo.foodCategory basicInfo.alcoholAvailable basicInfo.cuisineTypes contactDetails.address contactDetails.city contactDetails.state contactDetails.country contactDetails.pincode contactDetails.phone contactDetails.latitude contactDetails.longitude basicInfo.operatingHours documents.primaryImage businessDetails.currency')
       .populate('userRatingId')
+      .populate('items.itemId' , "images")
       .sort({ createdAt: -1 });
 
     const ordersWithItemsCount = orders.map(order => {
       const orderObj = order.toObject();
       orderObj.itemsCount = orderObj.items ? orderObj.items.length : 0;
-      delete orderObj.items;
+      orderObj.items = orderObj.items?.map(item => ({
+        images: item.itemId?.images
+      }));
       return orderObj;
     });
 

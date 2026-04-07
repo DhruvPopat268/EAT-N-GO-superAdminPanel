@@ -45,13 +45,22 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
     }
     
     // Add search functionality
+
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -150,12 +159,20 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
     
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -254,12 +271,20 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
     
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -358,12 +383,20 @@ router.get('/preparing', restaurantAuthMiddleware, async (req, res) => {
     
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -462,12 +495,20 @@ router.get('/ready', restaurantAuthMiddleware, async (req, res) => {
     
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -566,12 +607,20 @@ router.get('/served', restaurantAuthMiddleware, async (req, res) => {
     
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -670,12 +719,20 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
     
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);
@@ -774,12 +831,20 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
     
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await Order.countDocuments(filter);

@@ -873,18 +873,6 @@ router.patch('/completed', restaurantAuthMiddleware, async (req, res) => {
         discountedFinalBill: finalBillAmount
       };
       
-      // Set settlement object
-      existingBooking.settlement = {
-        status: 'settled',
-        settledAt: new Date(),
-        finalBillAmount: finalBillAmount,
-        restaurantDiscount: 0,
-        adminDiscount: 0,
-        restaurantEarn: restaurantShare,
-        adminCommissionAmount: totalAdminEarnings,
-        adminCommissionInINR: totalAdminEarningsInINR
-      };
-      
       existingBooking.restaurantCollectedFinalBill = finalBillAmount;
       
       await handleRestaurantCollectedPayment(existingBooking, finalBillAmount, session);

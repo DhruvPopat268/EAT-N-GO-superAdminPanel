@@ -15,17 +15,17 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { restaurantId };
-    
+
     // Add orderType filter
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
     }
-    
+
     // Add status filter
     if (status && ['pending', 'confirmed', 'rejected', 'waiting', 'completed'].includes(status)) {
       filter.status = status;
     }
-    
+
     // Add date range filter
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -38,15 +38,22 @@ router.get('/all', restaurantAuthMiddleware, async (req, res) => {
         filter.createdAt.$lte = endDateTime;
       }
     }
-    
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderRequestNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -123,12 +130,12 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { restaurantId, status: 'pending' };
-    
+
     // Add orderType filter
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
     }
-    
+
     // Add date range filter
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -141,15 +148,23 @@ router.get('/pending', restaurantAuthMiddleware, async (req, res) => {
         filter.createdAt.$lte = endDateTime;
       }
     }
-    
+
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderRequestNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -226,12 +241,12 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { restaurantId, status: 'confirmed' };
-    
+
     // Add orderType filter
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
     }
-    
+
     // Add date range filter
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -244,15 +259,23 @@ router.get('/confirmed', restaurantAuthMiddleware, async (req, res) => {
         filter.createdAt.$lte = endDateTime;
       }
     }
-    
+
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderRequestNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -329,12 +352,12 @@ router.get('/rejected', restaurantAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { restaurantId, status: 'rejected' };
-    
+
     // Add orderType filter
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
     }
-    
+
     // Add date range filter
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -347,15 +370,23 @@ router.get('/rejected', restaurantAuthMiddleware, async (req, res) => {
         filter.createdAt.$lte = endDateTime;
       }
     }
-    
+
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderRequestNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -432,12 +463,12 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { restaurantId, status: 'waiting' };
-    
+
     // Add orderType filter
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
     }
-    
+
     // Add date range filter
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -450,15 +481,23 @@ router.get('/waiting', restaurantAuthMiddleware, async (req, res) => {
         filter.createdAt.$lte = endDateTime;
       }
     }
-    
+
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderRequestNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -535,12 +574,12 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { restaurantId, status: 'completed' };
-    
+
     // Add orderType filter
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
     }
-    
+
     // Add date range filter
     if (startDate || endDate) {
       filter.createdAt = {};
@@ -553,15 +592,23 @@ router.get('/completed', restaurantAuthMiddleware, async (req, res) => {
         filter.createdAt.$lte = endDateTime;
       }
     }
-    
+
     // Add search functionality
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderRequestNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -638,11 +685,11 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { restaurantId, status: 'cancelled' };
-    
+
     if (orderType && ['dine-in', 'takeaway'].includes(orderType)) {
       filter.orderType = orderType;
     }
-    
+
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) {
@@ -654,14 +701,22 @@ router.get('/cancelled', restaurantAuthMiddleware, async (req, res) => {
         filter.createdAt.$lte = endDateTime;
       }
     }
-    
+
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
-      filter.$or = [
-        { orderRequestNo: { $regex: searchRegex } },
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+
+      const orConditions = [
         { 'userId.fullName': { $regex: searchRegex } },
         { 'userId.phone': { $regex: searchRegex } }
       ];
+
+      // 👉 If search is a valid number → search orderRequestNo as number
+      if (!isNaN(search)) {
+        orConditions.push({ orderRequestNo: Number(search) });
+      }
+
+      filter.$or = orConditions;
     }
 
     const totalCount = await OrderRequest.countDocuments(filter);
@@ -737,9 +792,9 @@ router.get('/by-id', restaurantAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: 'orderReqId is required' });
     }
 
-    const orderRequest = await OrderRequest.findOne({ 
-      _id: orderReqId, 
-      restaurantId 
+    const orderRequest = await OrderRequest.findOne({
+      _id: orderReqId,
+      restaurantId
     })
       .populate('userId', 'fullName phone')
       .populate({
@@ -833,7 +888,7 @@ router.get('/action-reasons', restaurantAuthMiddleware, async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const filter = { restaurantId};
+    const filter = { restaurantId };
     if (reasonType) filter.reasonType = reasonType;
 
     const totalCount = await OrderActionReason.countDocuments(filter);
@@ -928,7 +983,7 @@ router.patch('/confirm', restaurantAuthMiddleware, async (req, res) => {
 
     const orderRequest = await OrderRequest.findOneAndUpdate(
       { _id: orderReqId, restaurantId, status: { $in: ['pending', 'waiting'] } },
-      { 
+      {
         $set: {
           status: 'confirmed'
         }
@@ -974,7 +1029,7 @@ router.patch('/reject', restaurantAuthMiddleware, async (req, res) => {
 
     const orderRequest = await OrderRequest.findOneAndUpdate(
       { _id: orderReqId, restaurantId, status: { $in: ['pending', 'waiting'] } },
-      { 
+      {
         $set: {
           status: 'rejected',
           orderReqReasonId
@@ -1006,7 +1061,7 @@ router.patch('/waiting', restaurantAuthMiddleware, async (req, res) => {
     const restaurantId = req.restaurant.restaurantId;
     const { orderReqId, orderReqReasonId, waitingTime } = req.body;
 
-    if (!orderReqId || !orderReqReasonId || waitingTime == null)  {
+    if (!orderReqId || !orderReqReasonId || waitingTime == null) {
       return res.status(400).json({ success: false, message: 'orderReqId, orderReqReasonId and waitingTime are required' });
     }
 
@@ -1028,7 +1083,7 @@ router.patch('/waiting', restaurantAuthMiddleware, async (req, res) => {
 
     const orderRequest = await OrderRequest.findOneAndUpdate(
       { _id: orderReqId, restaurantId, status: 'pending' },
-      { 
+      {
         $set: {
           status: 'waiting',
           orderReqReasonId,
@@ -1076,7 +1131,7 @@ router.patch('/cancel', restaurantAuthMiddleware, async (req, res) => {
 
     const orderRequest = await OrderRequest.findOneAndUpdate(
       { _id: orderReqId, restaurantId, status: { $in: ['pending', 'confirmed', 'waiting'] } },
-      { 
+      {
         $set: {
           status: 'cancelled',
           cancelledBy: 'Restaurant',
