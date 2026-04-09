@@ -216,4 +216,18 @@ tableBookingSchema.pre('save', async function(next) {
 // Compound unique index for per-restaurant table booking numbering
 tableBookingSchema.index({ restaurantId: 1, tableBookingNo: 1 }, { unique: true });
 
+// Performance indexes
+tableBookingSchema.index({ restaurantId: 1 });
+tableBookingSchema.index({ status: 1 });
+tableBookingSchema.index({ createdAt: -1 });
+tableBookingSchema.index({ tableBookingNo: 1 });
+
+// Compound indexes for common query patterns
+tableBookingSchema.index({ restaurantId: 1, status: 1, createdAt: -1 });
+tableBookingSchema.index({ restaurantId: 1, createdAt: -1 });
+
+// Nested field indexes
+tableBookingSchema.index({ 'bookingTimings.date': 1 });
+tableBookingSchema.index({ 'bookingTimings.slotTime': 1 });
+
 module.exports = mongoose.model('TableBooking', tableBookingSchema);
